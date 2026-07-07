@@ -13,6 +13,16 @@ namespace BoxSubMusic.App
         public MainPage()
         {
             InitializeComponent();
+            Loaded += OnLoaded;
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            // Controller-first rule: something must own focus from the first
+            // frame, or directional input has no starting point (no mouse on
+            // Xbox to bail us out). FocusState.Keyboard forces the focus
+            // visual to render immediately.
+            HomeNavItem.Focus(FocusState.Keyboard);
         }
 
         private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
