@@ -1,15 +1,38 @@
-﻿using Windows.UI.Xaml.Controls;
+using System;
+using Windows.UI.Xaml;
+using Windows.UI.Xaml.Controls;
 
 namespace BoxSubMusic.App
 {
     /// <summary>
-    /// An empty page that can be used on its own or navigated to within a <see cref="Frame">.
+    /// Slice 01 spike shell: exercises controller focus navigation across the
+    /// nav pane and content area. Real navigation/content hosting is Slice 04.
     /// </summary>
     public sealed partial class MainPage : Page
     {
         public MainPage()
         {
             InitializeComponent();
+        }
+
+        private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+        {
+            if (args.IsSettingsSelected)
+            {
+                SectionTitle.Text = "Settings";
+            }
+            else if (args.SelectedItem is NavigationViewItem item)
+            {
+                SectionTitle.Text = item.Content?.ToString() ?? string.Empty;
+            }
+        }
+
+        private void TestButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button)
+            {
+                ActivationLog.Text = $"Activated: {button.Content} at {DateTime.Now:HH:mm:ss}";
+            }
         }
     }
 }
