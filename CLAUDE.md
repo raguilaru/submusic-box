@@ -1,0 +1,72 @@
+@docs/requirements/10-final-requirements.md
+@docs/requirements/50-acceptance-criteria.md
+@docs/requirements/60-implementation-slices.md
+
+# Project
+BoxSubMusic — native Xbox Series X/S music streaming app for Subsonic/OpenSubsonic servers.
+Primary target: UWP + XAML + C# with controller-first 10-foot UX.
+This project is requirement-driven. The requirements docs are the source of truth.
+
+# Core rules
+- Do not invent APIs, payloads, server capabilities, or Xbox platform behavior.
+- Prefer OpenSubsonic capabilities detection over hardcoded server-version branching.
+- Implement one requirement slice at a time.
+- Before coding, state which requirement sections are being implemented.
+- Before finishing, verify the related acceptance criteria and list any gaps.
+- If a requirement is ambiguous, ask instead of guessing.
+- Do not rewrite unrelated files.
+- Keep architecture simple and boring unless the requirements demand otherwise.
+
+# Architecture guardrails
+- UI stack is native XAML + C#; do not introduce WebView or HTML wrapper UI.
+- Solution structure: UWP app project + Core library + Subsonic API client library
+  (see docs/architecture/20-project-structure.md).
+- Controller navigation and 10-foot readability take priority over desktop-style UX.
+- Background playback, queue behavior, and Now Playing interactions are core features, not optional polish.
+- Home/Search must always remain visible in the nav.
+- Any feature that depends on an unsupported server extension must degrade explicitly and visibly.
+- Credentials: server URL/username in local app settings; password/token in the
+  Windows Credential Locker (PasswordVault). Never store secrets in plain settings.
+
+# Working style
+- Use requirement-driven development.
+- Work in small, reviewable increments.
+- For each increment:
+  1. Read the relevant requirement section.
+  2. Propose a short implementation plan.
+  3. Implement only that slice.
+  4. Validate against acceptance criteria.
+  5. Document any deviation or unresolved issue.
+
+# Definition of done
+A task is done only when:
+- The implementation matches the referenced requirement section.
+- Acceptance criteria for that slice are satisfied.
+- Build compiles cleanly.
+- No unrelated regressions were introduced.
+- Any changed behavior is reflected in docs if needed.
+
+# File-change policy
+- Update docs when architecture, behavior, or workflow changes.
+- Keep naming and folder structure consistent.
+- Favor typed models and explicit contracts over ad hoc JSON/dynamic parsing.
+- Prefer small services and view models over giant god-classes.
+
+# Environment notes
+- Development may occur from macOS with Windows/Visual Studio in Parallels.
+- Keep Windows-specific commands and machine-local paths out of committed docs when possible.
+- Put machine-local overrides in CLAUDE.local.md (gitignored).
+
+# Commands
+- Build: TODO (depends on Parallels/Visual Studio loop; document once established)
+- Test: TODO
+- Package: TODO
+- Deploy to Xbox Dev Mode: TODO
+
+# Open questions
+- Local persistence format/store for settings, recents, and resume-state is not yet locked.
+- Search result paging/virtualization policy is not yet locked.
+- Artwork fallback beyond server-provided metadata remains a risk item, not a committed feature.
+- "Pick up where you left off" persistence scope (queue only vs queue + position + context) is not yet locked — ask before Slice 05.
+- Songs row primary action (immediate playback vs context menu) is not yet locked — ask before Slice 08.
+- Playlist read-only vs editing scope for v1 is not yet locked — ask before Slice 09.

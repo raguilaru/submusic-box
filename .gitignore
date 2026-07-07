@@ -1,0 +1,45 @@
+# Machine-local agent notes
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Visual Studio / MSBuild
+.vs/
+bin/
+obj/
+Debug/
+Release/
+x64/
+ARM64/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+project.lock.json
+
+# UWP packaging / store
+AppPackages/
+BundleArtifacts/
+_pkginfo.txt
+*.appx
+*.appxbundle
+*.appxupload
+*.msix
+*.msixbundle
+*.pfx
+*.cer
+
+# Test results
+TestResults/
+*.trx
+
+# NuGet
+packages/
+*.nupkg
+
+# macOS
+.DS_Store
+
+# Parallels shared-folder artifacts
+*.lnk
+Thumbs.db
+desktop.ini
