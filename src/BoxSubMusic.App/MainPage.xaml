@@ -14,6 +14,7 @@
     -->
     <NavigationView
         x:Name="NavView"
+        KeyDown="NavView_KeyDown"
         IsBackButtonVisible="Collapsed"
         IsSettingsVisible="True"
         PaneDisplayMode="Left"
@@ -64,7 +65,11 @@
             </NavigationViewItem>
         </NavigationView.PaneFooter>
 
-        <Grid Padding="48">
+        <!-- Keyboard fallback (req §13.1): arrows behave spatially between the
+             content controls. Text inputs (Slice 03+) must NOT live under an
+             XY-enabled container without opting back out, or caret movement
+             breaks. -->
+        <Grid Padding="48" XYFocusKeyboardNavigation="Enabled">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />

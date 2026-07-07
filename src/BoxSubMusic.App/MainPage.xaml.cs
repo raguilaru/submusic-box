@@ -1,9 +1,11 @@
 using System;
 using BoxSubMusic.App.Services;
 using Windows.Media.Playback;
+using Windows.System;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Input;
 
 namespace BoxSubMusic.App
 {
@@ -36,6 +38,20 @@ namespace BoxSubMusic.App
             player.PlaybackSession.PlaybackStateChanged += async (s, args) =>
                 await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                     SectionTitle.Text = $"Home — {s.PlaybackState}");
+        }
+
+        private void NavView_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            // Keyboard fallback (req §13.1): the nav pane's list keeps arrow
+            // keys to itself, so Right would never leave it. Mirror the D-pad:
+            // hand focus across to the content region. Left back into the pane
+            // is covered by XY focus on the content grid.
+            if (e.Key == VirtualKey.Right
+                && !e.Handled
+                && FocusManager.GetFocusedElement() is NavigationViewItem)
+            {
+                e.Handled = FocusManager.TryMoveFocus(FocusNavigationDirection.Right);
+            }
         }
 
         private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
