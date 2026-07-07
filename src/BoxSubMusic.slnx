@@ -6,6 +6,12 @@
   </Configurations>
   <Project Path="../tests/BoxSubMusic.Core.Tests/BoxSubMusic.Core.Tests.csproj" />
   <Project Path="../tests/BoxSubMusic.SubsonicClient.Tests/BoxSubMusic.SubsonicClient.Tests.csproj" />
+  <Project Path="BoxSubMusic.App/BoxSubMusic.App.csproj" Id="4568103a-481c-42aa-8af3-cf430e26a509">
+    <Platform Solution="*|arm64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|x86" Project="x86" />
+    <Deploy />
+  </Project>
   <Project Path="BoxSubMusic.Core/BoxSubMusic.Core.csproj" />
   <Project Path="BoxSubMusic.SubsonicClient/BoxSubMusic.SubsonicClient.csproj" />
 </Solution>
