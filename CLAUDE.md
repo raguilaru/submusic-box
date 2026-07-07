@@ -64,11 +64,12 @@ A task is done only when:
 - Keep Windows-specific commands and machine-local paths out of committed docs.
 
 # Commands
-See CLAUDE.local.md for the concrete, machine-local invocations.
+See CLAUDE.local.md for the concrete, machine-local invocations (SSH alias, full paths).
 - Verify build loop: SSH echo test against the VM (must work non-interactively).
-- Build: msbuild against the solution under the shared-folder path in the VM — TODO: lock exact invocation once the solution exists.
-- Test: TODO (dotnet test for Core/SubsonicClient once test projects exist)
-- Package: TODO
+- Build (verified): VS MSBuild over SSH against src/BoxSubMusic.slnx with
+  /restore /p:Configuration=Debug /p:Platform=x64 (x64 = Xbox architecture).
+- Test (verified): dotnet test over SSH against each project under tests/.
+- Package: TODO (msbuild MSIX packaging — lock during Slice 02/on-device checkpoint #1)
 - Deploy to Xbox Dev Mode: WinAppDeployCmd from the VM — TODO: Xbox not yet in Dev Mode.
 
 # Open questions

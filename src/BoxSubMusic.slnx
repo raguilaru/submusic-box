@@ -1,0 +1,17 @@
+<Solution>
+  <Configurations>
+    <Platform Name="arm64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="../tests/BoxSubMusic.Core.Tests/BoxSubMusic.Core.Tests.csproj" />
+  <Project Path="../tests/BoxSubMusic.SubsonicClient.Tests/BoxSubMusic.SubsonicClient.Tests.csproj" />
+  <Project Path="BoxSubMusic.App/BoxSubMusic.App.csproj">
+    <Platform Solution="*|arm64" Project="arm64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|x86" Project="x86" />
+    <Deploy />
+  </Project>
+  <Project Path="BoxSubMusic.Core/BoxSubMusic.Core.csproj" />
+  <Project Path="BoxSubMusic.SubsonicClient/BoxSubMusic.SubsonicClient.csproj" />
+</Solution>
