@@ -1,3 +1,4 @@
+@docs/STATUS.md
 @docs/requirements/10-final-requirements.md
 @docs/requirements/50-acceptance-criteria.md
 @docs/requirements/60-implementation-slices.md
