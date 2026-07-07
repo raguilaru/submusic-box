@@ -17,4 +17,10 @@
     <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
     <EnableMsixTooling>true</EnableMsixTooling>
   </PropertyGroup>
+
+  <!-- Native AOT cross-compilation (ARM64 build host -> x64 Xbox target):
+       MUST build with the arm64-native MSBuild
+       (MSBuild\Current\Bin\arm64\MSBuild.exe). The default MSBuild.exe runs
+       x64-emulated and mis-detects the AOT host architecture, breaking
+       ILCompiler pack resolution. See CLAUDE.local.md. -->
 </Project>
