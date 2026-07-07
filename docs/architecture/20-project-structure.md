@@ -2,6 +2,23 @@
 
 Decided 2026-07-07: solution split into app + libraries (see requirements Section 2 and 16).
 
+## Toolchain decision (2026-07-07): legacy .NET Native, NOT modern .NET + AOT
+
+The app was first built on the VS 2026 default modern stack (`UseUwp` +
+`PublishAot`, net10.0). It works in the VM but **does not activate on Xbox**:
+the signed AOT package registers on the console yet fails in the loader with
+`0x80070002` (no crash dump — fails before managed code runs), and never
+appears in the Device Portal games list. Modern AOT UWP has no documented Xbox
+support (Desktop only). We therefore use the **legacy .NET Native** UWP
+toolchain for `BoxSubMusic.App`, which is the proven path for C# UWP on Xbox.
+
+Implications:
+- `BoxSubMusic.App` = legacy .NET Native UWP project (old-style csproj).
+- Libraries target **netstandard2.0** (legacy .NET Native's reference ceiling).
+- Xbox deploy = VS Remote Machine F5 (supported by .NET Native).
+- The Mac→VM→console plumbing (SSH, signing, Device Portal, path mapping) is
+  unchanged and reused.
+
 ## Planned solution layout
 
 ```
