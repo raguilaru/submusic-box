@@ -1,0 +1,16 @@
+# Normalize line endings; VS on Windows and editors on macOS share this repo
+* text=auto
+*.sln text eol=crlf
+*.csproj text
+*.xaml text
+*.cs text
+*.appxmanifest text
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pfx binary
+*.mp3 binary
+*.wav binary
