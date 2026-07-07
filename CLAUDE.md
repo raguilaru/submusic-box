@@ -53,15 +53,23 @@ A task is done only when:
 - Prefer small services and view models over giant god-classes.
 
 # Environment notes
-- Development may occur from macOS with Windows/Visual Studio in Parallels.
-- Keep Windows-specific commands and machine-local paths out of committed docs when possible.
-- Put machine-local overrides in CLAUDE.local.md (gitignored).
+- Development happens on macOS; builds/packaging happen in a Windows VM (Parallels)
+  reached over SSH. The repo is shared into the VM via a Parallels shared folder,
+  so there is one copy of the code — no sync step.
+- Remote commands follow the pattern `ssh <vm-alias> "<command>"`. The alias,
+  IP, path mapping (Mac path ↔ Windows drive letter), and current setup status
+  live in CLAUDE.local.md (gitignored) — read it before running any VM command.
+- Never edit code inside the VM; edit on the Mac side only. The VM is for
+  build/package/deploy.
+- Keep Windows-specific commands and machine-local paths out of committed docs.
 
 # Commands
-- Build: TODO (depends on Parallels/Visual Studio loop; document once established)
-- Test: TODO
+See CLAUDE.local.md for the concrete, machine-local invocations.
+- Verify build loop: SSH echo test against the VM (must work non-interactively).
+- Build: msbuild against the solution under the shared-folder path in the VM — TODO: lock exact invocation once the solution exists.
+- Test: TODO (dotnet test for Core/SubsonicClient once test projects exist)
 - Package: TODO
-- Deploy to Xbox Dev Mode: TODO
+- Deploy to Xbox Dev Mode: WinAppDeployCmd from the VM — TODO: Xbox not yet in Dev Mode.
 
 # Open questions
 - Local persistence format/store for settings, recents, and resume-state is not yet locked.
