@@ -1,5 +1,7 @@
 using System;
 using BoxSubMusic.App.Services;
+using Windows.Media.Playback;
+using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
@@ -24,6 +26,16 @@ namespace BoxSubMusic.App
             // Xbox to bail us out). FocusState.Keyboard forces the focus
             // visual to render immediately.
             HomeNavItem.Focus(FocusState.Keyboard);
+
+            // Spike diagnostics: surface playback failures/state in the UI so
+            // VM testing doesn't need a debugger attached.
+            MediaPlayer player = PlaybackService.Instance.Player;
+            player.MediaFailed += async (s, args) =>
+                await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                    ActivationLog.Text = $"MEDIA FAILED: {args.Error} — {args.ErrorMessage}");
+            player.PlaybackSession.PlaybackStateChanged += async (s, args) =>
+                await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                    SectionTitle.Text = $"Home — {s.PlaybackState}");
         }
 
         private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)

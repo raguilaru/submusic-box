@@ -87,14 +87,11 @@
                 TextWrapping="Wrap"
                 Text="Focus navigation spike. Move focus with the D-pad or left stick: through the left menu, into these buttons, and back. Press A to activate." />
 
-            <!-- XYFocus makes arrow keys behave like the D-pad between buttons;
-                 gamepad XY navigation is automatic, keyboard needs opt-in. -->
             <StackPanel
                 Grid.Row="2"
                 Margin="0,40,0,0"
                 Orientation="Horizontal"
-                Spacing="24"
-                XYFocusKeyboardNavigation="Enabled">
+                Spacing="24">
                 <Button
                     x:Name="PlayButton"
                     Content="&#xE768;  Play"
