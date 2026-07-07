@@ -1,4 +1,5 @@
 using System;
+using BoxSubMusic.App.Services;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
@@ -43,6 +44,16 @@ namespace BoxSubMusic.App
             {
                 ActivationLog.Text = $"Activated: {button.Content} at {DateTime.Now:HH:mm:ss}";
             }
+        }
+
+        private void PlayButton_Click(object sender, RoutedEventArgs e)
+        {
+            PlaybackService.Instance.TogglePlayPause();
+            bool playing = PlaybackService.Instance.IsPlaying;
+            PlayButton.Content = playing ? "  Pause" : "  Play";
+            ActivationLog.Text = playing
+                ? "Playing test tone (looping). Minimize the app: audio must continue and the system media flyout must show BoxSubMusic."
+                : "Paused.";
         }
     }
 }

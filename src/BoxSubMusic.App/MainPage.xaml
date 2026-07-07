@@ -101,7 +101,7 @@
                     FontFamily="Segoe MDL2 Assets"
                     FontSize="24"
                     Padding="32,16"
-                    Click="TestButton_Click" />
+                    Click="PlayButton_Click" />
                 <Button
                     Content="&#xE8B1;  Shuffle"
                     FontFamily="Segoe MDL2 Assets"

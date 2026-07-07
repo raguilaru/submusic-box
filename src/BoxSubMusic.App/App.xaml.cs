@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
+using Windows.System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
@@ -12,6 +14,8 @@ namespace BoxSubMusic.App
     /// </summary>
     public sealed partial class App : Application
     {
+        private bool _isInBackground;
+
         /// <summary>
         /// Initializes the singleton application object. This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -21,6 +25,58 @@ namespace BoxSubMusic.App
             InitializeComponent();
 
             Suspending += OnSuspending;
+
+            // Requirement §11: with backgroundMediaPlayback declared, the app
+            // keeps running while backgrounded but must respect the reduced
+            // memory budget (strict on Xbox) or the OS terminates it.
+            EnteredBackground += OnEnteredBackground;
+            LeavingBackground += OnLeavingBackground;
+            MemoryManager.AppMemoryUsageLimitChanging += OnMemoryUsageLimitChanging;
+            MemoryManager.AppMemoryUsageIncreased += OnMemoryUsageIncreased;
+        }
+
+        private void OnEnteredBackground(object sender, EnteredBackgroundEventArgs e)
+        {
+            _isInBackground = true;
+            // Spike: skeleton only. Real implementation releases UI/view
+            // resources (image caches, view models) here to fit the
+            // background memory budget.
+        }
+
+        private void OnLeavingBackground(object sender, LeavingBackgroundEventArgs e)
+        {
+            _isInBackground = false;
+            // Spike: skeleton only. Real implementation restores/rebuilds
+            // UI state here if it was dropped on entering the background.
+        }
+
+        private void OnMemoryUsageLimitChanging(object sender, AppMemoryUsageLimitChangingEventArgs e)
+        {
+            Debug.WriteLine($"Memory limit changing: {e.OldLimit} -> {e.NewLimit} (background={_isInBackground})");
+            if (MemoryManager.AppMemoryUsage >= e.NewLimit)
+            {
+                ReduceMemoryUsage();
+            }
+        }
+
+        private void OnMemoryUsageIncreased(object sender, object e)
+        {
+            AppMemoryUsageLevel level = MemoryManager.AppMemoryUsageLevel;
+            Debug.WriteLine($"Memory usage increased: level={level} (background={_isInBackground})");
+            if (level == AppMemoryUsageLevel.OverLimit || level == AppMemoryUsageLevel.High)
+            {
+                ReduceMemoryUsage();
+            }
+        }
+
+        private void ReduceMemoryUsage()
+        {
+            // Spike: GC is the only lever we have so far. Real implementation
+            // additionally drops the XAML content tree while backgrounded.
+            if (_isInBackground)
+            {
+                GC.Collect();
+            }
         }
 
         /// <inheritdoc/>

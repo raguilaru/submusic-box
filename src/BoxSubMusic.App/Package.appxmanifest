@@ -4,7 +4,8 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-  IgnorableNamespaces="uap mp">
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  IgnorableNamespaces="uap uap3 mp">
 
   <Identity
     Name="84f2c48e-3500-49e0-88b8-4d9897cc4335"
@@ -45,5 +46,8 @@
 
   <Capabilities>
     <Capability Name="internetClient" />
+    <!-- Requirement §11: playback must continue when the app is backgrounded.
+         Also subjects the app to background memory limits on Xbox. -->
+    <uap3:Capability Name="backgroundMediaPlayback" />
   </Capabilities>
 </Package>
