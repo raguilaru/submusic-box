@@ -52,6 +52,19 @@ namespace BoxSubMusic.App
             {
                 e.Handled = FocusManager.TryMoveFocus(FocusNavigationDirection.Right);
             }
+            else if (e.Key == VirtualKey.Left
+                && !e.Handled
+                && FocusManager.GetFocusedElement() is Control focused
+                && focused is not NavigationViewItem)
+            {
+                // Left at the content's edge: the XY region boundary stops the
+                // spatial search, so return focus to the current nav item.
+                if (!FocusManager.TryMoveFocus(FocusNavigationDirection.Left))
+                {
+                    (NavView.SelectedItem as NavigationViewItem)?.Focus(FocusState.Keyboard);
+                }
+                e.Handled = true;
+            }
         }
 
         private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
