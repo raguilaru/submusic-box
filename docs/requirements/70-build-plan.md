@@ -23,7 +23,10 @@ sequencing, ownership, checkpoints, and the on-device testing protocol.
 - Mac→VM SSH build loop verified (see CLAUDE.local.md for commands/paths).
 - Partner Center dev account exists; Xbox Series X **not yet in Dev Mode**.
 - A Subsonic-compatible server is available on the LAN (details go in
-  CLAUDE.local.md when Slice 03 starts — never committed).
+  CLAUDE.local.md when Slice 03 starts — never committed). It runs **Navidrome**;
+  the compatibility target is any OpenSubsonic server via capability detection.
+  Both LAN and internet-hosted servers must work (manifest declares
+  `internetClient` + `privateNetworkClientServer`).
 - An Xbox controller can be attached to the VM for early focus-navigation testing.
 
 ---
@@ -64,18 +67,32 @@ sequencing, ownership, checkpoints, and the on-device testing protocol.
 ## Phase 2 — Connected core (Slices 03–05)
 
 - **2.1 [CLAUDE]** `BoxSubMusic.SubsonicClient`: auth (token+salt), ping,
-  capability detection (OpenSubsonic extensions), getAlbumList2, typed models,
-  explicit legacy fallbacks. Unit tests run via `dotnet test` over SSH; live
-  verification against the real server (P0.3).
+  capability detection (OpenSubsonic extensions), getAlbumList2, getCoverArt
+  (artwork URL construction — Home carousels need it), typed models, explicit
+  legacy fallbacks. Transport is XML parsed with XDocument (decision
+  2026-07-09; see requirements §16 and the architecture doc) — no
+  reflection-based serializers anywhere. Unit tests run via `dotnet test` over
+  SSH; live verification against the real server (P0.3) via integration tests
+  gated on a gitignored local config file (skipped when absent).
 - **2.2 [CLAUDE]** Slice 03 — setup flow: URL sanitization, masked password,
-  inline errors, Credential Locker storage, recent-servers list.
+  inline errors, Credential Locker storage, recent-servers list. Includes
+  manifest update: add `privateNetworkClientServer` (LAN servers are
+  unreachable with `internetClient` alone) and wire App→Core→SubsonicClient
+  project references.
 - **2.3 [CLAUDE]** Slice 04 — navigation shell: collapsible nav, fixed order,
-  bottom account area, theme-aware icons.
+  bottom account area, theme-aware icons. **Ask first:** which open-source
+  icon set (requirements §13.3).
 - **2.4 [CLAUDE]** Slice 05 — Home: resume card + three album carousels.
-  **Ask first:** resume-persistence scope (queue / +position / +context).
+  Resume scope is decided (2026-07-09, §6.1): queue + index + position +
+  shuffle/repeat + context display metadata, local-only, resumes paused. Note:
+  nothing populates resume state until real playback exists (Slice 06+), so
+  this slice ships the persistence contract, the card, and its empty state,
+  verified with seeded fake data.
 - **2.5 [JOINT]** **On-device checkpoint #2** — full connect-and-browse-home
   flow on the console against the real server (text entry with controller,
-  10-foot readability, carousel focus behavior).
+  10-foot readability, carousel focus behavior). Include one **Release|x64**
+  F5 run to validate the .NET Native x64 build end-to-end (the daily x64
+  Debug loop does not exercise .NET Native; the VM's ARM64 loop does).
 
 ## Phase 3 — Library browsing (Slices 06–09)
 

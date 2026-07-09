@@ -52,6 +52,10 @@ they are committed here like any other source.
 - All UI: pages, controls, styles, themes, focus/controller handling
 - Platform services: Credential Locker access, MediaPlayer/SMTC, ApplicationData
 - Composition root: wires Core view models to platform implementations
+- Local persistence (decided 2026-07-09): ApplicationData.LocalSettings for
+  simple values; structured data (recent servers, resume state) as files in
+  LocalFolder, serialized with the same reflection-free approach as the API
+  client (see below)
 
 ### BoxSubMusic.Core (.NET Standard class library)
 - Domain models (Album, Artist, Song, Playlist, Queue, ServerCapabilities)
@@ -62,6 +66,14 @@ they are committed here like any other source.
 - Typed client for OpenSubsonic with legacy Subsonic fallback
 - Capability detection on connect
 - Typed response models; no ad hoc JSON/dynamic parsing
+- Transport format (decided 2026-07-09): the Subsonic API's native **XML**
+  responses, parsed with **XDocument into typed models via explicit mapping
+  code**. Reflection-based serializers (System.Text.Json, Newtonsoft.Json) are
+  banned app-wide: they are a runtime risk under legacy .NET Native, and the
+  daily x64 Debug console loop would not catch failures (only Release|x64 and
+  the VM's ARM64 builds compile with .NET Native).
+- Accepts an injected HttpMessageHandler/HttpClient so tests can fake transport
+  and the app can adjust platform behavior without the client knowing
 - No UI or platform dependencies — must be unit-testable on any host
 
 ## Dependency rule

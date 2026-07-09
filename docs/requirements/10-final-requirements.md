@@ -19,6 +19,7 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   - `BoxSubMusic.Core` — models, view-model logic, queue/playback orchestration contracts
   - `BoxSubMusic.SubsonicClient` — typed OpenSubsonic/Subsonic API client
 - Core and SubsonicClient MUST remain unit-testable without a UWP host.
+- The app manifest MUST declare both `internetClient` and `privateNetworkClientServer` capabilities so that internet-hosted and LAN servers both work.
 
 ## 3. Server API Compatibility
 
@@ -68,8 +69,15 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
 ## 6. Home View
 
 ### 6.1 Pick up where you left off
-- The app MUST locally persist last-played context sufficient to resume playback.
+- The app MUST locally persist enough state to resume playback across app restarts (decided 2026-07-09):
+  - the full play queue (track references)
+  - the current track index
+  - the in-track playback position
+  - shuffle and repeat state
+  - lightweight originating-context metadata (display name + artwork reference) for the resume card
+- Resume MUST restore the queue paused at the saved track and position; the app MUST NOT auto-play on launch.
 - The Home view MUST show artwork, name, and a Play action that resumes the saved queue/context.
+- Server-side play-queue sync (savePlayQueue/getPlayQueue) is out of scope for v1, but the local persistence contract MUST NOT preclude adding it later.
 
 ### 6.2 Most Played
 - Data source: getAlbumList2 with type=frequent
@@ -244,11 +252,14 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
 - 2026-07-07: Solution is split into app + Core library + Subsonic API client library (Section 2).
 - 2026-07-07: Credentials are stored via Windows Credential Locker / PasswordVault (Section 4).
 - 2026-07-07: No AGENTS.md / .claude/rules for now; CLAUDE.md is the single agent contract.
+- 2026-07-09: Subsonic transport is the API's native XML, parsed with XDocument into typed models via explicit mapping code. No reflection-based serializers (System.Text.Json/Newtonsoft) anywhere in the app — they are a runtime risk under legacy .NET Native.
+- 2026-07-09: Local persistence split: ApplicationData.LocalSettings for simple values (theme, nav toggles, server URL/username); structured data (recent servers, resume state) as files in LocalFolder using the same reflection-free XML serialization.
+- 2026-07-09: Resume scope locked (Section 6.1): full queue + current index + in-track position + shuffle/repeat + context display metadata, persisted locally; resumes paused; server play-queue sync deferred beyond v1.
+- 2026-07-09: Manifest declares `internetClient` + `privateNetworkClientServer` (Section 2) — both internet and LAN servers are supported.
+- 2026-07-09: Primary test server is Navidrome; compatibility target is any OpenSubsonic server via capability detection, never server-specific branching.
 
 ## 17. Open Decisions / TODO
 
-- TODO: choose local persistence approach for settings, recents, and resume-state data.
-- TODO: define exact "Pick up where you left off" persistence scope (queue only vs queue + position vs queue + position + originating context) — resolve before Slice 05.
 - TODO: choose exact search endpoints/scopes and pagination/virtualization behavior for large libraries — resolve before Slice 13.
 - TODO: decide Songs row primary action (immediate playback on A/Enter vs secondary action/context menu) — resolve before Slice 08.
 - TODO: decide playlist editing scope for v1 (read-only vs create/edit/delete) — resolve before Slice 09.

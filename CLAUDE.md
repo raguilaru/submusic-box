@@ -28,6 +28,10 @@ This project is requirement-driven. The requirements docs are the source of trut
 - Any feature that depends on an unsupported server extension must degrade explicitly and visibly.
 - Credentials: server URL/username in local app settings; password/token in the
   Windows Credential Locker (PasswordVault). Never store secrets in plain settings.
+- No reflection-based serializers (System.Text.Json, Newtonsoft.Json) anywhere:
+  runtime risk under legacy .NET Native. Server XML is parsed with XDocument
+  into typed models via explicit mapping; local structured persistence uses the
+  same approach (requirements §16, architecture doc).
 
 # Working style
 - Use requirement-driven development.
@@ -70,13 +74,13 @@ See CLAUDE.local.md for the concrete, machine-local invocations (SSH alias, full
 - Build (verified): VS MSBuild over SSH against src/BoxSubMusic.slnx with
   /restore /p:Configuration=Debug /p:Platform=x64 (x64 = Xbox architecture).
 - Test (verified): dotnet test over SSH against each project under tests/.
-- Package: TODO (msbuild MSIX packaging — lock during Slice 02/on-device checkpoint #1)
-- Deploy to Xbox Dev Mode: WinAppDeployCmd from the VM — TODO: Xbox not yet in Dev Mode.
+- Deploy (console and local VM): VS F5 in the VM — this is the only working
+  package+deploy path (command-line appx packaging fails with APPX0703).
+  Rafael drives F5; details in CLAUDE.local.md and docs/STATUS.md.
 
 # Open questions
-- Local persistence format/store for settings, recents, and resume-state is not yet locked.
 - Search result paging/virtualization policy is not yet locked.
 - Artwork fallback beyond server-provided metadata remains a risk item, not a committed feature.
-- "Pick up where you left off" persistence scope (queue only vs queue + position + context) is not yet locked — ask before Slice 05.
+- Icon set (one consistent open-source set, req §13.3) is not yet chosen — ask before Slice 04.
 - Songs row primary action (immediate playback vs context menu) is not yet locked — ask before Slice 08.
 - Playlist read-only vs editing scope for v1 is not yet locked — ask before Slice 09.

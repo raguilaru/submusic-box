@@ -1,11 +1,20 @@
 # Current Status
 
-Last updated: 2026-07-09 (end of session).
+Last updated: 2026-07-09 (Phase 2 kickoff).
 
 ## Where we are
 
-**Phase 1 (foundation + spikes) is DONE.** The app builds, deploys, launches,
-and now **navigates correctly with the D-pad on the real Xbox Series X**.
+**Phase 1 (foundation + spikes) is DONE, including on-device checkpoint #1.**
+The app builds, deploys, launches, navigates with the D-pad, and plays audio
+in the background (tone → Xbox button → Dev Home → audio continues, SMTC in
+the guide — verified by Rafael on the console 2026-07-09).
+
+**Phase 2 decisions are locked (2026-07-09):** Subsonic transport is XML via
+XDocument explicit mapping (no reflection serializers — .NET Native risk);
+persistence is LocalSettings + LocalFolder files; resume scope is queue +
+index + position + shuffle/repeat + context display metadata, local-only,
+resumes paused; manifest gets `privateNetworkClientServer`; primary test
+server is Navidrome. Details in requirements §16 and the build plan Phase 2.
 
 Milestones reached:
 - Repo + requirement-driven docs (Slice 00).
@@ -37,16 +46,20 @@ Milestones reached:
 
 ## Open items (start here next session)
 
-1. **Quick re-check of Slice 02 on device** (unless already done informally):
-   Play → tone on TV, Xbox button → Dev Home → audio continues, SMTC shows in
-   the guide. D-pad nav is verified; this closes on-device checkpoint #1.
-2. Proceed to **Phase 2** (Slices 03–05): SubsonicClient against Rafael's real
-   LAN server, setup flow with Credential Locker, nav shell, Home. Ask the
-   resume-persistence-scope question before Slice 05.
-3. Housekeeping: `src/BoxSubMusic.App` is still root-owned on the Mac side
-   (created from Windows during the pivot). Mac-side edits need the
-   stage-then-copy workaround until Rafael runs
-   `sudo chown -R rafael:staff src/BoxSubMusic.App`.
+1. ~~Test-server details~~ **P0.3 DONE (2026-07-09):** Navidrome server
+   recorded in CLAUDE.local.md; reachability verified from Mac AND VM (LAN +
+   external, token auth). One caveat noted there re `.local` resolution on Xbox.
+2. **Implement build-plan step 2.1**: SubsonicClient — token+salt auth with
+   legacy fallback, ping, capability detection, getAlbumList2, getCoverArt,
+   typed XML models via XDocument, unit tests + gated integration tests.
+3. Then 2.2 (Slice 03 setup flow, incl. `privateNetworkClientServer` manifest
+   capability and App→Core→SubsonicClient references), 2.3 (shell — ask the
+   icon-set question first), 2.4 (Home), 2.5 (on-device checkpoint #2, incl.
+   a Release|x64 .NET Native validation run).
+
+Resolved 2026-07-09: on-device checkpoint #1 closed; `src/BoxSubMusic.App` is
+no longer root-owned on the Mac side (chown done — Mac-side edits work
+normally now); resume-scope, persistence, and transport decisions locked.
 
 ## How to deploy (quick reference)
 
