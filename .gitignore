@@ -2,6 +2,9 @@
 CLAUDE.local.md
 .claude/settings.local.json
 
+# Live integration-test server config (contains credentials)
+liveserver.local.txt
+
 # Visual Studio / MSBuild
 .vs/
 bin/

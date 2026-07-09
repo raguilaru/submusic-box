@@ -46,16 +46,20 @@ Milestones reached:
 
 ## Open items (start here next session)
 
-1. ~~Test-server details~~ **P0.3 DONE (2026-07-09):** Navidrome server
-   recorded in CLAUDE.local.md; reachability verified from Mac AND VM (LAN +
-   external, token auth). One caveat noted there re `.local` resolution on Xbox.
-2. **Implement build-plan step 2.1**: SubsonicClient — token+salt auth with
-   legacy fallback, ping, capability detection, getAlbumList2, getCoverArt,
-   typed XML models via XDocument, unit tests + gated integration tests.
-3. Then 2.2 (Slice 03 setup flow, incl. `privateNetworkClientServer` manifest
-   capability and App→Core→SubsonicClient references), 2.3 (shell — ask the
-   icon-set question first), 2.4 (Home), 2.5 (on-device checkpoint #2, incl.
-   a Release|x64 .NET Native validation run).
+1. **Implement build-plan step 2.2** (Slice 03 setup flow): setup page, URL
+   sanitization, masked password, inline errors, Credential Locker storage,
+   recent-servers list; add `privateNetworkClientServer` to the manifest and
+   wire App→Core→SubsonicClient project references (none exist yet — and the
+   App csproj is old-style: every new file must be added to it explicitly).
+2. Then 2.3 (shell — ask the icon-set question first), 2.4 (Home), 2.5
+   (on-device checkpoint #2, incl. a Release|x64 .NET Native validation run).
+
+Done 2026-07-09: **step 2.1 complete** — `BoxSubMusic.SubsonicClient`
+implemented (token+salt auth with explicit pre-1.13 legacy fallback and
+version renegotiation, ping, OpenSubsonic capability detection, getAlbumList2,
+getCoverArt URL building; XML via XDocument, injected HttpClient). 27 tests
+green in the VM, including 4 live integration tests against the real Navidrome
+(gated on a gitignored config; see CLAUDE.local.md). P0.3 done the same day.
 
 Resolved 2026-07-09: on-device checkpoint #1 closed; `src/BoxSubMusic.App` is
 no longer root-owned on the Mac side (chown done — Mac-side edits work
