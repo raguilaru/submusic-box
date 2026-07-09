@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-07-10 (Slices 03, 04, 05a implemented; console checkpoint pending).
+Last updated: 2026-07-10 (Slices 03, 04, 05a, 06a implemented; console checkpoint pending).
 
 ## Where we are
 
@@ -8,7 +8,7 @@ Last updated: 2026-07-10 (Slices 03, 04, 05a implemented; console checkpoint pen
 (app launches, D-pad navigates, background audio + SMTC verified on console
 2026-07-09).
 
-**Phase 2 steps 2.1–2.4a are code-complete:**
+**Phase 2 steps 2.1–2.4a + 2.5a are code-complete:**
 
 - **2.1 SubsonicClient (Slice-less, committed `9a542bf`):** typed
   OpenSubsonic/Subsonic client — token+salt auth with explicit pre-1.13
@@ -70,12 +70,41 @@ Last updated: 2026-07-10 (Slices 03, 04, 05a implemented; console checkpoint pen
     page-level error state with Retry (auth errors point at Account →
     sign out); per-carousel failures degrade independently (§3).
 
-**Verification state:** x64 Debug compile green over SSH (APPX0703 at the
-packaging step is the known command-line-only failure); 23 + 27 unit tests
-green in the VM incl. live Navidrome tests. **Manual verification (VM arm64
-F5 and the console run) has NOT happened yet — that is the next step.**
+- **2.5a Slice 06a — Artists browse + artist detail display (implemented
+  2026-07-10):**
+  - **Slice 06 was split (decision 2026-07-10, §16), same rationale as 05:**
+    06a = browse + detail display + favorite now; 06b = §8 Play/Shuffle
+    (queue replacement + now-playing-bar reveal), deferred until the queue /
+    now-playing infra exists (Slice 10). In 06a the Play/Shuffle buttons are
+    present but disabled with a visible "playback arrives later" note (§15).
+  - Client: `GetArtistsAsync` (getArtists, flattens the alphabetical
+    `<index>` buckets into one ordered list), `GetArtistAsync` (getArtist →
+    `ArtistDetail` = artist + albums; album count authoritative from the
+    artist element, song count summed from albums), `StarAsync`/`UnstarAsync`
+    (generic star/unstar by id) + `Artist`/`ArtistDetail` models. 9 new tests
+    → **36 SubsonicClient tests green** (was 27).
+  - App `ArtistsPage` (routed from the shell's `artists` tag): grid by
+    default + list alternate + one always-visible grid/list `ToggleButton`
+    (§13.5); people-glyph placeholder (same official Fluent codepoint as the
+    Artists nav item); connect-on-use + page-level connect/auth error with
+    Retry, loading/empty states; artist cards open detail.
+  - App `ArtistDetailPage`: large artwork, name, favorite heart
+    (`ic_fluent_heart_24_regular` U+F47A, state shown by accent-color fill
+    since the Regular font ships no filled heart) persisted via star/unstar
+    with optimistic toggle + revert-on-failure, album + song counts, lower
+    album grid in the browse-card style (cards inert — album detail is Slice
+    07), disabled Play/Shuffle + note, retryable error state.
+  - New Fluent glyphs all verified against the shipped TTF's glyph table
+    before use (§13.3, never invented): heart F47A, grid F463, list F4EE,
+    play F606, shuffle EF37.
 
-**Git state:** `main` at `15f8eaf` (Slice 04). Slice 05a changes are in the
+**Verification state:** x64 Debug compile green over SSH (APPX0703 at the
+packaging step is the known command-line-only failure); 23 Core + 36
+SubsonicClient unit tests green in the VM incl. live Navidrome tests.
+**Manual verification (VM arm64 F5 and the console run) has NOT happened yet —
+that is the next step.**
+
+**Git state:** `main` at `4a7509a` (Slice 05a). Slice 06a changes are in the
 working tree, uncommitted, at the time of this STATUS write.
 
 ## Next step: on-device checkpoint (start here next session)
@@ -108,15 +137,33 @@ a quick VM arm64 Local Machine F5 first. Checklist:
    Down moves to the next one, page scrolls focused cards into view; wrong
    server reachable/unreachable → page-level error with a focused Retry;
    both themes if quick.
+8. **Artists (Slice 06a):** nav to Artists → grid loads with real Navidrome
+   artists + artwork; the grid/list toggle flips modes and stays visible;
+   D-pad travels the grid, A opens an artist; detail shows artwork, name,
+   counts, and the album grid; the favorite **heart** toggles and the change
+   sticks across leaving/re-entering the artist (server star/unstar — first
+   console test of that write path); Play/Shuffle are visibly disabled;
+   connect/unreachable → focused Retry; both themes if quick.
 
-Then: **2.4b (Slice 06 — Artists)** or the next slice in order, and fold the
-Release|x64 .NET Native validation into checkpoint #2 per the build plan.
+Then: **2.5b (Slice 07 — Albums)** — the next slice in order (Slice 06b's
+Play/Shuffle waits on the Slice 10 playback engine) — and fold the Release|x64
+.NET Native validation into checkpoint #2 per the build plan.
 
 ## Known gaps / notes from this session
 
 - **Home cards are inert:** focusable for D-pad travel but no click action
   until album detail lands (Slice 07). No now-playing bar yet either
   (Slice 10).
+- **Artist detail Play/Shuffle are disabled (Slice 06b):** shown with a
+  visible "playback arrives later" note; they wire up once the Slice 10 queue
+  / now-playing infra exists. Album cards in artist detail are inert until
+  album detail lands (Slice 07).
+- **Favorite heart shows state by color, not a filled glyph:** the shipped
+  Fluent Regular font has no filled heart, so starred = accent-color fill of
+  the outline heart. Verify legibility at 10 ft on device.
+- **View-mode toggle is inline in `ArtistsPage`**, not yet a shared control;
+  extract a common toggle when Slice 07 (Albums) needs the same, to keep the
+  §13.5 "one consistent toggle" promise.
 - **Resume card (§6.1) intentionally absent** until Slice 05b (after queue
   persistence exists); acceptance criterion "shows resume card when
   persisted context exists" is vacuously satisfied — nothing can persist
@@ -127,10 +174,9 @@ Release|x64 .NET Native validation into checkpoint #2 per the build plan.
 - Footer nav items (Settings/Account) sit outside NavigationView's selection
   model; selection visuals are mirrored manually — verify they look right on
   device.
-- Remaining placeholder section pages (Search/Artists/Albums/Songs/
-  Playlists) have no focusable content, so Right-into-content has no target
-  there (Home/Settings/Account do have focusables). Fine until real content
-  lands.
+- Remaining placeholder section pages (Search/Albums/Songs/Playlists) have no
+  focusable content, so Right-into-content has no target there (Home/Artists/
+  Settings/Account do have focusables). Fine until real content lands.
 - Hiding the currently open section from Settings leaves its content shown
   until the next selection. Acceptable for now.
 - B-button back navigation inside the shell is not wired (not required by §5

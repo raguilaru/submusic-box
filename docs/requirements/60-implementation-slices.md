@@ -205,13 +205,22 @@ Implement artists discovery flow.
 - Artist Detail View
 - Cross-Cutting View-Mode Toggle
 
+### Open design note
+Split decided 2026-07-10, same rationale as Slice 05: Play/Shuffle depend on
+the queue + now-playing-bar infrastructure that Slice 10 introduces. **Slice
+06a** delivers Artists browse (grid/list + view toggle) and Artist detail
+*display* (artwork, name, favorite heart via star/unstar, album + song counts,
+lower album grid), with Play/Shuffle shown disabled + a "playback arrives
+later" note. **Slice 06b** wires Play/Shuffle (queue replacement, oldest-album-
+first, now-playing-bar reveal) after Slice 10. §8's contract is unchanged.
+
 ### Deliverables
-- artists grid/list browse
-- view toggle
-- artist detail layout
-- favorite action
-- play/shuffle queue replacement behavior
-- album grid on detail screen
+- artists grid/list browse (06a)
+- view toggle (06a)
+- artist detail layout (06a)
+- favorite action (06a — star/unstar is live)
+- album grid on detail screen (06a)
+- play/shuffle queue replacement behavior (06b)
 
 ### Out of scope
 - album detail

@@ -82,6 +82,29 @@ public static class Canned
     public static string AlbumList2(string albums) =>
         $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\"><albumList2>{albums}</albumList2></subsonic-response>";
 
+    /// <summary>Empty ok envelope, as star/unstar return.</summary>
+    public static string Ok() =>
+        $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\"></subsonic-response>";
+
+    public static string Artists(string indexes) =>
+        $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\">" +
+        $"<artists ignoredArticles=\"The El La\">{indexes}</artists></subsonic-response>";
+
+    /// <summary>Two alphabetical index buckets holding three artists total; the
+    /// middle one is starred and one has no cover art.</summary>
+    public const string TwoIndexes =
+        "<index name=\"A\">" +
+        "<artist id=\"ar-1\" name=\"ABBA\" coverArt=\"ar-1\" albumCount=\"3\"/>" +
+        "<artist id=\"ar-2\" name=\"Air\" coverArt=\"ar-2\" albumCount=\"2\" starred=\"2024-05-06T07:08:09Z\"/>" +
+        "</index>" +
+        "<index name=\"B\">" +
+        "<artist id=\"ar-3\" name=\"Beck\" albumCount=\"5\"/>" +
+        "</index>";
+
+    public static string Artist(string artistAttrs, string albums) =>
+        $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\">" +
+        $"<artist {artistAttrs}>{albums}</artist></subsonic-response>";
+
     public const string TwoAlbums =
         "<album id=\"al-1\" name=\"Abbey Road\" artist=\"The Beatles\" artistId=\"ar-1\" coverArt=\"al-1\" " +
         "songCount=\"17\" duration=\"2830\" created=\"2024-01-02T10:20:30Z\" year=\"1969\" genre=\"Rock\"/>" +

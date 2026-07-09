@@ -105,6 +105,62 @@ public sealed class SubsonicApiClient
     }
 
     /// <summary>
+    /// getArtists — the full artist index (requirements §7.1). The server
+    /// groups artists under alphabetical &lt;index&gt; buckets; the browse grid
+    /// wants a flat list, so the buckets are flattened in server order.
+    /// </summary>
+    public async Task<IReadOnlyList<Artist>> GetArtistsAsync(CancellationToken cancellationToken = default)
+    {
+        var root = await ExecuteAsync("getArtists", null, cancellationToken).ConfigureAwait(false);
+        var artists = SubsonicXml.Element(root, "artists")
+            ?? throw new SubsonicConnectionException("The server response is missing the <artists> element.");
+        return SubsonicXml.Elements(artists, "index")
+            .SelectMany(index => SubsonicXml.Elements(index, "artist"))
+            .Select(MapArtist)
+            .ToList();
+    }
+
+    /// <summary>
+    /// getArtist — one artist plus its albums (requirements §8). The album
+    /// count is authoritative from the artist element; the song count is
+    /// summed from the returned albums (ArtistID3 has no reliable total).
+    /// </summary>
+    public async Task<ArtistDetail> GetArtistAsync(string id, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            throw new ArgumentException("An artist id is required.", nameof(id));
+
+        var parameters = new List<KeyValuePair<string, string>> { Param("id", id) };
+        var root = await ExecuteAsync("getArtist", parameters, cancellationToken).ConfigureAwait(false);
+        var element = SubsonicXml.Element(root, "artist")
+            ?? throw new SubsonicConnectionException("The server response is missing the <artist> element.");
+
+        var albums = SubsonicXml.Elements(element, "album").Select(MapAlbum).ToList();
+        var songCount = albums.Sum(a => a.SongCount);
+        return new ArtistDetail(MapArtist(element), albums, songCount);
+    }
+
+    /// <summary>
+    /// star — mark an item (artist/album/song id) as a favorite (§8). The
+    /// server echoes an empty ok envelope; a failure surfaces as an exception.
+    /// </summary>
+    public Task StarAsync(string id, CancellationToken cancellationToken = default) =>
+        SetStarredAsync("star", id, cancellationToken);
+
+    /// <summary>unstar — remove an item's favorite mark (§8).</summary>
+    public Task UnstarAsync(string id, CancellationToken cancellationToken = default) =>
+        SetStarredAsync("unstar", id, cancellationToken);
+
+    private async Task SetStarredAsync(string endpoint, string id, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            throw new ArgumentException("An id is required.", nameof(id));
+
+        var parameters = new List<KeyValuePair<string, string>> { Param("id", id) };
+        await ExecuteAsync(endpoint, parameters, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Builds an authenticated getCoverArt URL usable directly as an image
     /// source. In token mode each URL embeds a fresh salt+token pair.
     /// </summary>
@@ -292,6 +348,24 @@ public sealed class SubsonicApiClient
             created: SubsonicXml.AttrDate(element, "created"),
             year: SubsonicXml.AttrInt(element, "year"),
             genre: SubsonicXml.Attr(element, "genre"));
+    }
+
+    private static Artist MapArtist(XElement element)
+    {
+        var id = SubsonicXml.Attr(element, "id");
+        if (string.IsNullOrEmpty(id))
+        {
+            throw new SubsonicConnectionException("The server returned an artist entry without an id.");
+        }
+
+        return new Artist(
+            id: id!,
+            name: SubsonicXml.Attr(element, "name") ?? string.Empty,
+            coverArtId: SubsonicXml.Attr(element, "coverArt"),
+            albumCount: SubsonicXml.AttrInt(element, "albumCount") ?? 0,
+            // ArtistID3 carries a `starred` timestamp only when the item is a
+            // favorite; its presence is the flag (§8).
+            isStarred: SubsonicXml.Attr(element, "starred") != null);
     }
 
     private static string MapAlbumListType(AlbumListType type)

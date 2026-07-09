@@ -135,6 +135,13 @@
       <DependentUpon>AlbumCarousel.xaml</DependentUpon>
     </Compile>
     <Compile Include="Models\AlbumCard.cs" />
+    <Compile Include="Models\ArtistCard.cs" />
+    <Compile Include="ArtistsPage.xaml.cs">
+      <DependentUpon>ArtistsPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ArtistDetailPage.xaml.cs">
+      <DependentUpon>ArtistDetailPage.xaml</DependentUpon>
+    </Compile>
     <Compile Include="SettingsPage.xaml.cs">
       <DependentUpon>SettingsPage.xaml</DependentUpon>
     </Compile>
@@ -188,6 +195,14 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\AlbumCarousel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ArtistsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ArtistDetailPage.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

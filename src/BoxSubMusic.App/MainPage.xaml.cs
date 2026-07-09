@@ -113,6 +113,9 @@ namespace BoxSubMusic.App
                 case "home":
                     ContentFrame.Navigate(typeof(HomePage));
                     break;
+                case "artists":
+                    ContentFrame.Navigate(typeof(ArtistsPage));
+                    break;
                 case "settings":
                     ContentFrame.Navigate(typeof(SettingsPage));
                     break;
