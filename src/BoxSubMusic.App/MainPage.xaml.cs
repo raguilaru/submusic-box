@@ -110,6 +110,9 @@ namespace BoxSubMusic.App
             _currentSectionTag = tag;
             switch (tag)
             {
+                case "home":
+                    ContentFrame.Navigate(typeof(HomePage));
+                    break;
                 case "settings":
                     ContentFrame.Navigate(typeof(SettingsPage));
                     break;

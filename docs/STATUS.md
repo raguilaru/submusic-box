@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-07-10 (Slices 03 + 04 implemented; console checkpoint pending).
+Last updated: 2026-07-10 (Slices 03, 04, 05a implemented; console checkpoint pending).
 
 ## Where we are
 
@@ -8,7 +8,7 @@ Last updated: 2026-07-10 (Slices 03 + 04 implemented; console checkpoint pending
 (app launches, D-pad navigates, background audio + SMTC verified on console
 2026-07-09).
 
-**Phase 2 steps 2.1–2.3 are code-complete:**
+**Phase 2 steps 2.1–2.4a are code-complete:**
 
 - **2.1 SubsonicClient (Slice-less, committed `9a542bf`):** typed
   OpenSubsonic/Subsonic client — token+salt auth with explicit pre-1.13
@@ -47,12 +47,35 @@ Last updated: 2026-07-10 (Slices 03 + 04 implemented; console checkpoint pending
     session, and **Sign out** (clears vault + settings, returns to setup —
     also the practical way to re-test setup on device).
   - `SectionPage`: placeholder host for sections until their slices land.
+- **2.4a Slice 05a — Home carousels (implemented 2026-07-10):**
+  - **Slice 05 was split (decision 2026-07-10, §16):** 05a = the three album
+    carousels now; 05b = the §6.1 resume card, deferred until queue
+    persistence exists (Slices 10/11) — until then no persisted context can
+    exist, so Home correctly renders no resume card (TODO marker in
+    HomePage.xaml).
+  - `HomePage` (routed from the shell's `home` tag): Most Played
+    (`frequent`), Recently Added (`newest`), Random Picks (`random`) via
+    `GetAlbumList2Async`, 20 items each, loaded in parallel. Album-only
+    content per §6.2–§6.4.
+  - `Controls/AlbumCarousel` (UserControl, one implementation for all rows):
+    non-looping horizontal `ListView` (`ItemsStackPanel` horizontal —
+    virtualizes, no wrap-around), 220 epx cards with cover art
+    (`GetCoverArtUri(id, 440)`, `DecodePixelWidth` capped), music-note
+    placeholder behind the image (same official Fluent codepoint as the
+    Songs nav item), explicit loading / empty / error+Retry states driven by
+    the host page. Cards are focusable but inert — album detail is Slice 07.
+  - `AppSession.EnsureConnectedAsync()`: connect-on-first-use for the client
+    restored at relaunch (shared in-flight task; failed attempts are
+    replaced so Retry retries). Connection/auth failure on Home is a
+    page-level error state with Retry (auth errors point at Account →
+    sign out); per-carousel failures degrade independently (§3).
 
-**Verification state:** x64 Debug smoke build green over SSH; 23 + 27 unit
-tests green in the VM. **Manual verification (VM arm64 F5 and the console
-run) has NOT happened yet — that is the next step.**
+**Verification state:** x64 Debug compile green over SSH (APPX0703 at the
+packaging step is the known command-line-only failure); 23 + 27 unit tests
+green in the VM incl. live Navidrome tests. **Manual verification (VM arm64
+F5 and the console run) has NOT happened yet — that is the next step.**
 
-**Git state:** `main` at `ae9573e` (Slice 03). Slice 04 changes are in the
+**Git state:** `main` at `15f8eaf` (Slice 04). Slice 05a changes are in the
 working tree, uncommitted, at the time of this STATUS write.
 
 ## Next step: on-device checkpoint (start here next session)
@@ -78,23 +101,36 @@ a quick VM arm64 Local Machine F5 first. Checklist:
    present.
 6. **Sign out:** returns to setup; B does not re-enter the shell; relaunch
    lands on setup again.
+7. **Home (Slice 05a):** after relaunch (restored client), Home connects on
+   first use and the three carousels load with real Navidrome albums; cover
+   art renders (authenticated getCoverArt URLs straight into `BitmapImage` —
+   first console test of that path); D-pad Left/Right travels a carousel,
+   Down moves to the next one, page scrolls focused cards into view; wrong
+   server reachable/unreachable → page-level error with a focused Retry;
+   both themes if quick.
 
-Then: **2.4 (Slice 05 — Home)**, and fold the Release|x64 .NET Native
-validation into checkpoint #2 per the build plan.
-
-**Client API surface ready for Home (2.4):** `GetAlbumList2Async(
-AlbumListType.{Frequent,Newest,Random})`, `GetCoverArtUri(id, size)`;
-`AppSession.Client` is restored (unconnected) at launch — Home must call
-`ConnectAsync` (or handle the not-yet-connected state) before album calls.
+Then: **2.4b (Slice 06 — Artists)** or the next slice in order, and fold the
+Release|x64 .NET Native validation into checkpoint #2 per the build plan.
 
 ## Known gaps / notes from this session
 
+- **Home cards are inert:** focusable for D-pad travel but no click action
+  until album detail lands (Slice 07). No now-playing bar yet either
+  (Slice 10).
+- **Resume card (§6.1) intentionally absent** until Slice 05b (after queue
+  persistence exists); acceptance criterion "shows resume card when
+  persisted context exists" is vacuously satisfied — nothing can persist
+  context yet.
+- Carousel focus is plain XY navigation (no focus engagement); crossing a
+  long carousel vertically means stepping through whichever card is below.
+  Revisit after the console feel-test if needed.
 - Footer nav items (Settings/Account) sit outside NavigationView's selection
   model; selection visuals are mirrored manually — verify they look right on
   device.
-- Placeholder section pages have no focusable content, so Right-into-content
-  has no target there (Settings/Account do have focusables). Fine until real
-  content lands.
+- Remaining placeholder section pages (Search/Artists/Albums/Songs/
+  Playlists) have no focusable content, so Right-into-content has no target
+  there (Home/Settings/Account do have focusables). Fine until real content
+  lands.
 - Hiding the currently open section from Settings leaves its content shown
   until the next selection. Acceptable for now.
 - B-button back navigation inside the shell is not wired (not required by §5

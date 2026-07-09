@@ -171,10 +171,14 @@ Implement Home with resume card and album carousels.
 - Server API Compatibility
 
 ### Open design note
-Resolve the "Pick up where you left off" persistence scope (queue only vs queue + position vs queue + position + originating context) before implementing.
+Persistence scope resolved 2026-07-09 (requirements §6.1 / decisions log).
+Split decided 2026-07-10: **Slice 05a** delivers the three carousels with
+loading/empty/error states now; the resume card renders only when persisted
+playback context exists — impossible until the playback slices produce that
+state. **Slice 05b** (the real resume card) follows Slices 10/11.
 
 ### Deliverables
-- resume section
+- resume section (05a: stub that renders nothing without persisted context; 05b: real card)
 - Most Played carousel
 - Recently Added carousel
 - Random Picks carousel

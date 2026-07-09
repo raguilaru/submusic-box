@@ -1,0 +1,78 @@
+<Page
+    x:Class="BoxSubMusic.App.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BoxSubMusic.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <!-- Slice 05a (requirements §6): Home. Three album carousels; §6.1's
+         resume card renders only when persisted playback context exists.
+         No queue persistence exists until the playback slices, so the card
+         is intentionally absent — Slice 05b adds it (decision 2026-07-10). -->
+    <Grid>
+        <!-- Page-level connection failure (restored client could not reach
+             or authenticate with the server). Explicit, with retry (§3). -->
+        <StackPanel
+            x:Name="ConnectErrorPanel"
+            Visibility="Collapsed"
+            Padding="48"
+            Spacing="16"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Left"
+            MaxWidth="900">
+            <TextBlock
+                Text="Can't reach your server"
+                FontSize="36"
+                FontWeight="SemiBold" />
+            <TextBlock
+                x:Name="ConnectErrorText"
+                FontSize="22"
+                Opacity="0.85"
+                TextWrapping="Wrap" />
+            <Button
+                x:Name="ConnectRetryButton"
+                Content="Retry"
+                FontSize="24"
+                Padding="48,12"
+                Margin="0,16,0,0"
+                Click="ConnectRetryButton_Click" />
+        </StackPanel>
+
+        <ScrollViewer
+            x:Name="CarouselsScroller"
+            VerticalScrollMode="Enabled"
+            VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="48,48,48,64" Spacing="40">
+                <TextBlock
+                    Text="Home"
+                    FontSize="48"
+                    FontWeight="SemiBold" />
+
+                <!-- TODO (Slice 05b, after Slices 10/11): "Pick up where you
+                     left off" card — artwork, context name, Play that resumes
+                     the persisted queue paused at the saved position (§6.1). -->
+
+                <controls:AlbumCarousel
+                    x:Name="MostPlayedCarousel"
+                    Title="Most played"
+                    EmptyMessage="Nothing here yet — your most played albums appear as you listen."
+                    RetryRequested="MostPlayedCarousel_RetryRequested" />
+
+                <controls:AlbumCarousel
+                    x:Name="RecentlyAddedCarousel"
+                    Title="Recently added"
+                    EmptyMessage="No albums on the server yet."
+                    RetryRequested="RecentlyAddedCarousel_RetryRequested" />
+
+                <controls:AlbumCarousel
+                    x:Name="RandomPicksCarousel"
+                    Title="Random picks"
+                    EmptyMessage="No albums on the server yet."
+                    RetryRequested="RandomPicksCarousel_RetryRequested" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

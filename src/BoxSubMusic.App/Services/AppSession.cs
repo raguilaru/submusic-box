@@ -1,6 +1,8 @@
 using System;
 using System.Net.Http;
+using System.Threading.Tasks;
 using BoxSubMusic.SubsonicClient;
+using BoxSubMusic.SubsonicClient.Models;
 
 namespace BoxSubMusic.App.Services
 {
@@ -22,15 +24,51 @@ namespace BoxSubMusic.App.Services
         /// <summary>Client for the active server; null until setup completes once.</summary>
         public static SubsonicApiClient Client { get; private set; }
 
+        // In-flight ConnectAsync shared by concurrent callers. UI-thread-only
+        // (like everything else here), so no locking.
+        private static Task<ServerCapabilities> _connectTask;
+
         public static void SetActive(SubsonicApiClient client)
         {
             Client = client;
+            _connectTask = null;
         }
 
         /// <summary>Drops the active client (sign-out).</summary>
         public static void Clear()
         {
             Client = null;
+            _connectTask = null;
+        }
+
+        /// <summary>
+        /// Connects the restored client on first use (§3: capability
+        /// detection on connect). After a relaunch the client exists but has
+        /// not pinged the server yet; pages calling data endpoints await this
+        /// first. Concurrent callers share one attempt; a failed attempt is
+        /// forgotten so a retry starts fresh.
+        /// </summary>
+        public static Task EnsureConnectedAsync()
+        {
+            var client = Client;
+            if (client == null)
+            {
+                throw new InvalidOperationException("No active server session.");
+            }
+
+            if (client.Capabilities != null)
+            {
+                return Task.CompletedTask;
+            }
+
+            // A finished-but-failed attempt is replaced, so Retry actually
+            // retries instead of re-awaiting the cached failure.
+            if (_connectTask == null || _connectTask.IsFaulted || _connectTask.IsCanceled)
+            {
+                _connectTask = client.ConnectAsync();
+            }
+
+            return _connectTask;
         }
 
         /// <summary>
