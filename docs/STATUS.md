@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-07-09 (Phase 2 kickoff).
+Last updated: 2026-07-09 (end of session — Phase 2 step 2.1 done).
 
 ## Where we are
 
@@ -9,12 +9,22 @@ The app builds, deploys, launches, navigates with the D-pad, and plays audio
 in the background (tone → Xbox button → Dev Home → audio continues, SMTC in
 the guide — verified by Rafael on the console 2026-07-09).
 
+**Phase 2 is underway: step 2.1 (SubsonicClient) is complete.** The typed
+OpenSubsonic/Subsonic client is implemented, unit-tested, and live-verified
+against the real Navidrome server. Setup flow (Slice 03) is next.
+
 **Phase 2 decisions are locked (2026-07-09):** Subsonic transport is XML via
 XDocument explicit mapping (no reflection serializers — .NET Native risk);
 persistence is LocalSettings + LocalFolder files; resume scope is queue +
 index + position + shuffle/repeat + context display metadata, local-only,
 resumes paused; manifest gets `privateNetworkClientServer`; primary test
 server is Navidrome. Details in requirements §16 and the build plan Phase 2.
+
+**Git state at session end:** all code and decision docs are committed on
+`main` — `9a542bf` (SubsonicClient, step 2.1) and `363699f` (Phase 2 decision
+docs). Only this end-of-session STATUS refresh is left uncommitted (commit it
+at the start of next session or now). The gitignored `liveserver.local.txt`
+(live-test credentials) is intentionally untracked.
 
 Milestones reached:
 - Repo + requirement-driven docs (Slice 00).
@@ -47,19 +57,39 @@ Milestones reached:
 ## Open items (start here next session)
 
 1. **Implement build-plan step 2.2** (Slice 03 setup flow): setup page, URL
-   sanitization, masked password, inline errors, Credential Locker storage,
-   recent-servers list; add `privateNetworkClientServer` to the manifest and
-   wire App→Core→SubsonicClient project references (none exist yet — and the
-   App csproj is old-style: every new file must be added to it explicitly).
-2. Then 2.3 (shell — ask the icon-set question first), 2.4 (Home), 2.5
-   (on-device checkpoint #2, incl. a Release|x64 .NET Native validation run).
+   sanitization (trim, default https://, strip trailing slashes, validate
+   shape — requirements §4), masked password, inline errors (auth vs
+   connection — the client already throws distinct exceptions for these),
+   Credential Locker (PasswordVault) storage, recent-servers list. Also:
+   - Add `privateNetworkClientServer` to Package.appxmanifest (alongside the
+     existing `internetClient`) so LAN servers work — decided, not yet done.
+   - Wire `App → Core → SubsonicClient` project references (none exist yet).
+   - App csproj is **old-style**: every new .cs/.xaml file must be added to
+     it explicitly (no globbing). New pages need `<Page>` + `<Compile>` items.
+2. Then 2.3 (shell — **ask the icon-set question first**, req §13.3), 2.4
+   (Home), 2.5 (on-device checkpoint #2, incl. a Release|x64 .NET Native
+   validation run — the daily x64 Debug loop does not exercise .NET Native).
 
-Done 2026-07-09: **step 2.1 complete** — `BoxSubMusic.SubsonicClient`
-implemented (token+salt auth with explicit pre-1.13 legacy fallback and
-version renegotiation, ping, OpenSubsonic capability detection, getAlbumList2,
-getCoverArt URL building; XML via XDocument, injected HttpClient). 27 tests
-green in the VM, including 4 live integration tests against the real Navidrome
-(gated on a gitignored config; see CLAUDE.local.md). P0.3 done the same day.
+**Client API surface available to the setup flow (from step 2.1):**
+- `new SubsonicApiClient(SubsonicServerCredentials, HttpClient)` — inject one
+  shared HttpClient from the app.
+- `await client.ConnectAsync()` → `ServerCapabilities`; throws
+  `SubsonicApiException` (has `ErrorCode`, e.g. `WrongUsernameOrPassword`) for
+  server-rejected auth, or `SubsonicConnectionException` for
+  unreachable/timeout/non-Subsonic answers. Map these to the two inline error
+  states in the setup UI.
+- `client.GetAlbumList2Async(AlbumListType.{Frequent,Newest,Random})` and
+  `client.GetCoverArtUri(coverArtId, size)` are ready for the Home slice (2.4).
+- `SubsonicServerCredentials` validates the URL is absolute http(s); it does
+  NOT sanitize — the setup flow must sanitize the raw string first (§4).
+
+Done 2026-07-09: **step 2.1 complete and committed** (`9a542bf`) —
+`BoxSubMusic.SubsonicClient` implemented (token+salt auth with explicit
+pre-1.13 legacy fallback and version renegotiation, ping, OpenSubsonic
+capability detection, getAlbumList2, getCoverArt URL building; XML via
+XDocument, injected HttpClient). 27 tests green in the VM, including 4 live
+integration tests against the real Navidrome (gated on a gitignored config;
+see CLAUDE.local.md). P0.3 (server details) done the same day.
 
 Resolved 2026-07-09: on-device checkpoint #1 closed; `src/BoxSubMusic.App` is
 no longer root-owned on the Mac side (chown done — Mac-side edits work
