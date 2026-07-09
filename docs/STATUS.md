@@ -1,99 +1,124 @@
 # Current Status
 
-Last updated: 2026-07-09 (end of session — Phase 2 step 2.1 done).
+Last updated: 2026-07-10 (Slices 03 + 04 implemented; console checkpoint pending).
 
 ## Where we are
 
-**Phase 1 (foundation + spikes) is DONE, including on-device checkpoint #1.**
-The app builds, deploys, launches, navigates with the D-pad, and plays audio
-in the background (tone → Xbox button → Dev Home → audio continues, SMTC in
-the guide — verified by Rafael on the console 2026-07-09).
+**Phase 1 (foundation + spikes) is DONE, including on-device checkpoint #1**
+(app launches, D-pad navigates, background audio + SMTC verified on console
+2026-07-09).
 
-**Phase 2 is underway: step 2.1 (SubsonicClient) is complete.** The typed
-OpenSubsonic/Subsonic client is implemented, unit-tested, and live-verified
-against the real Navidrome server. Setup flow (Slice 03) is next.
+**Phase 2 steps 2.1–2.3 are code-complete:**
 
-**Phase 2 decisions are locked (2026-07-09):** Subsonic transport is XML via
-XDocument explicit mapping (no reflection serializers — .NET Native risk);
-persistence is LocalSettings + LocalFolder files; resume scope is queue +
-index + position + shuffle/repeat + context display metadata, local-only,
-resumes paused; manifest gets `privateNetworkClientServer`; primary test
-server is Navidrome. Details in requirements §16 and the build plan Phase 2.
+- **2.1 SubsonicClient (Slice-less, committed `9a542bf`):** typed
+  OpenSubsonic/Subsonic client — token+salt auth with explicit pre-1.13
+  legacy fallback, ping, capability detection, getAlbumList2, getCoverArt URL
+  building; XML via XDocument. 27 tests green incl. 4 live Navidrome tests.
+- **2.2 Slice 03 — setup flow (committed `ae9573e`, 2026-07-10):**
+  - Core: `ServerUrlSanitizer` (trim, default https://, strip trailing
+    slashes, reject non-http(s)/query/fragment) and `RecentServers`
+    (newest-first, dedupe by server+user, cap 5, reflection-free XDocument
+    XML). 23 Core tests green. Bootstrap `Placeholder` retired.
+  - App: `SetupPage` (masked password, inline auth-vs-connection errors,
+    recent-servers pre-fill via x:Bind), `CredentialStore` (password only in
+    PasswordVault; URL/username in LocalSettings), `RecentServersStore`
+    (LocalFolder XML; corrupt file = empty cache), `AppSession` (one shared
+    HttpClient, 15 s timeout), launch routing (stored login → shell,
+    none/corrupt → setup). Successful connect clears the back stack.
+  - Manifest now declares `privateNetworkClientServer` + `internetClient`.
+  - `App → Core → SubsonicClient` project references wired.
+- **2.3 Slice 04 — navigation shell (implemented 2026-07-10):**
+  - `MainPage` rebuilt as the real shell: persistent collapsible
+    NavigationView, fixed §5 order (Search, Home, Artists, Albums, Songs,
+    Playlists), content `Frame`, keyboard L/R focus handoff carried over from
+    the verified spike.
+  - **Icon set decided (§13.3): Fluent UI System Icons (MIT)**, shipped as
+    `Assets/Fonts/FluentSystemIcons-Regular.ttf` (+ LICENSE.txt). Glyph
+    codepoints taken from the set's official JSON map — never invented.
+    The built-in NavigationView settings item is disabled (its gear is Segoe
+    MDL2 — would mix icon sets); Settings + Account are PaneFooter items with
+    manual invoke handling (Tapped + KeyDown for GamepadA/Enter/Space) and
+    hand-mirrored IsSelected, because OS XAML NavigationView has no
+    FooterMenuItems.
+  - Nav-visibility plumbing (§5): `NavigationPreferences` (LocalSettings,
+    default visible, Changed event) + working toggles on `SettingsPage` for
+    Artists/Albums/Playlists. Search/Home have no setting by construction.
+  - `AccountPage`: server URL, username, capability info when connected this
+    session, and **Sign out** (clears vault + settings, returns to setup —
+    also the practical way to re-test setup on device).
+  - `SectionPage`: placeholder host for sections until their slices land.
 
-**Git state at session end:** all code and decision docs are committed on
-`main` — `9a542bf` (SubsonicClient, step 2.1) and `363699f` (Phase 2 decision
-docs). Only this end-of-session STATUS refresh is left uncommitted (commit it
-at the start of next session or now). The gitignored `liveserver.local.txt`
-(live-test credentials) is intentionally untracked.
+**Verification state:** x64 Debug smoke build green over SSH; 23 + 27 unit
+tests green in the VM. **Manual verification (VM arm64 F5 and the console
+run) has NOT happened yet — that is the next step.**
 
-Milestones reached:
-- Repo + requirement-driven docs (Slice 00).
-- Mac → Parallels Windows VM build loop over SSH (see CLAUDE.local.md).
-- Solution: `BoxSubMusic.App` (UWP) + `BoxSubMusic.Core` + `BoxSubMusic.SubsonicClient`
-  + xUnit test projects.
-- Slice 01 (controller focus nav) and Slice 02 (background playback: MediaPlayer
-  + SMTC + `backgroundMediaPlayback`) built and verified in the VM.
-- **Major pivot:** modern .NET + Native AOT UWP builds but will NOT activate on
-  Xbox (registers, then loader error `0x80070002`, no crash; undocumented for
-  Xbox). Switched the app to the **legacy .NET Native** toolchain; libraries
-  retargeted to **netstandard2.0**. See docs/architecture/20-project-structure.md
-  and the [[xbox-uwp-toolchain]] memory.
-- The app launches on the console via VS Remote Machine F5 (x64, Universal
-  Unencrypted, 10.0.0.28).
-- **D-pad fixed (2026-07-09, verified on console):** the "left stick moves a
-  mouse cursor, D-pad dead" behavior was Xbox **mouse mode** — the platform
-  default for UWP apps on console (never engages on desktop, which is why the
-  VM behaved differently). Fixed by setting
-  `RequiresPointerMode = ApplicationRequiresPointerMode.WhenRequested` in the
-  `App` constructor. D-pad focus navigation confirmed working at 10 ft.
-- **Local VM test loop restored (2026-07-09):** the .NET Native recreation had
-  lost the bin/obj redirect, so Local Machine F5 in the VM failed with DEP0700
-  / 0x80073D1F (UWP registration requires a local NTFS volume, not the
-  Parallels share). Recreated as `Directory.Build.props` (App project only) +
-  `$(LocalBinRoot)`-based OutputPath entries in the csproj. Local run in the
-  VM: platform **arm64**, target **Local Machine**, F5. Details and gotchas in
-  CLAUDE.local.md.
+**Git state:** `main` at `ae9573e` (Slice 03). Slice 04 changes are in the
+working tree, uncommitted, at the time of this STATUS write.
 
-## Open items (start here next session)
+## Next step: on-device checkpoint (start here next session)
 
-1. **Implement build-plan step 2.2** (Slice 03 setup flow): setup page, URL
-   sanitization (trim, default https://, strip trailing slashes, validate
-   shape — requirements §4), masked password, inline errors (auth vs
-   connection — the client already throws distinct exceptions for these),
-   Credential Locker (PasswordVault) storage, recent-servers list. Also:
-   - Add `privateNetworkClientServer` to Package.appxmanifest (alongside the
-     existing `internetClient`) so LAN servers work — decided, not yet done.
-   - Wire `App → Core → SubsonicClient` project references (none exist yet).
-   - App csproj is **old-style**: every new .cs/.xaml file must be added to
-     it explicitly (no globbing). New pages need `<Page>` + `<Compile>` items.
-2. Then 2.3 (shell — **ask the icon-set question first**, req §13.3), 2.4
-   (Home), 2.5 (on-device checkpoint #2, incl. a Release|x64 .NET Native
-   validation run — the daily x64 Debug loop does not exercise .NET Native).
+Console run (x64 / Remote Machine 10.0.0.28 / F5 — Rafael drives). Optionally
+a quick VM arm64 Local Machine F5 first. Checklist:
 
-**Client API surface available to the setup flow (from step 2.1):**
-- `new SubsonicApiClient(SubsonicServerCredentials, HttpClient)` — inject one
-  shared HttpClient from the app.
-- `await client.ConnectAsync()` → `ServerCapabilities`; throws
-  `SubsonicApiException` (has `ErrorCode`, e.g. `WrongUsernameOrPassword`) for
-  server-rejected auth, or `SubsonicConnectionException` for
-  unreachable/timeout/non-Subsonic answers. Map these to the two inline error
-  states in the setup UI.
-- `client.GetAlbumList2Async(AlbumListType.{Frequent,Newest,Random})` and
-  `client.GetCoverArtUri(coverArtId, size)` are ready for the Home slice (2.4).
-- `SubsonicServerCredentials` validates the URL is absolute http(s); it does
-  NOT sanitize — the setup flow must sanitize the raw string first (§4).
+1. **Setup flow (console-specific risks):** on-screen keyboard entry with the
+   controller for all three fields; paste/hardware keyboard if available;
+   wrong password → inline auth error; bogus host → inline connection error;
+   real Navidrome connect → lands in shell. Use `http://10.0.0.5:4533` if
+   `raspberrypi.local` fails on the Xbox (mDNS from UWP on console is
+   unverified) — or the external `https://navidrome.raguilaru.xyz`.
+2. **LAN capability:** connecting to the Pi verifies
+   `privateNetworkClientServer` actually unlocks LAN access on console.
+3. **Credential persistence:** quit + relaunch → straight to shell (no
+   setup); Account shows server + username.
+4. **Shell:** D-pad through nav in order; icons render (Fluent font); pane
+   collapse/expand; footer Settings/Account respond to **A** (manual invoke
+   path — watch this one); focus visible at 10 ft; both themes if quick.
+5. **Toggles:** hide/show Artists/Albums/Playlists from Settings, confirm
+   they disappear/reappear and persist across relaunch; Search/Home always
+   present.
+6. **Sign out:** returns to setup; B does not re-enter the shell; relaunch
+   lands on setup again.
 
-Done 2026-07-09: **step 2.1 complete and committed** (`9a542bf`) —
-`BoxSubMusic.SubsonicClient` implemented (token+salt auth with explicit
-pre-1.13 legacy fallback and version renegotiation, ping, OpenSubsonic
-capability detection, getAlbumList2, getCoverArt URL building; XML via
-XDocument, injected HttpClient). 27 tests green in the VM, including 4 live
-integration tests against the real Navidrome (gated on a gitignored config;
-see CLAUDE.local.md). P0.3 (server details) done the same day.
+Then: **2.4 (Slice 05 — Home)**, and fold the Release|x64 .NET Native
+validation into checkpoint #2 per the build plan.
 
-Resolved 2026-07-09: on-device checkpoint #1 closed; `src/BoxSubMusic.App` is
-no longer root-owned on the Mac side (chown done — Mac-side edits work
-normally now); resume-scope, persistence, and transport decisions locked.
+**Client API surface ready for Home (2.4):** `GetAlbumList2Async(
+AlbumListType.{Frequent,Newest,Random})`, `GetCoverArtUri(id, size)`;
+`AppSession.Client` is restored (unconnected) at launch — Home must call
+`ConnectAsync` (or handle the not-yet-connected state) before album calls.
+
+## Known gaps / notes from this session
+
+- Footer nav items (Settings/Account) sit outside NavigationView's selection
+  model; selection visuals are mirrored manually — verify they look right on
+  device.
+- Placeholder section pages have no focusable content, so Right-into-content
+  has no target there (Settings/Account do have focusables). Fine until real
+  content lands.
+- Hiding the currently open section from Settings leaves its content shown
+  until the next selection. Acceptable for now.
+- B-button back navigation inside the shell is not wired (not required by §5
+  yet).
+- The Slice 02 spike UI (test-tone buttons) was removed with the MainPage
+  rebuild; `PlaybackService` remains for Slice 10. Background audio itself
+  was already console-verified in checkpoint #1.
+
+## Milestones (compressed history)
+
+- Slices 00–02 + on-device checkpoint #1 done (build loop, controller focus,
+  background playback + SMTC).
+- **Toolchain pivot:** modern .NET + Native AOT UWP won't activate on Xbox
+  (0x80070002) → legacy **.NET Native** toolchain; libraries netstandard2.0.
+  See docs/architecture/20-project-structure.md and [[xbox-uwp-toolchain]].
+- **Mouse-mode fix:** `RequiresPointerMode = WhenRequested` in App ctor —
+  D-pad works on console (mouse mode never engages on desktop).
+- **Local VM F5 loop:** Directory.Build.props redirects App bin/obj to VM
+  local disk (share fails with DEP0700). VS re-reads it only on solution
+  load — restart VS after touching it.
+- Phase 2 decisions locked 2026-07-09: XML/XDocument transport (no reflection
+  serializers), LocalSettings + LocalFolder persistence, resume scope
+  (queue+index+position+shuffle/repeat+context, resumes paused), Navidrome as
+  primary test server. 2026-07-10: Fluent UI System Icons (§16).
 
 ## How to deploy (quick reference)
 
@@ -101,9 +126,8 @@ normally now); resume-scope, persistence, and transport decisions locked.
   startup → run target **Remote Machine** `10.0.0.28`, auth **Universal
   (Unencrypted)** → Xbox on Dev Home → **F5**.
 - **Local (VM):** Solution Platform **arm64** → run target **Local Machine** →
-  F5. Requires the Directory.Build.props output redirect (in repo). Note: VS
-  only picks up Directory.Build.props changes on solution (re)load — restart
-  VS after touching it, or builds land on the share and F5 fails with DEP0700.
+  F5. Requires the Directory.Build.props output redirect (in repo); VS only
+  picks it up on solution (re)load.
 - Full detail + the abandoned AOT path in CLAUDE.local.md.
 
 ## Reused, still-valid infrastructure
@@ -111,6 +135,5 @@ normally now); resume-scope, persistence, and transport decisions locked.
 Mac↔VM SSH (`ssh winvm`), path mapping (`\\Mac\Repositories\...` over SSH),
 Device Portal (https://10.0.0.28:11443), arm64-native MSBuild for command-line
 smoke builds (compiles fine; appx packaging always fails with APPX0703 — that
-step is VS-only). The Parallels ownership quirk (Windows-created files are
-root on the Mac side) is why ported files are staged then copied in — see
-CLAUDE.local.md.
+step is VS-only). Parallels ownership quirk: files created from Windows are
+root-owned on the Mac — create sources on the Mac side; see CLAUDE.local.md.

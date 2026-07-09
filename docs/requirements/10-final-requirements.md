@@ -257,6 +257,8 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
 - 2026-07-09: Resume scope locked (Section 6.1): full queue + current index + in-track position + shuffle/repeat + context display metadata, persisted locally; resumes paused; server play-queue sync deferred beyond v1.
 - 2026-07-09: Manifest declares `internetClient` + `privateNetworkClientServer` (Section 2) — both internet and LAN servers are supported.
 - 2026-07-09: Primary test server is Navidrome; compatibility target is any OpenSubsonic server via capability detection, never server-specific branching.
+- 2026-07-10: Icon set (Section 13.3) is **Fluent UI System Icons** (MIT), shipped as the Regular icon font (`Assets/Fonts/FluentSystemIcons-Regular.ttf` + LICENSE.txt). Glyph codepoints come only from the set's official JSON map. The built-in NavigationView settings item (Segoe MDL2 gear) is disabled to avoid mixing icon sets; Settings/Account are custom pane-footer items.
+- 2026-07-10: Recent-servers list (Section 4) stores URL + username only — never passwords; capped at 5 entries, newest first, deduped by server+user. Selecting a recent entry pre-fills URL/username; the password is retyped.
 
 ## 17. Open Decisions / TODO
 

@@ -1,7 +1,15 @@
-﻿<Application
+<Application
     x:Class="BoxSubMusic.App.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:BoxSubMusic.App">
+
+    <Application.Resources>
+        <!-- Requirement §13.3: one consistent open-source icon set.
+             Decision 2026-07-10: Fluent UI System Icons (MIT), shipped as the
+             Regular icon font; glyph codepoints come from the set's official
+             FluentSystemIcons-Regular.json map. -->
+        <FontFamily x:Key="FluentIconFont">ms-appx:///Assets/Fonts/FluentSystemIcons-Regular.ttf#FluentSystemIcons-Regular</FontFamily>
+    </Application.Resources>
 
 </Application>

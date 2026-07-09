@@ -9,15 +9,17 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <!--
-    Slice 01/02 spike (ported to .NET Native): prove controller-first focus
-    navigation and background playback. Nav order per requirements §5; real
-    content hosting arrives in Slice 04.
+    Slice 04 (requirements §5): the application shell. Persistent collapsible
+    left nav in the fixed order Search, Home, Artists, Albums, Songs,
+    Playlists; Settings and Account live in the bottom pane area. The built-in
+    NavigationView settings item is disabled because its gear glyph is Segoe
+    MDL2 — mixing icon sets violates §13.3 (Fluent UI System Icons only).
     -->
     <NavigationView
         x:Name="NavView"
         KeyDown="NavView_KeyDown"
         IsBackButtonVisible="Collapsed"
-        IsSettingsVisible="True"
+        IsSettingsVisible="False"
         PaneDisplayMode="Left"
         OpenPaneLength="280"
         SelectionChanged="NavView_SelectionChanged">
@@ -25,107 +27,65 @@
         <NavigationView.MenuItems>
             <NavigationViewItem Content="Search" Tag="search">
                 <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Find" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF690;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
-            <NavigationViewItem x:Name="HomeNavItem" Content="Home" Tag="home" IsSelected="True">
+            <NavigationViewItem x:Name="HomeNavItem" Content="Home" Tag="home">
                 <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Home" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF481;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
-            <NavigationViewItem Content="Artists" Tag="artists">
+            <NavigationViewItem x:Name="ArtistsNavItem" Content="Artists" Tag="artists">
                 <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="People" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF5A9;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
-            <NavigationViewItem Content="Albums" Tag="albums">
+            <NavigationViewItem x:Name="AlbumsNavItem" Content="Albums" Tag="albums">
                 <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Library" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE010;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem Content="Songs" Tag="songs">
                 <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="MusicInfo" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE855;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
-            <NavigationViewItem Content="Playlists" Tag="playlists">
+            <NavigationViewItem x:Name="PlaylistsNavItem" Content="Playlists" Tag="playlists">
                 <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="List" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
         </NavigationView.MenuItems>
 
-        <!-- OS NavigationView has no FooterMenuItems (WinUI 2 only); the
-             built-in Settings item plus PaneFooter covers requirement §5's
-             bottom area for the spike. Revisit layout in Slice 04. -->
+        <!-- §5: Settings, then account/server info, in the bottom area. The
+             OS NavigationView has no FooterMenuItems, so these are manually
+             invoked footer items (Tapped for pointer, KeyDown for gamepad A
+             and keyboard Enter/Space). -->
         <NavigationView.PaneFooter>
-            <NavigationViewItem Content="Account" Tag="account">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Contact" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
+            <StackPanel>
+                <NavigationViewItem
+                    x:Name="SettingsNavItem"
+                    Content="Settings"
+                    Tag="settings"
+                    Tapped="FooterItem_Tapped"
+                    KeyDown="FooterItem_KeyDown">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF6AA;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem
+                    x:Name="AccountNavItem"
+                    Content="Account"
+                    Tag="account"
+                    Tapped="FooterItem_Tapped"
+                    KeyDown="FooterItem_KeyDown">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE929;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </StackPanel>
         </NavigationView.PaneFooter>
 
-        <!-- Keyboard fallback (req §13.1): arrows behave spatially between the
-             content controls. Text inputs (Slice 03+) must NOT live under an
-             XY-enabled container without opting back out, or caret movement
-             breaks. -->
-        <Grid Padding="48" XYFocusKeyboardNavigation="Enabled">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
-
-            <TextBlock
-                x:Name="SectionTitle"
-                Grid.Row="0"
-                Text="Home"
-                FontSize="48"
-                FontWeight="SemiBold" />
-
-            <TextBlock
-                Grid.Row="1"
-                Margin="0,16,0,0"
-                FontSize="24"
-                Opacity="0.7"
-                TextWrapping="Wrap"
-                Text="Focus + background-playback spike (.NET Native). Move focus with the D-pad or left stick: through the left menu, into these buttons, and back. Press A to activate." />
-
-            <StackPanel
-                Grid.Row="2"
-                Margin="0,40,0,0"
-                Orientation="Horizontal"
-                Spacing="24">
-                <Button
-                    x:Name="PlayButton"
-                    Content="&#xE768;  Play"
-                    FontFamily="Segoe MDL2 Assets"
-                    FontSize="24"
-                    Padding="32,16"
-                    Click="PlayButton_Click" />
-                <Button
-                    Content="&#xE8B1;  Shuffle"
-                    FontFamily="Segoe MDL2 Assets"
-                    FontSize="24"
-                    Padding="32,16"
-                    Click="TestButton_Click" />
-                <Button
-                    Content="&#xE8A9;  View"
-                    FontFamily="Segoe MDL2 Assets"
-                    FontSize="24"
-                    Padding="32,16"
-                    Click="TestButton_Click" />
-            </StackPanel>
-
-            <TextBlock
-                x:Name="ActivationLog"
-                Grid.Row="3"
-                Margin="0,40,0,0"
-                FontSize="20"
-                Opacity="0.5"
-                Text="" />
-        </Grid>
+        <Frame x:Name="ContentFrame" />
     </NavigationView>
 </Page>

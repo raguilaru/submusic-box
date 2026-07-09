@@ -27,6 +27,12 @@ namespace BoxSubMusic.App.Services
             Client = client;
         }
 
+        /// <summary>Drops the active client (sign-out).</summary>
+        public static void Clear()
+        {
+            Client = null;
+        }
+
         /// <summary>
         /// Rebuilds the client from a stored login. Returns false when the
         /// stored data is unusable (e.g. corrupt URL) so the caller can fall

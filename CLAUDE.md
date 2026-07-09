@@ -81,6 +81,5 @@ See CLAUDE.local.md for the concrete, machine-local invocations (SSH alias, full
 # Open questions
 - Search result paging/virtualization policy is not yet locked.
 - Artwork fallback beyond server-provided metadata remains a risk item, not a committed feature.
-- Icon set (one consistent open-source set, req §13.3) is not yet chosen — ask before Slice 04.
 - Songs row primary action (immediate playback vs context menu) is not yet locked — ask before Slice 08.
 - Playlist read-only vs editing scope for v1 is not yet locked — ask before Slice 09.

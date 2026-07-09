@@ -125,8 +125,18 @@
     <Compile Include="SetupPage.xaml.cs">
       <DependentUpon>SetupPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="SectionPage.xaml.cs">
+      <DependentUpon>SectionPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="SettingsPage.xaml.cs">
+      <DependentUpon>SettingsPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="AccountPage.xaml.cs">
+      <DependentUpon>AccountPage.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Services\AppSession.cs" />
     <Compile Include="Services\CredentialStore.cs" />
+    <Compile Include="Services\NavigationPreferences.cs" />
     <Compile Include="Services\PlaybackService.cs" />
     <Compile Include="Services\RecentServersStore.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -146,6 +156,8 @@
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\TestTone.wav" />
+    <Content Include="Assets\Fonts\FluentSystemIcons-Regular.ttf" />
+    <Content Include="Assets\Fonts\LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
@@ -157,6 +169,18 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="SetupPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="SectionPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="SettingsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="AccountPage.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
