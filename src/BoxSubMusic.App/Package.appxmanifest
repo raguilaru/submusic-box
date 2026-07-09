@@ -46,6 +46,9 @@
 
   <Capabilities>
     <Capability Name="internetClient" />
+    <!-- Requirement §2: LAN servers (e.g. Navidrome on a Pi) are unreachable
+         with internetClient alone. -->
+    <Capability Name="privateNetworkClientServer" />
     <!-- Requirement §11: playback must continue when the app is backgrounded.
          Also subjects the app to background memory limits on Xbox. -->
     <uap3:Capability Name="backgroundMediaPlayback" />

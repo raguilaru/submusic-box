@@ -71,10 +71,14 @@ namespace BoxSubMusic.App
             {
                 if (rootFrame.Content == null)
                 {
-                    // When the navigation stack isn't restored navigate to the first page,
-                    // configuring the new page by passing required information as a navigation
-                    // parameter
-                    rootFrame.Navigate(typeof(MainPage), e.Arguments);
+                    // Slice 03 (§4): a stored login goes straight to the shell,
+                    // otherwise first-launch setup. The client is rebuilt from
+                    // storage without connecting — launch stays network-free.
+                    var storedLogin = Services.CredentialStore.TryLoadActive();
+                    var startPage = Services.AppSession.TryInitializeFromStored(storedLogin)
+                        ? typeof(MainPage)
+                        : typeof(SetupPage);
+                    rootFrame.Navigate(startPage, e.Arguments);
                 }
                 // Ensure the current window is active
                 Window.Current.Activate();
