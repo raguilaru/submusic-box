@@ -22,6 +22,12 @@ namespace BoxSubMusic.App
         /// </summary>
         public App()
         {
+            // Requirement §2/§13.1: Xbox runs UWP apps in "mouse mode" by
+            // default — the left stick drives a pointer and the D-pad does
+            // nothing. Opt out so the gamepad performs XY focus navigation.
+            // Desktop is unaffected, so this difference never shows in the VM.
+            this.RequiresPointerMode = ApplicationRequiresPointerMode.WhenRequested;
+
             this.InitializeComponent();
             this.Suspending += OnSuspending;
 

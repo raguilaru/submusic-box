@@ -1,0 +1,21 @@
+<Project>
+  <!--
+    Redirect BoxSubMusic.App build output off the Parallels network share to
+    the VM's local disk. UWP F5 "Local Machine" registration requires a local
+    NTFS volume (fails with DEP0700 / 0x80073D1F from \\Mac\...), and local
+    obj also avoids slow network I/O and root-owned artifacts on the Mac side.
+    The LOCALAPPDATA condition keeps Mac-side tooling (git, editors) unaffected.
+
+    LocalBinRoot is consumed by the OutputPath entries in BoxSubMusic.App.csproj.
+    It must be defined here (evaluated before the project body) rather than in
+    Directory.Build.targets: the XAML/.NET Native/AppX targets snapshot output
+    paths before a .targets-level override would apply, which breaks the build
+    with "could not copy ...exe because it was not found".
+  -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'BoxSubMusic.App'">
+    <BoxSubMusicBuildRoot Condition="'$(LOCALAPPDATA)' != ''">$(LOCALAPPDATA)\BoxSubMusicBuild</BoxSubMusicBuildRoot>
+    <BaseIntermediateOutputPath Condition="'$(BoxSubMusicBuildRoot)' != ''">$(BoxSubMusicBuildRoot)\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <LocalBinRoot>bin\</LocalBinRoot>
+    <LocalBinRoot Condition="'$(BoxSubMusicBuildRoot)' != ''">$(BoxSubMusicBuildRoot)\bin\$(MSBuildProjectName)\</LocalBinRoot>
+  </PropertyGroup>
+</Project>
