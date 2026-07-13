@@ -6,6 +6,8 @@ using BoxSubMusic.Core.Setup;
 using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
 using Windows.System;
+using Windows.System.Profile;
+using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Input;
@@ -19,6 +21,9 @@ namespace BoxSubMusic.App
     /// </summary>
     public sealed partial class SetupPage : Page
     {
+        private static readonly bool IsXbox =
+            AnalyticsInfo.VersionInfo.DeviceFamily == "Windows.Xbox";
+
         private IReadOnlyList<RecentServer> _recentServers = new RecentServer[0];
         private bool _connecting;
 
@@ -46,13 +51,47 @@ namespace BoxSubMusic.App
             await ConnectAsync();
         }
 
-        private async void Input_KeyDown(object sender, KeyRoutedEventArgs e)
+        private void ServerUrlBox_KeyDown(object sender, KeyRoutedEventArgs e)
         {
-            // Keyboard fallback (§13.1): Enter submits from any field.
+            AdvanceOnEnter(e, UsernameBox);
+        }
+
+        private void UsernameBox_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            AdvanceOnEnter(e, PasswordInput);
+        }
+
+        private async void PasswordInput_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            // Last field: Enter submits (§13.1) — the console OSK's accept
+            // (Menu-button accelerator) or a hardware keyboard's Enter.
             if (e.Key == VirtualKey.Enter && !_connecting)
             {
                 e.Handled = true;
                 await ConnectAsync();
+            }
+        }
+
+        private void AdvanceOnEnter(KeyRoutedEventArgs e, Control next)
+        {
+            // Enter means "field done", not "submit": the OSK has no
+            // next-field concept of its own, so the app moves focus. Only
+            // the last field connects — otherwise accepting the first OSK
+            // entry would attempt a connect with empty credentials.
+            if (e.Key != VirtualKey.Enter)
+            {
+                return;
+            }
+
+            e.Handled = true;
+            next.Focus(FocusState.Keyboard);
+
+            if (IsXbox)
+            {
+                // Chain the OSK onto the next field so the form is completed
+                // without touching B or the D-pad. Console-only: on desktop
+                // a hardware-keyboard Enter must not pop the touch keyboard.
+                InputPane.GetForCurrentView().TryShow();
             }
         }
 

@@ -32,6 +32,12 @@
                 TextWrapping="Wrap"
                 Margin="0,0,0,12" />
 
+            <!--
+            Enter advances to the next field (Connect from the last one), so
+            the console OSK's accept — the Menu-button accelerator — walks
+            the whole form without B or D-pad. Explicit TabIndex keeps
+            hardware-keyboard Tab on the same path (§13.1).
+            -->
             <TextBox
                 x:Name="ServerUrlBox"
                 Header="Server address"
@@ -40,7 +46,8 @@
                 InputScope="Url"
                 IsSpellCheckEnabled="False"
                 IsTextPredictionEnabled="False"
-                KeyDown="Input_KeyDown" />
+                TabIndex="0"
+                KeyDown="ServerUrlBox_KeyDown" />
 
             <TextBox
                 x:Name="UsernameBox"
@@ -48,14 +55,16 @@
                 FontSize="22"
                 IsSpellCheckEnabled="False"
                 IsTextPredictionEnabled="False"
-                KeyDown="Input_KeyDown" />
+                TabIndex="1"
+                KeyDown="UsernameBox_KeyDown" />
 
             <!-- Masked entry is the PasswordBox default (§4). -->
             <PasswordBox
                 x:Name="PasswordInput"
                 Header="Password"
                 FontSize="22"
-                KeyDown="Input_KeyDown" />
+                TabIndex="2"
+                KeyDown="PasswordInput_KeyDown" />
 
             <TextBlock
                 x:Name="ErrorText"
@@ -70,6 +79,7 @@
                     Content="Connect"
                     FontSize="24"
                     Padding="48,12"
+                    TabIndex="3"
                     Click="ConnectButton_Click" />
                 <ProgressRing
                     x:Name="ConnectProgress"
