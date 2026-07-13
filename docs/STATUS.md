@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-07-13 (setup-flow controller fix console-verified; Slices 07a + 08 implemented; console checkpoint #3 pending).
+Last updated: 2026-07-13 (Slices 07a + 08 committed `d0cb046`; working mode changed: build all features first, one big console test pass at the end).
 
 ## Where we are
 
@@ -157,44 +157,88 @@ packaging step is the known command-line-only failure); 23 Core + **52
 SubsonicClient** unit tests green in the VM incl. live Navidrome tests (which
 now cover getAlbum, alphabetical paging, and empty-query search3 paging).
 The setup flow (incl. checkpoint #2 item 1) is console-verified 2026-07-13.
-**Slices 07a/08 have NOT been run on device — that is checkpoint #3, the next
-step.**
+Slices 07a/08 are VM-desktop-checked only; their console items are in the
+deferred backlog below.
 
 **Git state:** `main` holds the setup-flow fix (`f5e1908`) followed by the
 Slice 07a + 08 commit (this one); working tree clean.
 
-## Next step: on-device checkpoint #3 (start here next session)
+## Working mode (decided 2026-07-13)
 
-Console run (x64 / Remote Machine 10.0.0.28 / F5 — Rafael drives). The setup
-flow was already verified on console 2026-07-13; carry over any unchecked
-items from the old checkpoint #2 list (shell, toggles, sign-out, Home,
-Artists — see git history of this file) plus the new surfaces:
+The Xbox is temporarily unavailable for testing. Development continues
+**Xbox-first in design** (controller-first, 10-ft, XY focus, per CLAUDE.md)
+but WITHOUT per-slice console checkpoints: implement the remaining slices in
+order, then run **one consolidated on-device test pass at the end** using the
+backlog below. This deviates from requirements §14 ("validation throughout")
+deliberately and temporarily — hardware constraint, not a process choice.
 
-1. **Albums browse (07a):** grid loads A→Z with artwork; **scroll deep enough
-   to cross a 100-item page boundary** (incremental loading's first console
-   test — watch for hitches/focus jumps as pages append); grid/list toggle
-   (now the shared control — also re-check it on Artists); A opens album
-   detail.
-2. **Album detail (07a):** artwork, title, artist, year, counts + duration;
+Rules for every slice implemented in this mode:
+- VM arm64 Local Machine F5 remains the interim smoke test, with its known
+  blind spots: no Xbox mouse-mode class bugs, no Menu-button→ContextFlyout
+  (console-only platform mapping — right-click stands in on desktop), no OSK,
+  no real 10-ft/TV rendering, gamepad OK via Parallels sharing.
+- **Every new slice MUST append its console-specific test items to the
+  backlog below** instead of scheduling a checkpoint.
+
+## Next step: continue slicing (start here next session)
+
+**Slice 09 (Playlists browse + composite artwork)** — resolve the §17
+playlist editing-scope decision (read-only vs create/edit/delete) with Rafael
+first. Then **Slice 10 (now-playing bar + queue)** — the big unblocker for
+05b/06b/07b and the Songs row action — then 11 (expanded queue), 12 is done
+in essence (theme selector still missing — check §12), 13 (Search; §17
+paging decision), 05b/06b/07b wiring, 14 (resilience/polish).
+
+## Deferred on-device test backlog (run when the console is back)
+
+One consolidated pass: VS in VM, Solution Platform x64, Remote Machine
+10.0.0.28, F5, Xbox in Dev Mode. Also fold in the **Release|x64 .NET Native
+build validation** (per the build plan) — Debug and Release differ under
+.NET Native, so at least one full Release run.
+
+**Carried over from checkpoint #2 (2026-07-10 list; setup flow item verified
+2026-07-13, the rest not itemized — re-verify quickly):**
+1. LAN capability: connect to the Pi (`http://10.0.0.5:4533` if
+   `raspberrypi.local` fails — mDNS from UWP on console unverified).
+2. Credential persistence: quit + relaunch → straight to shell; Account
+   shows server + username.
+3. Shell: D-pad nav order, Fluent icons render, pane collapse/expand, footer
+   Settings/Account respond to A, focus visible at 10 ft, both themes.
+4. Nav toggles: hide/show Artists/Albums/Playlists, persist across relaunch;
+   Search/Home always present.
+5. Sign out → setup; B does not re-enter the shell; relaunch lands on setup.
+6. Home (05a): carousels load with real albums; cover art renders
+   (authenticated getCoverArt → BitmapImage — first console test); D-pad
+   travel; error states with focused Retry.
+7. Artists (06a): grid + artwork; grid/list toggle (now the shared control);
+   detail artwork/name/counts; favorite heart toggles and persists
+   (star/unstar write path); heart legibility at 10 ft (color-only state).
+
+**From Slices 07a + 08 (2026-07-13):**
+8. Albums browse: grid loads A→Z with artwork; **scroll across a 100-item
+   page boundary** (first console test of incremental loading — watch for
+   hitches/focus jumps as pages append); toggle flips modes; A opens detail.
+9. Album detail: artwork, title, artist, year, counts + total duration;
    favorite heart persists across leave/re-enter; track list in disc/track
-   order (find a multi-disc album if available); Play/Shuffle visibly
+   order (use a multi-disc album if available); Play/Shuffle visibly
    disabled; track rows focusable but inert.
-3. **Card navigation:** Home carousel card → album detail; artist detail
-   album card → album detail.
-4. **B-button back:** B walks back through detail pages and sections; nav
-   highlight follows; B on a section root does NOT exit to setup; sign-out
-   then B does not re-enter the shell.
-5. **Songs (08):** list loads with all six columns readable at 10 ft (column
-   widths are a first guess — expect tuning); scroll across a page boundary;
-   **Menu button on a row opens the context menu** (first console test of
-   ContextFlyout via Menu), "Go to album" navigates, Play shows disabled;
-   the "playback arrives later" note is visible.
-6. Both themes if quick; focus visible everywhere.
+10. Card navigation: Home carousel card → album detail; artist detail album
+    card → album detail; Albums browse card → album detail.
+11. B-button back: walks back through detail pages and sections; nav
+    highlight resyncs; B on a section root does NOT exit the app to setup;
+    after sign-out B does not re-enter the shell.
+12. Songs: all six columns readable at 10 ft (widths are a first guess —
+    expect tuning); scroll across a page boundary; **Menu button on a row
+    opens the context menu** (console-only platform mapping, unverifiable on
+    desktop — confirmed working only via mouse right-click in the VM);
+    "Go to album" navigates; Play shows disabled; the "playback arrives
+    later" note is visible.
+13. Setup-flow regression (verified once 2026-07-13, re-check after changes):
+    OSK accept/Menu-button advances URL → username → password → connect;
+    keyboard re-opens on each next field.
+14. Both themes across all new pages; focus visible everywhere.
 
-Then: **Slice 09 (Playlists)** — needs the playlist editing-scope decision
-(§17) first — or jump to **Slice 10 (now-playing bar + queue)**, which
-unblocks 05b/06b/07b and the Songs row action. Fold the Release|x64 .NET
-Native validation into this or the next checkpoint per the build plan.
+*(Future slices: append your console items here.)*
 
 ## Known gaps / notes from this session
 
