@@ -14,4 +14,7 @@ public enum AlbumListType
 
     /// <summary>Random albums (Home "Random Picks", §6.4).</summary>
     Random,
+
+    /// <summary>All albums A→Z (Albums browse, §7.2), paged via size/offset.</summary>
+    AlphabeticalByName,
 }

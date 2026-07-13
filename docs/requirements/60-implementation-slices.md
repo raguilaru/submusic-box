@@ -243,13 +243,25 @@ Implement albums discovery flow and album playback behavior.
 - Browse Views / Albums
 - Album Detail View
 
+### Open design note
+Split decided 2026-07-13, same rationale as Slices 05/06: playback depends on
+the Slice 10 queue + now-playing infrastructure. **Slice 07a** delivers Albums
+browse (grid/list + the shared §13.5 `ViewModeToggle`, incremental A→Z paging)
+and Album detail *display* (artwork, title, artist, year, favorite heart via
+star/unstar, song count, total duration, disc/track-ordered track list), with
+Play/Shuffle disabled + note and inert track rows. **Slice 07b** wires
+Play/Shuffle queue replacement, current-track highlighting, and jump-to-track
+after Slice 10. §9's contract is unchanged.
+
 ### Deliverables
-- albums grid/list browse
-- visible view toggle
-- album detail view
-- ordered track list
-- current-track highlighting
-- direct track jump behavior
+- albums grid/list browse (07a)
+- visible view toggle (07a — shared control)
+- album detail view (07a)
+- ordered track list (07a)
+- favorite action (07a — star/unstar is live)
+- current-track highlighting (07b)
+- direct track jump behavior (07b)
+- play/shuffle queue replacement (07b)
 
 ### Out of scope
 - playlist composites
@@ -271,13 +283,19 @@ Implement song-library list experience.
 - Browse Views / Songs
 
 ### Open design note
-Resolve the Songs row primary action (immediate playback on A/Enter vs secondary action/context menu) before implementing.
+Resolved 2026-07-13 (§16/§17): the row primary action (A/Enter) is immediate
+playback — queue replace, play from that song — wired by Slice 10; a
+Menu-button context menu carries secondary actions. Data source is search3
+with an empty query (OpenSubsonic full-library contract), paged incrementally;
+non-OpenSubsonic servers get an explicit unsupported state. Implemented
+2026-07-13 with rows inert + visible note until Slice 10; "Go to album" in the
+context menu is live.
 
 ### Deliverables
 - songs list
 - required columns
-- row interaction behavior
-- loading/empty/error states
+- row interaction behavior (display + context menu now; playback with Slice 10)
+- loading/empty/error/unsupported states
 
 ### Out of scope
 - advanced search

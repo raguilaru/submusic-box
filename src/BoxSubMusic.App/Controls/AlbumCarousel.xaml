@@ -10,8 +10,9 @@
     <!-- One Home carousel row (requirements §6.2–§6.4): non-looping
          horizontal album strip with loading / empty / error states. The
          horizontal ItemsStackPanel virtualizes and does not wrap around, so
-         non-looping comes by construction. Cards are focusable for D-pad
-         travel; the click action (album detail) arrives with Slice 07. -->
+         non-looping comes by construction. Clicking a card raises
+         AlbumClicked; the host page navigates to the album detail view
+         (Slice 07a). -->
     <StackPanel Spacing="12">
         <TextBlock
             x:Name="TitleText"
@@ -59,6 +60,8 @@
                 x:Name="AlbumList"
                 Visibility="Collapsed"
                 SelectionMode="None"
+                IsItemClickEnabled="True"
+                ItemClick="AlbumList_ItemClick"
                 ScrollViewer.HorizontalScrollMode="Enabled"
                 ScrollViewer.HorizontalScrollBarVisibility="Hidden"
                 ScrollViewer.VerticalScrollMode="Disabled"

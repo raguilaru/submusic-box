@@ -1,0 +1,196 @@
+<Page
+    x:Class="BoxSubMusic.App.AlbumDetailPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:BoxSubMusic.App.Models"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <!-- Album detail (Slice 07a, requirements §9): mirrors the artist detail
+         layout — large artwork, title, artist, year, favorite heart (persisted
+         via star/unstar), song count + total duration, and the track list in
+         disc/track order. Play/Shuffle and track-row playback (jump/highlight)
+         are Slice 07b, after the Slice 10 queue exists; the buttons are shown
+         disabled with an explicit note and the rows are inert (§15: no silent
+         degradation). -->
+    <Grid>
+        <ScrollViewer x:Name="ContentScroller" Visibility="Collapsed" Padding="48,36,48,36">
+            <StackPanel Spacing="36">
+                <!-- Header: artwork + metadata, same shape as artist detail. -->
+                <Grid ColumnSpacing="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Grid.Column="0" Width="320" Height="320" CornerRadius="12">
+                        <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
+                            <FontIcon
+                                FontFamily="{StaticResource FluentIconFont}"
+                                Glyph="&#xE855;"
+                                FontSize="96"
+                                Opacity="0.4" />
+                        </Border>
+                        <Image x:Name="ArtworkImage" Stretch="UniformToFill" />
+                    </Grid>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="16">
+                        <TextBlock
+                            x:Name="AlbumNameText"
+                            FontSize="48"
+                            FontWeight="Bold"
+                            TextWrapping="Wrap" />
+                        <TextBlock
+                            x:Name="AlbumArtistText"
+                            FontSize="26"
+                            Opacity="0.8" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <ToggleButton
+                                x:Name="FavoriteToggle"
+                                MinWidth="0"
+                                Padding="12"
+                                Checked="FavoriteToggle_Changed"
+                                Unchecked="FavoriteToggle_Changed"
+                                ToolTipService.ToolTip="Favorite">
+                                <FontIcon
+                                    x:Name="FavoriteIcon"
+                                    FontFamily="{StaticResource FluentIconFont}"
+                                    Glyph="&#xF47A;"
+                                    FontSize="28" />
+                            </ToggleButton>
+                            <TextBlock
+                                x:Name="FavoriteStatusText"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                Opacity="0.8"
+                                Visibility="Collapsed"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- Year · song count · total duration (§9). -->
+                        <TextBlock
+                            x:Name="MetaText"
+                            FontSize="22"
+                            Opacity="0.8" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,8,0,0">
+                            <!-- Play/Shuffle land in Slice 07b (queue + now-playing
+                                 bar). Disabled and labelled so the §9 layout is
+                                 faithful and the deferral is visible. -->
+                            <Button x:Name="PlayButton" IsEnabled="False" Padding="28,12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" FontSize="20" />
+                                    <TextBlock Text="Play" FontSize="20" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="ShuffleButton" IsEnabled="False" Padding="28,12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xEF37;" FontSize="20" />
+                                    <TextBlock Text="Shuffle" FontSize="20" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock
+                            Text="Playback arrives in a later update."
+                            FontSize="15"
+                            Opacity="0.6"
+                            FontStyle="Italic" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Track list in original disc/track order (§9). Rows are
+                     focusable for D-pad travel but inert until Slice 07b wires
+                     jump-to-track playback. -->
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Tracks" FontSize="32" FontWeight="SemiBold" />
+                    <TextBlock
+                        x:Name="NoTracksText"
+                        Text="No tracks for this album."
+                        FontSize="20"
+                        Opacity="0.7"
+                        Visibility="Collapsed" />
+                    <ListView
+                        x:Name="TracksList"
+                        SelectionMode="None"
+                        IsItemClickEnabled="False">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Padding" Value="12,10" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:TrackRow">
+                                <Grid ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="72" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock
+                                        Grid.Column="0"
+                                        Text="{x:Bind Number}"
+                                        FontSize="20"
+                                        Opacity="0.6"
+                                        TextAlignment="Right" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Text="{x:Bind Title}"
+                                        FontSize="20"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock
+                                        Grid.Column="2"
+                                        Text="{x:Bind Artist}"
+                                        FontSize="18"
+                                        Opacity="0.7"
+                                        TextTrimming="CharacterEllipsis"
+                                        MaxWidth="420" />
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        Text="{x:Bind DurationLabel}"
+                                        FontSize="20"
+                                        Opacity="0.6"
+                                        TextAlignment="Right" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <ProgressRing
+            x:Name="LoadingRing"
+            IsActive="False"
+            Width="48"
+            Height="48"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center" />
+
+        <StackPanel
+            x:Name="ErrorPanel"
+            Visibility="Collapsed"
+            Spacing="16"
+            MaxWidth="820"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+            <TextBlock
+                x:Name="ErrorText"
+                FontSize="22"
+                TextWrapping="Wrap"
+                HorizontalAlignment="Center"
+                TextAlignment="Center" />
+            <Button
+                x:Name="RetryButton"
+                Content="Retry"
+                FontSize="20"
+                Padding="40,10"
+                HorizontalAlignment="Center"
+                Click="RetryButton_Click" />
+        </StackPanel>
+    </Grid>
+</Page>

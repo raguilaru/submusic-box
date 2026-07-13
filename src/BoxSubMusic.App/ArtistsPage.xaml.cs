@@ -171,12 +171,6 @@ namespace BoxSubMusic.App
 
         private void ViewModeToggle_Changed(object sender, RoutedEventArgs e)
         {
-            bool listMode = ViewModeToggle.IsChecked == true;
-            // The toggle advertises the mode it is currently showing.
-            ViewModeLabel.Text = listMode ? "List" : "Grid";
-            // Verified Fluent codepoints: list U+F4EE, grid U+F463 (§13.3).
-            ViewModeIcon.Glyph = listMode ? "\uF4EE" : "\uF463";
-
             // Only re-show a browse control if content is the visible state.
             if (ConnectErrorPanel.Visibility == Visibility.Visible
                 || EmptyText.Visibility == Visibility.Visible
@@ -190,7 +184,7 @@ namespace BoxSubMusic.App
 
         private void ApplyViewMode()
         {
-            bool listMode = ViewModeToggle.IsChecked == true;
+            bool listMode = ViewModeToggle.IsListMode;
             ArtistsGrid.Visibility = listMode ? Visibility.Collapsed : Visibility.Visible;
             ArtistsList.Visibility = listMode ? Visibility.Visible : Visibility.Collapsed;
         }

@@ -267,6 +267,14 @@ namespace BoxSubMusic.App
             RetryButton.Focus(FocusState.Keyboard);
         }
 
+        private void Album_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            if (e.ClickedItem is AlbumCard card)
+            {
+                Frame.Navigate(typeof(AlbumDetailPage), card.Id);
+            }
+        }
+
         private void RetryButton_Click(object sender, RoutedEventArgs e)
         {
             var cts = _cts;

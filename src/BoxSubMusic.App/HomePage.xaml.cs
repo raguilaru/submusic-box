@@ -182,5 +182,11 @@ namespace BoxSubMusic.App
                 _ = LoadCarouselAsync(carousel, type, cts.Token);
             }
         }
+
+        private void Carousel_AlbumClicked(object sender, AlbumCard card)
+        {
+            // Slice 07a: carousel cards open the album detail view.
+            Frame.Navigate(typeof(AlbumDetailPage), card.Id);
+        }
     }
 }

@@ -105,6 +105,14 @@ public static class Canned
         $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\">" +
         $"<artist {artistAttrs}>{albums}</artist></subsonic-response>";
 
+    public static string SearchResult3(string songs) =>
+        $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\">" +
+        $"<searchResult3>{songs}</searchResult3></subsonic-response>";
+
+    public static string Album(string albumAttrs, string songs) =>
+        $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\">" +
+        $"<album {albumAttrs}>{songs}</album></subsonic-response>";
+
     public const string TwoAlbums =
         "<album id=\"al-1\" name=\"Abbey Road\" artist=\"The Beatles\" artistId=\"ar-1\" coverArt=\"al-1\" " +
         "songCount=\"17\" duration=\"2830\" created=\"2024-01-02T10:20:30Z\" year=\"1969\" genre=\"Rock\"/>" +

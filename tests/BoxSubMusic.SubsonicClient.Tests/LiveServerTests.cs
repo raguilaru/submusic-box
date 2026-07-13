@@ -46,6 +46,63 @@ public class LiveServerTests
     }
 
     [SkippableFact]
+    public async Task AlphabeticalAlbums_PageAndParse()
+    {
+        var (client, _) = CreateClient();
+        await client.ConnectAsync();
+
+        var page = await client.GetAlbumList2Async(AlbumListType.AlphabeticalByName, size: 5);
+
+        Assert.True(page.Count >= 1, "getAlbumList2 type=alphabeticalByName returned no albums — is the library empty?");
+        foreach (var album in page)
+        {
+            Assert.False(string.IsNullOrEmpty(album.Id));
+            Assert.False(string.IsNullOrEmpty(album.Name));
+        }
+    }
+
+    [SkippableFact]
+    public async Task GetAlbum_ReturnsOrderedSongsWithMetadata()
+    {
+        var (client, _) = CreateClient();
+        await client.ConnectAsync();
+        var albums = await client.GetAlbumList2Async(AlbumListType.AlphabeticalByName, size: 5);
+        var withSongs = albums.FirstOrDefault(a => a.SongCount > 0);
+        Skip.If(withSongs == null, "No album with songs on the server.");
+
+        var detail = await client.GetAlbumAsync(withSongs!.Id);
+
+        Assert.Equal(withSongs.Id, detail.Album.Id);
+        Assert.True(detail.Songs.Count >= 1, "getAlbum returned no songs.");
+        foreach (var song in detail.Songs)
+        {
+            Assert.False(string.IsNullOrEmpty(song.Id));
+            Assert.False(string.IsNullOrEmpty(song.Title));
+        }
+    }
+
+    [SkippableFact]
+    public async Task Songs_EmptyQueryPagesThroughLibrary()
+    {
+        var (client, _) = CreateClient();
+        await client.ConnectAsync();
+
+        var first = await client.GetSongsAsync(size: 3);
+        var second = await client.GetSongsAsync(size: 3, offset: 3);
+
+        Assert.True(first.Count >= 1, "search3 with an empty query returned no songs — is the library empty?");
+        foreach (var song in first)
+        {
+            Assert.False(string.IsNullOrEmpty(song.Id));
+            Assert.False(string.IsNullOrEmpty(song.Title));
+        }
+
+        // Pages must be disjoint for incremental loading to work.
+        Skip.If(second.Count == 0, "Library has 3 or fewer songs; paging not verifiable.");
+        Assert.Empty(first.Select(s => s.Id).Intersect(second.Select(s => s.Id)));
+    }
+
+    [SkippableFact]
     public async Task WrongPassword_SurfacesAsAuthenticationError()
     {
         var config = LiveServerConfig.Require();

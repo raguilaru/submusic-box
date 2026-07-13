@@ -15,7 +15,8 @@ public sealed class Album
         TimeSpan duration,
         DateTimeOffset? created,
         int? year,
-        string? genre)
+        string? genre,
+        bool isStarred)
     {
         Id = id ?? throw new ArgumentNullException(nameof(id));
         Name = name ?? throw new ArgumentNullException(nameof(name));
@@ -27,6 +28,7 @@ public sealed class Album
         Created = created;
         Year = year;
         Genre = genre;
+        IsStarred = isStarred;
     }
 
     public string Id { get; }
@@ -42,4 +44,7 @@ public sealed class Album
     public DateTimeOffset? Created { get; }
     public int? Year { get; }
     public string? Genre { get; }
+
+    /// <summary>Favorite flag (§9): a <c>starred</c> timestamp is present only on favorites.</summary>
+    public bool IsStarred { get; }
 }

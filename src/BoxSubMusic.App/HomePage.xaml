@@ -59,19 +59,22 @@
                     x:Name="MostPlayedCarousel"
                     Title="Most played"
                     EmptyMessage="Nothing here yet — your most played albums appear as you listen."
-                    RetryRequested="MostPlayedCarousel_RetryRequested" />
+                    RetryRequested="MostPlayedCarousel_RetryRequested"
+                    AlbumClicked="Carousel_AlbumClicked" />
 
                 <controls:AlbumCarousel
                     x:Name="RecentlyAddedCarousel"
                     Title="Recently added"
                     EmptyMessage="No albums on the server yet."
-                    RetryRequested="RecentlyAddedCarousel_RetryRequested" />
+                    RetryRequested="RecentlyAddedCarousel_RetryRequested"
+                    AlbumClicked="Carousel_AlbumClicked" />
 
                 <controls:AlbumCarousel
                     x:Name="RandomPicksCarousel"
                     Title="Random picks"
                     EmptyMessage="No albums on the server yet."
-                    RetryRequested="RandomPicksCarousel_RetryRequested" />
+                    RetryRequested="RandomPicksCarousel_RetryRequested"
+                    AlbumClicked="Carousel_AlbumClicked" />
             </StackPanel>
         </ScrollViewer>
     </Grid>

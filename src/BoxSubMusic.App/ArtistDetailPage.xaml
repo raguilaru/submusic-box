@@ -106,7 +106,8 @@
                     <GridView
                         x:Name="AlbumsGrid"
                         SelectionMode="None"
-                        IsItemClickEnabled="False">
+                        IsItemClickEnabled="True"
+                        ItemClick="Album_ItemClick">
                         <GridView.ItemContainerStyle>
                             <Style TargetType="GridViewItem">
                                 <Setter Property="Margin" Value="0,0,20,20" />

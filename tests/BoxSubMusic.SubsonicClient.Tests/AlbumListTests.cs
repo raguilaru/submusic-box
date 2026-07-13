@@ -45,6 +45,7 @@ public class AlbumListTests
     [InlineData(AlbumListType.Frequent, "frequent")]
     [InlineData(AlbumListType.Newest, "newest")]
     [InlineData(AlbumListType.Random, "random")]
+    [InlineData(AlbumListType.AlphabeticalByName, "alphabeticalByName")]
     public async Task GetAlbumList2_MapsListTypesToApiValues(AlbumListType type, string expected)
     {
         var handler = new FakeHttpMessageHandler(_ =>

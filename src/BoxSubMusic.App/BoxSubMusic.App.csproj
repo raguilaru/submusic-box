@@ -134,13 +134,28 @@
     <Compile Include="Controls\AlbumCarousel.xaml.cs">
       <DependentUpon>AlbumCarousel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\ViewModeToggle.xaml.cs">
+      <DependentUpon>ViewModeToggle.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Models\AlbumCard.cs" />
     <Compile Include="Models\ArtistCard.cs" />
+    <Compile Include="Models\IncrementalSource.cs" />
+    <Compile Include="Models\SongRow.cs" />
+    <Compile Include="Models\TrackRow.cs" />
     <Compile Include="ArtistsPage.xaml.cs">
       <DependentUpon>ArtistsPage.xaml</DependentUpon>
     </Compile>
     <Compile Include="ArtistDetailPage.xaml.cs">
       <DependentUpon>ArtistDetailPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="AlbumsPage.xaml.cs">
+      <DependentUpon>AlbumsPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="AlbumDetailPage.xaml.cs">
+      <DependentUpon>AlbumDetailPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="SongsPage.xaml.cs">
+      <DependentUpon>SongsPage.xaml</DependentUpon>
     </Compile>
     <Compile Include="SettingsPage.xaml.cs">
       <DependentUpon>SettingsPage.xaml</DependentUpon>
@@ -198,11 +213,27 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Controls\ViewModeToggle.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="ArtistsPage.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
     <Page Include="ArtistDetailPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="AlbumsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="AlbumDetailPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="SongsPage.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

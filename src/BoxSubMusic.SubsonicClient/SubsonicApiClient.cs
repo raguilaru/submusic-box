@@ -141,6 +141,62 @@ public sealed class SubsonicApiClient
     }
 
     /// <summary>
+    /// getAlbum — one album plus its songs (requirements §9). Songs are
+    /// ordered by disc number then track number so the track list shows the
+    /// original disc/track order regardless of server ordering quirks.
+    /// </summary>
+    public async Task<AlbumDetail> GetAlbumAsync(string id, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            throw new ArgumentException("An album id is required.", nameof(id));
+
+        var parameters = new List<KeyValuePair<string, string>> { Param("id", id) };
+        var root = await ExecuteAsync("getAlbum", parameters, cancellationToken).ConfigureAwait(false);
+        var element = SubsonicXml.Element(root, "album")
+            ?? throw new SubsonicConnectionException("The server response is missing the <album> element.");
+
+        var songs = SubsonicXml.Elements(element, "song")
+            .Select(MapSong)
+            .OrderBy(s => s.DiscNumber ?? 1)
+            .ThenBy(s => s.Track ?? int.MaxValue)
+            .ToList();
+        return new AlbumDetail(MapAlbum(element), songs);
+    }
+
+    /// <summary>
+    /// search3 with an empty query — the full song library, paged
+    /// (requirements §7.3). OpenSubsonic requires servers to return all data
+    /// for an empty query (verified against Navidrome 2026-07-13); legacy
+    /// Subsonic servers make no such promise, so callers should gate this on
+    /// <see cref="ServerCapabilities.IsOpenSubsonic"/> and degrade explicitly
+    /// (§3). Song order is server-defined.
+    /// </summary>
+    public async Task<IReadOnlyList<Song>> GetSongsAsync(
+        int size = 100,
+        int offset = 0,
+        CancellationToken cancellationToken = default)
+    {
+        if (size < 1 || size > 500)
+            throw new ArgumentOutOfRangeException(nameof(size), size, "Size must be 1..500.");
+        if (offset < 0)
+            throw new ArgumentOutOfRangeException(nameof(offset), offset, "Offset must not be negative.");
+
+        var parameters = new List<KeyValuePair<string, string>>
+        {
+            Param("query", string.Empty),
+            Param("songCount", size.ToString(CultureInfo.InvariantCulture)),
+            Param("songOffset", offset.ToString(CultureInfo.InvariantCulture)),
+            // Only songs are wanted; suppress the other result groups.
+            Param("artistCount", "0"),
+            Param("albumCount", "0"),
+        };
+        var root = await ExecuteAsync("search3", parameters, cancellationToken).ConfigureAwait(false);
+        var result = SubsonicXml.Element(root, "searchResult3")
+            ?? throw new SubsonicConnectionException("The server response is missing the <searchResult3> element.");
+        return SubsonicXml.Elements(result, "song").Select(MapSong).ToList();
+    }
+
+    /// <summary>
     /// star — mark an item (artist/album/song id) as a favorite (§8). The
     /// server echoes an empty ok envelope; a failure surfaces as an exception.
     /// </summary>
@@ -347,7 +403,35 @@ public sealed class SubsonicApiClient
             duration: TimeSpan.FromSeconds(SubsonicXml.AttrInt(element, "duration") ?? 0),
             created: SubsonicXml.AttrDate(element, "created"),
             year: SubsonicXml.AttrInt(element, "year"),
-            genre: SubsonicXml.Attr(element, "genre"));
+            genre: SubsonicXml.Attr(element, "genre"),
+            // A `starred` timestamp is present only on favorites (§9).
+            isStarred: SubsonicXml.Attr(element, "starred") != null);
+    }
+
+    private static Song MapSong(XElement element)
+    {
+        var id = SubsonicXml.Attr(element, "id");
+        if (string.IsNullOrEmpty(id))
+        {
+            throw new SubsonicConnectionException("The server returned a song entry without an id.");
+        }
+
+        return new Song(
+            id: id!,
+            title: SubsonicXml.Attr(element, "title") ?? string.Empty,
+            artist: SubsonicXml.Attr(element, "artist"),
+            artistId: SubsonicXml.Attr(element, "artistId"),
+            album: SubsonicXml.Attr(element, "album"),
+            albumId: SubsonicXml.Attr(element, "albumId"),
+            coverArtId: SubsonicXml.Attr(element, "coverArt"),
+            duration: TimeSpan.FromSeconds(SubsonicXml.AttrInt(element, "duration") ?? 0),
+            track: SubsonicXml.AttrInt(element, "track"),
+            discNumber: SubsonicXml.AttrInt(element, "discNumber"),
+            year: SubsonicXml.AttrInt(element, "year"),
+            format: SubsonicXml.Attr(element, "suffix"),
+            bitRate: SubsonicXml.AttrInt(element, "bitRate"),
+            contentType: SubsonicXml.Attr(element, "contentType"),
+            isStarred: SubsonicXml.Attr(element, "starred") != null);
     }
 
     private static Artist MapArtist(XElement element)
@@ -375,6 +459,7 @@ public sealed class SubsonicApiClient
             case AlbumListType.Frequent: return "frequent";
             case AlbumListType.Newest: return "newest";
             case AlbumListType.Random: return "random";
+            case AlbumListType.AlphabeticalByName: return "alphabeticalByName";
             default: throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown album list type.");
         }
     }

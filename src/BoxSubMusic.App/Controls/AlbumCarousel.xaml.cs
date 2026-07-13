@@ -17,6 +17,9 @@ namespace BoxSubMusic.App.Controls
         /// <summary>Raised when the user asks to retry after an error.</summary>
         public event RoutedEventHandler RetryRequested;
 
+        /// <summary>Raised when the user activates an album card (Slice 07a).</summary>
+        public event EventHandler<AlbumCard> AlbumClicked;
+
         public AlbumCarousel()
         {
             InitializeComponent();
@@ -73,6 +76,14 @@ namespace BoxSubMusic.App.Controls
         private void RetryButton_Click(object sender, RoutedEventArgs e)
         {
             RetryRequested?.Invoke(this, e);
+        }
+
+        private void AlbumList_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            if (e.ClickedItem is AlbumCard card)
+            {
+                AlbumClicked?.Invoke(this, card);
+            }
         }
     }
 }

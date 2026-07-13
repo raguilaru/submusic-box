@@ -79,7 +79,6 @@ See CLAUDE.local.md for the concrete, machine-local invocations (SSH alias, full
   Rafael drives F5; details in CLAUDE.local.md and docs/STATUS.md.
 
 # Open questions
-- Search result paging/virtualization policy is not yet locked.
+- Search result paging/virtualization policy is not yet locked (browse views settled on incremental loading 2026-07-13; search may follow).
 - Artwork fallback beyond server-provided metadata remains a risk item, not a committed feature.
-- Songs row primary action (immediate playback vs context menu) is not yet locked — ask before Slice 08.
 - Playlist read-only vs editing scope for v1 is not yet locked — ask before Slice 09.

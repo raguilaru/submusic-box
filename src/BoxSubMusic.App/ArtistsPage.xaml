@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:models="using:BoxSubMusic.App.Models"
+    xmlns:controls="using:BoxSubMusic.App.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -25,24 +26,11 @@
                 FontSize="48"
                 FontWeight="SemiBold"
                 VerticalAlignment="Center" />
-            <ToggleButton
+            <controls:ViewModeToggle
                 x:Name="ViewModeToggle"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"
-                MinWidth="140"
-                Padding="16,8"
-                Checked="ViewModeToggle_Changed"
-                Unchecked="ViewModeToggle_Changed"
-                ToolTipService.ToolTip="Switch between grid and list view">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                    <FontIcon
-                        x:Name="ViewModeIcon"
-                        FontFamily="{StaticResource FluentIconFont}"
-                        FontSize="20"
-                        Glyph="&#xF463;" />
-                    <TextBlock x:Name="ViewModeLabel" Text="Grid" FontSize="18" VerticalAlignment="Center" />
-                </StackPanel>
-            </ToggleButton>
+                ModeChanged="ViewModeToggle_Changed" />
         </Grid>
 
         <!-- Content states share row 1; only one is visible at a time. -->
