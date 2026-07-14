@@ -224,6 +224,9 @@ namespace BoxSubMusic.App
             bool listMode = ViewModeToggle.IsListMode;
             AlbumsGrid.Visibility = listMode ? Visibility.Collapsed : Visibility.Visible;
             AlbumsList.Visibility = listMode ? Visibility.Visible : Visibility.Collapsed;
+            // Gamepad down from the toggle always enters the visible view
+            // (see ViewModeToggle.FocusDownTarget).
+            ViewModeToggle.FocusDownTarget = listMode ? (DependencyObject)AlbumsList : AlbumsGrid;
         }
 
         // --- Navigation ------------------------------------------------------

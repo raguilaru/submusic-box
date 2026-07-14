@@ -22,6 +22,20 @@ namespace BoxSubMusic.App.Controls
         /// <summary>True when the alternate list mode is active.</summary>
         public bool IsListMode => Toggle.IsChecked == true;
 
+        /// <summary>
+        /// Where gamepad down goes from the toggle (console finding
+        /// 2026-07-14): the toggle sits at the header's far right, and in
+        /// grid mode the last card column can end well short of the right
+        /// edge — leaving no XY candidate straight below, so the focus
+        /// engine's fallback jumped to the nav pane. Hosts point this at
+        /// whichever view control is currently visible.
+        /// </summary>
+        public DependencyObject FocusDownTarget
+        {
+            get { return Toggle.XYFocusDown; }
+            set { Toggle.XYFocusDown = value; }
+        }
+
         private void Toggle_Changed(object sender, RoutedEventArgs e)
         {
             bool listMode = IsListMode;

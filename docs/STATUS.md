@@ -1,9 +1,9 @@
 # Current Status
 
 Last updated: 2026-07-14 (**Console checkpoint #3 RUN** — the accumulated
-items 1–18 backlog went through on device. Three controller-input findings,
-all fixed the same day; re-verify those three fixes on console, then
-Slice 10.)
+items 1–18 backlog went through on device, followed by several same-day
+fix/re-test rounds. **Session scope decision: this session is bug fixing
+only; Slice 10 starts in a fresh session.**)
 
 ## Where we are
 
@@ -297,10 +297,12 @@ requirements §14 validation-throughout:
 - New slices append their console items to the backlog below **and the next
   checkpoint prompt covers everything still unchecked there**.
 
-**⚠️ Pending now: console verification of the 2026-07-14 restructure — nav
-list with Settings/Account as menu items, the content-owns-focus convention,
-setup gamepad editing, and the album-detail track context menu. The Songs
-context-menu fix is console-verified. Then Slice 10.**
+**⚠️ Pending now: console verification of the XYFocusDown hints (toggle →
+view, favorite heart → list/grid), setup gamepad editing, and the
+album-detail track context menu. Console-verified so far: Songs context
+menu, Settings/Account reachability, the content-owns-focus flows Rafael
+exercised in re-test #4. This session is bug fixing only — Slice 10 starts
+in a fresh session.**
 
 ## Next step (start here next session)
 
@@ -318,16 +320,23 @@ context-menu fix is console-verified. Then Slice 10.**
 Rafael reported three issues (fixed same day — see "Where we are"); no other
 problems were reported. Still open:
 
-1. **Nav restructure:** Settings and Account are now ordinary menu items
-   after a separator — D-pad walks the whole list Search → … → Playlists →
-   Settings → Account and back; A opens them; selection highlight behaves
-   like any section; still correct after hiding/showing sections in
-   Settings; Search/Home unaffected.
-2. **Focus convention (the re-test #3 findings):** opening a section from
-   the nav puts focus into the section's content once loaded; opening
-   artist/album detail puts focus into the detail view (favorite heart
-   area); B-back lands focus in the restored page's content; Songs/browse
-   grids get focus on their first rows/cards after load.
+1. ~~Nav restructure~~ **verified on console 2026-07-14 (re-test #4):
+   Settings and Account are reachable and open by gamepad.** (Hide/show
+   rewiring not explicitly re-checked — fold into the next pass.)
+2. **Focus convention (partially verified, re-test #4):** navigation no
+   longer strands focus in the nav on the flows Rafael exercised, but one
+   inconsistency remained: **gamepad down from the grid/list toggle jumped
+   to the nav pane** in grid mode (the toggle sits far right; the last card
+   column can end short of the right edge, so the XY down-cone was empty
+   and the engine's fallback strayed). Fixed same day with explicit
+   `XYFocusDown` hints: the toggle always enters the currently visible
+   view (`ViewModeToggle.FocusDownTarget`, set in each ApplyViewMode), and
+   the detail pages' favorite heart pins down to the track list / album
+   grid (Play/Shuffle beneath are disabled, hence unfocusable, until
+   Slice 10). **Verify:** down from the toggle lands in the grid (try a
+   grid whose last row doesn't reach the right edge) and in the list;
+   down from the favorite heart lands in the tracks/albums; plus the
+   item-2 flows from before (section/detail/B-back focus).
 3. **Verify setup gamepad editing** (sign out via Account): with the OSK
    dismissed, X deletes a character in the URL/username boxes and LB/RB
    move the caret; X on the password field clears it; the hint line is

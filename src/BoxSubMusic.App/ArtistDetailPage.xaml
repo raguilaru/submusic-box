@@ -42,12 +42,18 @@
                             TextWrapping="Wrap" />
 
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <!-- XYFocusDown: Play/Shuffle below are disabled
+                                 (unfocusable) until Slice 10, so gamepad down
+                                 is pinned to the album grid instead of the XY
+                                 engine's fallback (which could stray to the
+                                 nav pane — console finding 2026-07-14). -->
                             <ToggleButton
                                 x:Name="FavoriteToggle"
                                 MinWidth="0"
                                 Padding="12"
                                 Checked="FavoriteToggle_Changed"
                                 Unchecked="FavoriteToggle_Changed"
+                                XYFocusDown="{x:Bind AlbumsGrid}"
                                 ToolTipService.ToolTip="Favorite">
                                 <FontIcon
                                     x:Name="FavoriteIcon"
