@@ -297,12 +297,12 @@ requirements §14 validation-throughout:
 - New slices append their console items to the backlog below **and the next
   checkpoint prompt covers everything still unchecked there**.
 
-**⚠️ Pending now: console verification of the XYFocusDown hints (toggle →
-view, favorite heart → list/grid), setup gamepad editing, and the
-album-detail track context menu. Console-verified so far: Songs context
-menu, Settings/Account reachability, the content-owns-focus flows Rafael
-exercised in re-test #4. This session is bug fixing only — Slice 10 starts
-in a fresh session.**
+**⚠️ Pending now (backlog below): in-content navigation focus fix, favorite
+heart visibility fix, setup gamepad editing, album-detail track context
+menu, Release run. Console-verified so far: Songs context menu,
+Settings/Account reachability, XYFocusDown hints (toggle/heart), the
+nav-initiated content focus flows. This session is bug fixing only —
+Slice 10 starts in a fresh session.**
 
 ## Next step (start here next session)
 
@@ -323,30 +323,35 @@ problems were reported. Still open:
 1. ~~Nav restructure~~ **verified on console 2026-07-14 (re-test #4):
    Settings and Account are reachable and open by gamepad.** (Hide/show
    rewiring not explicitly re-checked — fold into the next pass.)
-2. **Focus convention (partially verified, re-test #4):** navigation no
-   longer strands focus in the nav on the flows Rafael exercised, but one
-   inconsistency remained: **gamepad down from the grid/list toggle jumped
-   to the nav pane** in grid mode (the toggle sits far right; the last card
-   column can end short of the right edge, so the XY down-cone was empty
-   and the engine's fallback strayed). Fixed same day with explicit
-   `XYFocusDown` hints: the toggle always enters the currently visible
-   view (`ViewModeToggle.FocusDownTarget`, set in each ApplyViewMode), and
-   the detail pages' favorite heart pins down to the track list / album
-   grid (Play/Shuffle beneath are disabled, hence unfocusable, until
-   Slice 10). **Verify:** down from the toggle lands in the grid (try a
-   grid whose last row doesn't reach the right edge) and in the list;
-   down from the favorite heart lands in the tracks/albums; plus the
-   item-2 flows from before (section/detail/B-back focus).
-3. **Verify setup gamepad editing** (sign out via Account): with the OSK
+2. ~~XYFocusDown hints~~ **verified on console 2026-07-14 (re-test #5):
+   toggle → grid/list and favorite heart → tracks/albums all land
+   correctly.**
+3. **Verify in-content navigation focus (re-test #5 finding, fixed same
+   day):** opening album detail from the Albums browse or from an artist's
+   album grid left focus in the nav — `ContentFocus` could run before the
+   just-revealed content (detail pages and Songs keep ALL content in a
+   collapsed-until-loaded panel) had a layout pass, found nothing
+   focusable, and silently gave up. Browse pages escaped it because their
+   always-visible header toggle was findable. Fix: `UpdateLayout()` before
+   the search + bounded retries. **Verify:** card → artist detail, card →
+   album detail (both entry paths), Songs section open, and B-back — focus
+   lands in the new content each time.
+4. **Verify the favorite heart renders (re-test #5 finding, fixed same
+   day):** the heart glyph was invisible on every unstarred item —
+   `UpdateFavoriteVisual` set `Foreground = null`, which paints the glyph
+   with no brush instead of reverting to the theme brush (now
+   `ClearValue`). **Verify:** unstarred = outline heart in theme color,
+   starred = accent fill, on both detail pages and both themes.
+5. **Verify setup gamepad editing** (sign out via Account): with the OSK
    dismissed, X deletes a character in the URL/username boxes and LB/RB
    move the caret; X on the password field clears it; the hint line is
    legible at 10 ft; the Enter-advance/OSK chaining flow still works
    (regression check).
-4. **Verify album detail track context menu:** Menu button on a track row
+6. **Verify album detail track context menu:** Menu button on a track row
    opens the flyout; "Go to artist" navigates; Play shows disabled. (Same
    mechanism as the console-verified Songs menu — expected low-risk.)
-5. ~~Songs context menu~~ **verified working on console 2026-07-14.**
-6. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
+7. ~~Songs context menu~~ **verified working on console 2026-07-14.**
+8. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
    Debug and Release differ under .NET Native, so at least one full Release
    run is needed.
 

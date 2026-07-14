@@ -310,7 +310,18 @@ namespace BoxSubMusic.App
 
         private void UpdateFavoriteVisual(bool starred)
         {
-            FavoriteIcon.Foreground = starred ? _favoriteActiveBrush : null;
+            if (starred)
+            {
+                FavoriteIcon.Foreground = _favoriteActiveBrush;
+            }
+            else
+            {
+                // ClearValue, not null: a null Foreground paints the glyph
+                // with no brush at all — the heart was invisible on every
+                // unstarred item (console finding 2026-07-14). Clearing
+                // restores the inherited theme brush.
+                FavoriteIcon.ClearValue(ForegroundProperty);
+            }
         }
 
         // --- View states -----------------------------------------------------
