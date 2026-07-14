@@ -21,6 +21,9 @@ namespace BoxSubMusic.App
             AlbumsToggle.IsOn = NavigationPreferences.ShowAlbums;
             PlaylistsToggle.IsOn = NavigationPreferences.ShowPlaylists;
             _loadingState = false;
+
+            // Focus convention: content owns focus on arrival (see ContentFocus).
+            Loaded += (s, e) => ContentFocus.MoveInto(this);
         }
 
         private void Toggle_Toggled(object sender, RoutedEventArgs e)

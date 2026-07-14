@@ -53,22 +53,94 @@ namespace BoxSubMusic.App
 
         private void ServerUrlBox_KeyDown(object sender, KeyRoutedEventArgs e)
         {
+            if (HandleGamepadTextEditing(ServerUrlBox, e))
+            {
+                return;
+            }
             AdvanceOnEnter(e, UsernameBox);
         }
 
         private void UsernameBox_KeyDown(object sender, KeyRoutedEventArgs e)
         {
+            if (HandleGamepadTextEditing(UsernameBox, e))
+            {
+                return;
+            }
             AdvanceOnEnter(e, PasswordInput);
         }
 
         private async void PasswordInput_KeyDown(object sender, KeyRoutedEventArgs e)
         {
+            // PasswordBox exposes no caret/selection APIs and the characters
+            // are masked anyway, so character-level gamepad editing is
+            // impossible here: X clears the whole field for a clean retype.
+            if (e.Key == VirtualKey.GamepadX)
+            {
+                PasswordInput.Password = string.Empty;
+                e.Handled = true;
+                return;
+            }
+
             // Last field: Enter submits (§13.1) — the console OSK's accept
             // (Menu-button accelerator) or a hardware keyboard's Enter.
             if (e.Key == VirtualKey.Enter && !_connecting)
             {
                 e.Handled = true;
                 await ConnectAsync();
+            }
+        }
+
+        /// <summary>
+        /// Inline gamepad text editing (console finding 2026-07-14): with the
+        /// OSK dismissed, the controller had no way to fix a typo — the D-pad
+        /// only moves focus. Mirror the Xbox OSK's own accelerators on the
+        /// field itself: X deletes backwards, LB/RB move the caret. These
+        /// keys only ever come from a gamepad, so no device-family gate.
+        /// </summary>
+        private static bool HandleGamepadTextEditing(TextBox box, KeyRoutedEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case VirtualKey.GamepadX:
+                    if (box.SelectionLength > 0)
+                    {
+                        int selectionStart = box.SelectionStart;
+                        box.Text = box.Text.Remove(selectionStart, box.SelectionLength);
+                        box.Select(selectionStart, 0);
+                    }
+                    else if (box.SelectionStart > 0)
+                    {
+                        int caret = box.SelectionStart;
+                        box.Text = box.Text.Remove(caret - 1, 1);
+                        box.Select(caret - 1, 0);
+                    }
+                    e.Handled = true;
+                    return true;
+
+                case VirtualKey.GamepadLeftShoulder:
+                {
+                    // A selection collapses to its start, like a Left arrow.
+                    int target = box.SelectionLength > 0
+                        ? box.SelectionStart
+                        : Math.Max(0, box.SelectionStart - 1);
+                    box.Select(target, 0);
+                    e.Handled = true;
+                    return true;
+                }
+
+                case VirtualKey.GamepadRightShoulder:
+                {
+                    int end = box.SelectionStart + box.SelectionLength;
+                    int target = box.SelectionLength > 0
+                        ? end
+                        : Math.Min(box.Text.Length, end + 1);
+                    box.Select(target, 0);
+                    e.Handled = true;
+                    return true;
+                }
+
+                default:
+                    return false;
             }
         }
 

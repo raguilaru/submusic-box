@@ -1,9 +1,9 @@
 # Current Status
 
-Last updated: 2026-07-14 (Slice 09 Playlists committed; composite tiles now
-center-crop via ImageBrush after VM feedback. **Working mode changed back:
-the Xbox is available again — per-milestone console checkpoints, Claude
-prompts Rafael to test.** The accumulated backlog is the next pass.)
+Last updated: 2026-07-14 (**Console checkpoint #3 RUN** — the accumulated
+items 1–18 backlog went through on device. Three controller-input findings,
+all fixed the same day; re-verify those three fixes on console, then
+Slice 10.)
 
 ## Where we are
 
@@ -193,17 +193,92 @@ prompts Rafael to test.** The accumulated backlog is the next pass.)
   - Live-verified: new `Playlists_ListAndFetchOne` live test passes against
     Navidrome (getPlaylists + getPlaylist round trip).
 
-**Verification state:** x64 Debug compile green over SSH — the App project
-compiles to its .exe including all XAML x:Bind composite bindings (APPX0703 at
-the packaging step is the known command-line-only failure); **29 Core + 59
-SubsonicClient** unit tests green in the VM incl. live Navidrome tests (which
-now also cover getPlaylists/getPlaylist). The setup flow (incl. checkpoint #2
-item 1) is console-verified 2026-07-13. Slices 07a/08/09 are VM-desktop-checked
-only; their console items are in the deferred backlog below.
+- **Console checkpoint #3 (2026-07-14): backlog items 1–18 run on device.**
+  Rafael reported three findings, all controller-input class, all fixed the
+  same day (fixes not yet console-verified):
+  1. **Setup fields were uneditable by controller with the OSK dismissed**
+     (D-pad only moves focus — no delete, no caret movement). Fix: inline
+     gamepad editing on `SetupPage`, mirroring the Xbox OSK's own
+     accelerators — **X = backspace, LB/RB = caret left/right** in the
+     URL/username boxes; on the PasswordBox (masked, and PasswordBox exposes
+     no caret/selection API) **X clears the field** for a clean retype. A
+     static hint line under the fields documents the mapping (dynamic
+     input-glyph swapping stays a later §13.1 item). Gamepad-only virtual
+     keys, so no device-family gate — testable in the VM with the shared
+     controller.
+  2. **The Songs context menu never opened from the gamepad Menu button**
+     (mouse right-click worked). Root cause: the `ContextFlyout` sits on the
+     row template's inner grid, but the gamepad raises `ContextRequested` on
+     the *focused* element — the ListViewItem, the grid's *parent* — and
+     routed events bubble up, never down, so the flyout never saw it. Fix: a
+     ListView-level `ContextRequested` handler redirects the request to the
+     focused row's own flyout (pointer input still resolves at the grid
+     first and marks it handled, so no double-open).
+  3. **Account (footer) was unreachable by gamepad** — the OS
+     NavigationView's `PaneFooter` is a separate XY focus region the gamepad
+     cannot enter. **THREE interception attempts failed on console:**
+     (a) explicit `XYFocusDown`/`Up` hints — never consulted; (b) a bubbling
+     `KeyDown` handler with `handledEventsToo: true` — ran *after* the
+     pane's list had already moved focus, misread positions (the erratic
+     pane focus Rafael saw on re-test #2) and its `Focus()` calls were
+     stomped by the list's in-flight move; (c) a `PreviewKeyDown` tunneling
+     handler — still no Account access on re-test #3. **Final resolution
+     (structural, not another hack): Settings and Account are ordinary menu
+     items at the bottom of the MenuItems list, after a
+     `NavigationViewItemSeparator`; `PaneFooter` is gone.** Focus,
+     selection highlight, and A-invoke all work natively, and all footer
+     machinery was deleted (manual Tapped/KeyDown invoke, hand-mirrored
+     IsSelected, the hop handlers). Trade-off: they sit at the bottom of
+     the list, not pinned to the pane's bottom edge (§16 decision
+     2026-07-14; WinUI 2's FooterMenuItems is the documented upgrade path
+     if pinning is ever wanted).
+
+  **Re-test #1 (2026-07-14):** context-menu fix (2) verified working on
+  console; footer attempt (a) failed. **Re-test #2:** attempt (b) failed +
+  caused erratic pane focus (removed). **Re-test #3:** attempt (c) failed;
+  also surfaced the systemic focus problem below. Setup editing fix (1)
+  still untestable on console (signing out needs Account).
+
+- **Focus architecture pass (2026-07-14, prompted by Rafael's re-test #3
+  findings + explicit request to review the approach):** navigating to any
+  page stranded the controller in the left nav, because Frame navigation
+  destroys the old page's focused element and XAML falls back to the first
+  focusable in the tree — the nav pane. Detail pages *tried* to counter
+  this with a synchronous `FavoriteToggle.Focus(Programmatic)` in
+  ShowContent, which silently failed (the content panel was un-collapsed in
+  the same tick, so the target wasn't focusable yet — and Programmatic
+  draws no focus visual anyway). **Convention now: content owns focus.**
+  New `Services/ContentFocus.MoveInto(root)` defers one low-priority
+  dispatcher pass (so layout has run and list containers exist), then
+  focuses the first focusable element with `FocusState.Keyboard` (visible
+  ring). Called from every page's content-reveal: the six async pages'
+  ShowContent / load completion (Home, Artists, Albums, Songs, Playlists,
+  both detail pages) and Settings/Account on Loaded. Error states already
+  focused their Retry buttons (kept). Known accepted quirk: focus sits in
+  the nav pane during the brief loading state, then moves into content —
+  and a load completing while the user is deliberately browsing the pane
+  will pull focus into the new content.
+
+- **Album detail track rows now have the same Menu-button context menu as
+  Songs rows (console feedback 2026-07-14, re-test #2):** disabled
+  "Play (arrives in a later update)" + **"Go to artist"** (live — "Go to
+  album" would be circular here; disabled when the server sends no artistId).
+  Same console-verified redirect pattern: flyout in the row template for
+  pointer input, ListView-level `ContextRequested` handler for the gamepad.
+  `TrackRow` gained `ArtistId`/`HasArtistId`.
+
+**Verification state:** x64 Debug compile green over SSH after the
+checkpoint-#3 fixes — the App project compiles to its .exe (APPX0703 at the
+packaging step is the known command-line-only failure); **29 Core + 59
+SubsonicClient** unit tests green in the VM incl. live Navidrome tests (no
+library code changed since that run). Slices 03–09 have now been exercised on
+the console (checkpoint #3, 2026-07-14); only the three same-day fixes await
+console re-verification (backlog below).
 
 **Git state:** `main` holds the setup-flow fix (`f5e1908`), the Slice 07a + 08
-commit (`d0cb046`), the Slice 09 commit (`6174e22`), and the composite
-center-crop fix + working-mode docs commit; working tree clean.
+commit (`d0cb046`), the Slice 09 commit (`6174e22`), the composite
+center-crop fix + working-mode docs commit (`52fa145`), and the checkpoint-#3
+input fixes + focus architecture commit; working tree clean.
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -222,85 +297,49 @@ requirements §14 validation-throughout:
 - New slices append their console items to the backlog below **and the next
   checkpoint prompt covers everything still unchecked there**.
 
-**⚠️ Pending now: the accumulated backlog (items 1–18) has never run on the
-console. It is the next checkpoint — run it before or right after starting
-Slice 10.**
+**⚠️ Pending now: console verification of the 2026-07-14 restructure — nav
+list with Settings/Account as menu items, the content-owns-focus convention,
+setup gamepad editing, and the album-detail track context menu. The Songs
+context-menu fix is console-verified. Then Slice 10.**
 
 ## Next step (start here next session)
 
-1. **Console checkpoint first:** prompt Rafael to run the accumulated
-   on-device backlog below (items 1–18) — the console is available again and
-   none of it has run on real hardware.
+1. **Quick console re-verify** of the three checkpoint-#3 fixes (backlog
+   below).
 2. Then **Slice 10 (now-playing bar + queue)** — the big unblocker for
    05b/06b/07b, the Songs row action, and the playlist detail/playback view
    deferred out of 09 — then 11 (expanded queue), 12 is done in essence
    (theme selector still missing — check §12), 13 (Search; §17 paging
    decision), 05b/06b/07b wiring, 14 (resilience/polish).
 
-## On-device test backlog (accumulated 2026-07-13→14; next console pass)
+## On-device test backlog (next console pass)
 
-One pass: VS in VM, Solution Platform x64, Remote Machine 10.0.0.28, F5,
-Xbox in Dev Mode. Also fold in the **Release|x64 .NET Native build
-validation** (per the build plan) — Debug and Release differ under
-.NET Native, so at least one full Release run.
+**Checkpoint #3 (2026-07-14) ran the previously accumulated items 1–18.**
+Rafael reported three issues (fixed same day — see "Where we are"); no other
+problems were reported. Still open:
 
-**Carried over from checkpoint #2 (2026-07-10 list; setup flow item verified
-2026-07-13, the rest not itemized — re-verify quickly):**
-1. LAN capability: connect to the Pi (`http://10.0.0.5:4533` if
-   `raspberrypi.local` fails — mDNS from UWP on console unverified).
-2. Credential persistence: quit + relaunch → straight to shell; Account
-   shows server + username.
-3. Shell: D-pad nav order, Fluent icons render, pane collapse/expand, footer
-   Settings/Account respond to A, focus visible at 10 ft, both themes.
-4. Nav toggles: hide/show Artists/Albums/Playlists, persist across relaunch;
-   Search/Home always present.
-5. Sign out → setup; B does not re-enter the shell; relaunch lands on setup.
-6. Home (05a): carousels load with real albums; cover art renders
-   (authenticated getCoverArt → BitmapImage — first console test); D-pad
-   travel; error states with focused Retry.
-7. Artists (06a): grid + artwork; grid/list toggle (now the shared control);
-   detail artwork/name/counts; favorite heart toggles and persists
-   (star/unstar write path); heart legibility at 10 ft (color-only state).
-
-**From Slices 07a + 08 (2026-07-13):**
-8. Albums browse: grid loads A→Z with artwork; **scroll across a 100-item
-   page boundary** (first console test of incremental loading — watch for
-   hitches/focus jumps as pages append); toggle flips modes; A opens detail.
-9. Album detail: artwork, title, artist, year, counts + total duration;
-   favorite heart persists across leave/re-enter; track list in disc/track
-   order (use a multi-disc album if available); Play/Shuffle visibly
-   disabled; track rows focusable but inert.
-10. Card navigation: Home carousel card → album detail; artist detail album
-    card → album detail; Albums browse card → album detail.
-11. B-button back: walks back through detail pages and sections; nav
-    highlight resyncs; B on a section root does NOT exit the app to setup;
-    after sign-out B does not re-enter the shell.
-12. Songs: all six columns readable at 10 ft (widths are a first guess —
-    expect tuning); scroll across a page boundary; **Menu button on a row
-    opens the context menu** (console-only platform mapping, unverifiable on
-    desktop — confirmed working only via mouse right-click in the VM);
-    "Go to album" navigates; Play shows disabled; the "playback arrives
-    later" note is visible.
-13. Setup-flow regression (verified once 2026-07-13, re-check after changes):
-    OSK accept/Menu-button advances URL → username → password → connect;
-    keyboard re-opens on each next field.
-14. Both themes across all new pages; focus visible everywhere.
-
-**From Slice 09 (2026-07-13):**
-15. Playlists browse: grid loads with real playlists; toggle flips grid/list;
-    the "opening a playlist / playback arrives later" note is visible; tiles
-    are focusable but pressing A does nothing (inert by design).
-16. **Composite artwork:** tiles start on the placeholder and fill in as each
-    playlist's covers resolve (lazy parallel load — watch the fill-in feel with
-    many playlists); the composite adapts to the cover count with no empty
-    cells — 2 albums = two full-height halves, 3 = one full-height + two
-    stacked, 4 = 2×2; partial cells center-crop (the middle of the art, not
-    its left edge); a single-album playlist shows one full cover, an artless
-    playlist stays on the placeholder. Check composite legibility at 10 ft
-    (a 2×2 of small covers can read as clutter on a TV).
-17. Playlists with many entries: confirm the per-tile getPlaylist fan-out
-    doesn't stall the shell (N parallel requests on page open).
-18. Both themes on the Playlists page; focus visible on tiles at 10 ft.
+1. **Nav restructure:** Settings and Account are now ordinary menu items
+   after a separator — D-pad walks the whole list Search → … → Playlists →
+   Settings → Account and back; A opens them; selection highlight behaves
+   like any section; still correct after hiding/showing sections in
+   Settings; Search/Home unaffected.
+2. **Focus convention (the re-test #3 findings):** opening a section from
+   the nav puts focus into the section's content once loaded; opening
+   artist/album detail puts focus into the detail view (favorite heart
+   area); B-back lands focus in the restored page's content; Songs/browse
+   grids get focus on their first rows/cards after load.
+3. **Verify setup gamepad editing** (sign out via Account): with the OSK
+   dismissed, X deletes a character in the URL/username boxes and LB/RB
+   move the caret; X on the password field clears it; the hint line is
+   legible at 10 ft; the Enter-advance/OSK chaining flow still works
+   (regression check).
+4. **Verify album detail track context menu:** Menu button on a track row
+   opens the flyout; "Go to artist" navigates; Play shows disabled. (Same
+   mechanism as the console-verified Songs menu — expected low-risk.)
+5. ~~Songs context menu~~ **verified working on console 2026-07-14.**
+6. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
+   Debug and Release differ under .NET Native, so at least one full Release
+   run is needed.
 
 *(Future slices: append your console items here.)*
 
@@ -330,9 +369,14 @@ validation** (per the build plan) — Debug and Release differ under
 - Carousel focus is plain XY navigation (no focus engagement); crossing a
   long carousel vertically means stepping through whichever card is below.
   Same applies to the new browse grids. Revisit after the console feel-test.
-- Footer nav items (Settings/Account) sit outside NavigationView's selection
-  model; selection visuals are mirrored manually (now also resynced after
-  B-back) — verify they look right on device.
+- Settings/Account are ordinary menu items since 2026-07-14 (PaneFooter was a
+  gamepad focus dead zone); they participate in the normal selection model.
+  They sit at the bottom of the list, not pinned to the pane's bottom edge —
+  accepted §16 trade-off.
+- The content-owns-focus convention steals focus when a page's initial load
+  completes; if the user is deliberately browsing the nav pane while a slow
+  page loads, focus will jump into the content. Accepted for v1 — loads are
+  fast and the alternative (guards) adds complexity.
 - The remaining placeholder section page (Search) has no focusable content,
   so Right-into-content has no target there. Fine until that slice lands.
 - **Playlists are read-only (Slice 09):** tiles are focusable but inert — no

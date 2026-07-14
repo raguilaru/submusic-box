@@ -8,16 +8,25 @@ namespace BoxSubMusic.App.Models
     /// </summary>
     public sealed class TrackRow
     {
-        public TrackRow(string id, string number, string title, string artist, string durationLabel)
+        public TrackRow(string id, string number, string title, string artist, string durationLabel, string artistId)
         {
             Id = id;
             Number = number;
             Title = title;
             Artist = artist;
             DurationLabel = durationLabel;
+            ArtistId = artistId;
         }
 
         public string Id { get; }
+
+        /// <summary>Id for the context menu's "Go to artist"; may be null.</summary>
+        public string ArtistId { get; }
+
+        public bool HasArtistId
+        {
+            get { return !string.IsNullOrEmpty(ArtistId); }
+        }
 
         /// <summary>Track number as display text; empty when the server has none.</summary>
         public string Number { get; }

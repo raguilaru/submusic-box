@@ -11,6 +11,8 @@ using BoxSubMusic.SubsonicClient.Models;
 using Windows.UI;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Controls.Primitives;
+using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
@@ -188,7 +190,36 @@ namespace BoxSubMusic.App
                 song.Track?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 song.Title,
                 artist,
-                FormatTrackDuration(song.Duration));
+                FormatTrackDuration(song.Duration),
+                song.ArtistId);
+        }
+
+        // --- Context menu (console feedback 2026-07-14: same secondary-action
+        // menu as the Songs page; "Go to artist" instead of the circular
+        // "Go to album") --------------------------------------------------------
+
+        private void TracksList_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
+        {
+            // The gamepad Menu button raises ContextRequested on the focused
+            // ListViewItem, but the flyout sits on the item's child grid and
+            // routed events bubble up, never down — redirect, exactly as on
+            // SongsPage (that redirect is console-verified).
+            var container = args.OriginalSource as SelectorItem;
+            var root = container?.ContentTemplateRoot as FrameworkElement;
+            if (root?.ContextFlyout != null)
+            {
+                root.ContextFlyout.ShowAt(root);
+                args.Handled = true;
+            }
+        }
+
+        private void GoToArtist_Click(object sender, RoutedEventArgs e)
+        {
+            var row = (sender as FrameworkElement)?.Tag as TrackRow;
+            if (row != null && row.HasArtistId)
+            {
+                Frame.Navigate(typeof(ArtistDetailPage), row.ArtistId);
+            }
         }
 
         private static string FormatTrackDuration(TimeSpan duration)
@@ -297,9 +328,12 @@ namespace BoxSubMusic.App
             ErrorPanel.Visibility = Visibility.Collapsed;
             ContentScroller.Visibility = Visibility.Visible;
 
-            // Controller-first: give the favorite toggle initial focus so the
-            // detail view has a focused element when entered from a grid.
-            FavoriteToggle.Focus(FocusState.Programmatic);
+            // Focus convention: loaded content owns focus (see ContentFocus).
+            // The old synchronous Programmatic focus here silently failed on
+            // console — the content panel was un-collapsed in the same tick,
+            // so the toggle was not yet focusable, and Programmatic draws no
+            // focus visual anyway.
+            ContentFocus.MoveInto(this);
         }
 
         private void ShowError(string message)

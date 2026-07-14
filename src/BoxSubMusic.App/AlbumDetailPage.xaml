@@ -115,7 +115,8 @@
                     <ListView
                         x:Name="TracksList"
                         SelectionMode="None"
-                        IsItemClickEnabled="False">
+                        IsItemClickEnabled="False"
+                        ContextRequested="TracksList_ContextRequested">
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
                                 <Setter Property="Padding" Value="12,10" />
@@ -124,7 +125,29 @@
                         </ListView.ItemContainerStyle>
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:TrackRow">
-                                <Grid ColumnSpacing="16">
+                                <Grid ColumnSpacing="16" Background="Transparent">
+                                    <Grid.ContextFlyout>
+                                        <!-- Same pattern as the Songs page
+                                             (console feedback 2026-07-14):
+                                             pointer right-click opens this
+                                             directly; the gamepad Menu button
+                                             raises ContextRequested on the
+                                             focused ListViewItem, redirected
+                                             here by the ListView handler.
+                                             "Go to album" would be circular on
+                                             this page, so the live action is
+                                             "Go to artist". -->
+                                        <MenuFlyout>
+                                            <MenuFlyoutItem
+                                                Text="Play (arrives in a later update)"
+                                                IsEnabled="False" />
+                                            <MenuFlyoutItem
+                                                Text="Go to artist"
+                                                Tag="{x:Bind}"
+                                                IsEnabled="{x:Bind HasArtistId}"
+                                                Click="GoToArtist_Click" />
+                                        </MenuFlyout>
+                                    </Grid.ContextFlyout>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="48" />
                                         <ColumnDefinition Width="*" />

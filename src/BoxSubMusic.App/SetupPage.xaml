@@ -66,6 +66,15 @@
                 TabIndex="2"
                 KeyDown="PasswordInput_KeyDown" />
 
+            <!-- Inline gamepad editing hint (console finding 2026-07-14).
+                 Static for now; dynamic input-glyph swapping is a §13.1
+                 SHOULD deferred to a later slice. -->
+            <TextBlock
+                Text="Controller: X deletes · LB / RB move the cursor · X on the password clears it"
+                FontSize="16"
+                Opacity="0.55"
+                TextWrapping="Wrap" />
+
             <TextBlock
                 x:Name="ErrorText"
                 Visibility="Collapsed"

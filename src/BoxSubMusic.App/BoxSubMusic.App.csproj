@@ -168,6 +168,7 @@
       <DependentUpon>AccountPage.xaml</DependentUpon>
     </Compile>
     <Compile Include="Services\AppSession.cs" />
+    <Compile Include="Services\ContentFocus.cs" />
     <Compile Include="Services\CredentialStore.cs" />
     <Compile Include="Services\NavigationPreferences.cs" />
     <Compile Include="Services\PlaybackService.cs" />

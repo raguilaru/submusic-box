@@ -185,6 +185,9 @@ namespace BoxSubMusic.App
             EmptyText.Visibility = Visibility.Collapsed;
             ConnectErrorPanel.Visibility = Visibility.Collapsed;
             ApplyViewMode();
+
+            // Focus convention: loaded content owns focus (see ContentFocus).
+            ContentFocus.MoveInto(this);
         }
 
         private void ShowConnectError(string message)

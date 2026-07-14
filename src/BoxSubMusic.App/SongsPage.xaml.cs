@@ -10,6 +10,8 @@ using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Controls.Primitives;
+using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Navigation;
 
 namespace BoxSubMusic.App
@@ -187,6 +189,24 @@ namespace BoxSubMusic.App
 
         // --- Context menu (decision 2026-07-13: secondary actions) -----------
 
+        private void SongsList_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
+        {
+            // Console finding 2026-07-14: the gamepad Menu button raises
+            // ContextRequested on the FOCUSED element — the ListViewItem —
+            // but the flyout sits on the item's child grid, and routed
+            // events bubble up, never down. So the menu only ever opened for
+            // pointer input (right-click starts at the grid itself, which
+            // handles it before reaching here). Redirect the container-level
+            // request to the row's own flyout.
+            var container = args.OriginalSource as SelectorItem;
+            var root = container?.ContentTemplateRoot as FrameworkElement;
+            if (root?.ContextFlyout != null)
+            {
+                root.ContextFlyout.ShowAt(root);
+                args.Handled = true;
+            }
+        }
+
         private void GoToAlbum_Click(object sender, RoutedEventArgs e)
         {
             var row = (sender as FrameworkElement)?.Tag as SongRow;
@@ -220,6 +240,9 @@ namespace BoxSubMusic.App
             EmptyText.Visibility = Visibility.Collapsed;
             ConnectErrorPanel.Visibility = Visibility.Collapsed;
             SongsPanel.Visibility = Visibility.Visible;
+
+            // Focus convention: loaded content owns focus (see ContentFocus).
+            ContentFocus.MoveInto(this);
         }
 
         private void ShowConnectError(string message)

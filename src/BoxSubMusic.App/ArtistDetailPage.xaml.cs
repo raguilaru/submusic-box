@@ -253,9 +253,12 @@ namespace BoxSubMusic.App
             ErrorPanel.Visibility = Visibility.Collapsed;
             ContentScroller.Visibility = Visibility.Visible;
 
-            // Controller-first: give the favorite toggle initial focus so the
-            // detail view has a focused element when entered from the grid.
-            FavoriteToggle.Focus(FocusState.Programmatic);
+            // Focus convention: loaded content owns focus (see ContentFocus).
+            // The old synchronous Programmatic focus here silently failed on
+            // console — the content panel was un-collapsed in the same tick,
+            // so the toggle was not yet focusable, and Programmatic draws no
+            // focus visual anyway.
+            ContentFocus.MoveInto(this);
         }
 
         private void ShowError(string message)

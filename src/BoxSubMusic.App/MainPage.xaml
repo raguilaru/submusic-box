@@ -11,9 +11,10 @@
     <!--
     Slice 04 (requirements §5): the application shell. Persistent collapsible
     left nav in the fixed order Search, Home, Artists, Albums, Songs,
-    Playlists; Settings and Account live in the bottom pane area. The built-in
-    NavigationView settings item is disabled because its gear glyph is Segoe
-    MDL2 — mixing icon sets violates §13.3 (Fluent UI System Icons only).
+    Playlists, then Settings and Account after a separator (moved out of
+    PaneFooter 2026-07-14 — see the note below). The built-in NavigationView
+    settings item is disabled because its gear glyph is Segoe MDL2 — mixing
+    icon sets violates §13.3 (Fluent UI System Icons only).
     -->
     <NavigationView
         x:Name="NavView"
@@ -55,36 +56,27 @@
                     <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
-        </NavigationView.MenuItems>
 
-        <!-- §5: Settings, then account/server info, in the bottom area. The
-             OS NavigationView has no FooterMenuItems, so these are manually
-             invoked footer items (Tapped for pointer, KeyDown for gamepad A
-             and keyboard Enter/Space). -->
-        <NavigationView.PaneFooter>
-            <StackPanel>
-                <NavigationViewItem
-                    x:Name="SettingsNavItem"
-                    Content="Settings"
-                    Tag="settings"
-                    Tapped="FooterItem_Tapped"
-                    KeyDown="FooterItem_KeyDown">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF6AA;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem
-                    x:Name="AccountNavItem"
-                    Content="Account"
-                    Tag="account"
-                    Tapped="FooterItem_Tapped"
-                    KeyDown="FooterItem_KeyDown">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE929;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-            </StackPanel>
-        </NavigationView.PaneFooter>
+            <!-- §5: Settings, then Account, as the bottom of the nav order.
+                 These lived in PaneFooter until 2026-07-14, but the OS
+                 NavigationView's footer is a separate XY focus region the
+                 gamepad could not reach (three interception approaches
+                 failed on console). As ordinary menu items after a
+                 separator, focus, selection, and invoke all work natively.
+                 The trade-off — bottom of the list instead of pinned to the
+                 pane's bottom edge — is a recorded §16 decision. -->
+            <NavigationViewItemSeparator />
+            <NavigationViewItem x:Name="SettingsNavItem" Content="Settings" Tag="settings">
+                <NavigationViewItem.Icon>
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF6AA;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem x:Name="AccountNavItem" Content="Account" Tag="account">
+                <NavigationViewItem.Icon>
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE929;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+        </NavigationView.MenuItems>
 
         <Frame x:Name="ContentFrame" />
     </NavigationView>

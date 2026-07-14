@@ -92,15 +92,6 @@ namespace BoxSubMusic.App
 
         private void SyncNavSelection(string tag)
         {
-            bool isFooter = tag == "settings" || tag == "account";
-            SettingsNavItem.IsSelected = tag == "settings";
-            AccountNavItem.IsSelected = tag == "account";
-            if (isFooter)
-            {
-                NavView.SelectedItem = null;
-                return;
-            }
-
             foreach (var candidate in NavView.MenuItems)
             {
                 if (candidate is NavigationViewItem item && (item.Tag as string) == tag)
@@ -133,40 +124,6 @@ namespace BoxSubMusic.App
                 return;
             }
 
-            // A menu selection supersedes any footer "selection".
-            SettingsNavItem.IsSelected = false;
-            AccountNavItem.IsSelected = false;
-            NavigateToSection(item.Tag as string);
-        }
-
-        private void FooterItem_Tapped(object sender, TappedRoutedEventArgs e)
-        {
-            InvokeFooterItem(sender as NavigationViewItem);
-            e.Handled = true;
-        }
-
-        private void FooterItem_KeyDown(object sender, KeyRoutedEventArgs e)
-        {
-            if (e.Key == VirtualKey.GamepadA || e.Key == VirtualKey.Enter || e.Key == VirtualKey.Space)
-            {
-                InvokeFooterItem(sender as NavigationViewItem);
-                e.Handled = true;
-            }
-        }
-
-        private void InvokeFooterItem(NavigationViewItem item)
-        {
-            if (item == null)
-            {
-                return;
-            }
-
-            // Footer items sit outside the NavigationView selection model
-            // (no FooterMenuItems in OS XAML), so selection is mirrored by
-            // hand: clear the menu selection, mark the invoked footer item.
-            NavView.SelectedItem = null;
-            SettingsNavItem.IsSelected = ReferenceEquals(item, SettingsNavItem);
-            AccountNavItem.IsSelected = ReferenceEquals(item, AccountNavItem);
             NavigateToSection(item.Tag as string);
         }
 
@@ -226,10 +183,7 @@ namespace BoxSubMusic.App
                 // Left at the content's edge: return focus to the nav pane.
                 if (!FocusManager.TryMoveFocus(FocusNavigationDirection.Left))
                 {
-                    var target = (NavView.SelectedItem as NavigationViewItem)
-                        ?? (SettingsNavItem.IsSelected ? SettingsNavItem : null)
-                        ?? (AccountNavItem.IsSelected ? AccountNavItem : null)
-                        ?? HomeNavItem;
+                    var target = (NavView.SelectedItem as NavigationViewItem) ?? HomeNavItem;
                     target.Focus(FocusState.Keyboard);
                 }
                 e.Handled = true;

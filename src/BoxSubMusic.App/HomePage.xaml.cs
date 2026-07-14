@@ -97,6 +97,12 @@ namespace BoxSubMusic.App
                 LoadCarouselAsync(MostPlayedCarousel, AlbumListType.Frequent, cancellationToken),
                 LoadCarouselAsync(RecentlyAddedCarousel, AlbumListType.Newest, cancellationToken),
                 LoadCarouselAsync(RandomPicksCarousel, AlbumListType.Random, cancellationToken));
+
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                // Focus convention: loaded content owns focus (see ContentFocus).
+                ContentFocus.MoveInto(this);
+            }
         }
 
         private async Task LoadCarouselAsync(

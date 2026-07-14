@@ -105,7 +105,8 @@
                     x:Name="SongsList"
                     Grid.Row="1"
                     SelectionMode="None"
-                    IsItemClickEnabled="False">
+                    IsItemClickEnabled="False"
+                    ContextRequested="SongsList_ContextRequested">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="Padding" Value="12,10" />
@@ -116,8 +117,13 @@
                         <DataTemplate x:DataType="models:SongRow">
                             <Grid ColumnSpacing="16" Background="Transparent">
                                 <Grid.ContextFlyout>
-                                    <!-- Secondary actions (decision 2026-07-13);
-                                         the Menu button opens this on Xbox. -->
+                                    <!-- Secondary actions (decision 2026-07-13).
+                                         Pointer right-click opens this directly;
+                                         the gamepad Menu button raises
+                                         ContextRequested on the focused
+                                         ListViewItem instead, which the
+                                         ListView-level handler redirects here
+                                         (console finding 2026-07-14). -->
                                     <MenuFlyout>
                                         <MenuFlyoutItem
                                             Text="Play (arrives in a later update)"

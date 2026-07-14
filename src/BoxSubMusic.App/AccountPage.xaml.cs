@@ -16,6 +16,9 @@ namespace BoxSubMusic.App
         public AccountPage()
         {
             InitializeComponent();
+
+            // Focus convention: content owns focus on arrival (see ContentFocus).
+            Loaded += (s, e) => ContentFocus.MoveInto(this);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
