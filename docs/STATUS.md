@@ -1,9 +1,9 @@
 # Current Status
 
-Last updated: 2026-07-14 (Slice 09 Playlists committed, incl. the adaptive
-composite-tile layout after VM feedback; playlist editing scope resolved to
-read-only. Working mode: build all features first, one big console test pass
-at the end).
+Last updated: 2026-07-14 (Slice 09 Playlists committed; composite tiles now
+center-crop via ImageBrush after VM feedback. **Working mode changed back:
+the Xbox is available again — per-milestone console checkpoints, Claude
+prompts Rafael to test.** The accumulated backlog is the next pass.)
 
 ## Where we are
 
@@ -182,8 +182,11 @@ at the end).
     update post-paint. Single-album playlists render one full cover; multi-album
     render an **adaptive composite with no empty cells** (2 covers =
     full-height halves side by side, 3 = one full-height + two stacked, 4 =
-    2×2 — via x:Bind-driven Grid.RowSpan; reworked same day after Rafael's VM
-    screenshot showed the 2-cover case wasting the bottom half); while
+    2×2 — via x:Bind-driven Grid.RowSpan; reworked after Rafael's VM
+    screenshots showed the 2-cover case wasting the bottom half). Covers
+    render as **ImageBrush fills so partial cells center-crop** — Image's
+    UniformToFill crops from the top-left, which showed the left edge of the
+    art instead of its middle (second round of 2026-07-14 VM feedback); while
     loading or artless the placeholder (same official Fluent codepoint as the
     Playlists nav item) shows through. A per-tile fetch failure degrades to the
     placeholder — the page does not fail.
@@ -199,41 +202,46 @@ item 1) is console-verified 2026-07-13. Slices 07a/08/09 are VM-desktop-checked
 only; their console items are in the deferred backlog below.
 
 **Git state:** `main` holds the setup-flow fix (`f5e1908`), the Slice 07a + 08
-commit (`d0cb046`), and the Slice 09 commit (client models/methods, Core
-`PlaylistArtwork`, `PlaylistsPage`/`PlaylistCard` with the adaptive composite,
-shell routing, tests, docs); working tree clean.
+commit (`d0cb046`), the Slice 09 commit (`6174e22`), and the composite
+center-crop fix + working-mode docs commit; working tree clean.
 
-## Working mode (decided 2026-07-13)
+## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
-The Xbox is temporarily unavailable for testing. Development continues
-**Xbox-first in design** (controller-first, 10-ft, XY focus, per CLAUDE.md)
-but WITHOUT per-slice console checkpoints: implement the remaining slices in
-order, then run **one consolidated on-device test pass at the end** using the
-backlog below. This deviates from requirements §14 ("validation throughout")
-deliberately and temporarily — hardware constraint, not a process choice.
+The Xbox is available for testing again (it was temporarily unavailable
+2026-07-13→14, which produced the deferred backlog below). Back to
+requirements §14 validation-throughout:
 
-Rules for every slice implemented in this mode:
-- VM arm64 Local Machine F5 remains the interim smoke test, with its known
-  blind spots: no Xbox mouse-mode class bugs, no Menu-button→ContextFlyout
-  (console-only platform mapping — right-click stands in on desktop), no OSK,
-  no real 10-ft/TV rendering, gamepad OK via Parallels sharing.
-- **Every new slice MUST append its console-specific test items to the
-  backlog below** instead of scheduling a checkpoint.
+- **Milestone checkpoints:** when a slice (or coherent group of slices) lands,
+  Claude MUST prompt Rafael to run the relevant console test items — do not
+  silently defer them. Rafael drives F5 in VS (see "How to deploy" below).
+- VM arm64 Local Machine F5 remains the pre-checkpoint smoke test, with its
+  known blind spots: no Xbox mouse-mode class bugs, no
+  Menu-button→ContextFlyout (console-only platform mapping — right-click
+  stands in on desktop), no OSK, no real 10-ft/TV rendering, gamepad OK via
+  Parallels sharing.
+- New slices append their console items to the backlog below **and the next
+  checkpoint prompt covers everything still unchecked there**.
 
-## Next step: continue slicing (start here next session)
+**⚠️ Pending now: the accumulated backlog (items 1–18) has never run on the
+console. It is the next checkpoint — run it before or right after starting
+Slice 10.**
 
-Slice 09 (Playlists, read-only) is code-complete. Next: **Slice 10
-(now-playing bar + queue)** — the big unblocker for 05b/06b/07b, the Songs row
-action, and the playlist detail/playback view deferred out of 09 — then 11
-(expanded queue), 12 is done in essence (theme selector still missing — check
-§12), 13 (Search; §17 paging decision), 05b/06b/07b wiring, 14
-(resilience/polish).
+## Next step (start here next session)
 
-## Deferred on-device test backlog (run when the console is back)
+1. **Console checkpoint first:** prompt Rafael to run the accumulated
+   on-device backlog below (items 1–18) — the console is available again and
+   none of it has run on real hardware.
+2. Then **Slice 10 (now-playing bar + queue)** — the big unblocker for
+   05b/06b/07b, the Songs row action, and the playlist detail/playback view
+   deferred out of 09 — then 11 (expanded queue), 12 is done in essence
+   (theme selector still missing — check §12), 13 (Search; §17 paging
+   decision), 05b/06b/07b wiring, 14 (resilience/polish).
 
-One consolidated pass: VS in VM, Solution Platform x64, Remote Machine
-10.0.0.28, F5, Xbox in Dev Mode. Also fold in the **Release|x64 .NET Native
-build validation** (per the build plan) — Debug and Release differ under
+## On-device test backlog (accumulated 2026-07-13→14; next console pass)
+
+One pass: VS in VM, Solution Platform x64, Remote Machine 10.0.0.28, F5,
+Xbox in Dev Mode. Also fold in the **Release|x64 .NET Native build
+validation** (per the build plan) — Debug and Release differ under
 .NET Native, so at least one full Release run.
 
 **Carried over from checkpoint #2 (2026-07-10 list; setup flow item verified
@@ -286,7 +294,8 @@ build validation** (per the build plan) — Debug and Release differ under
     playlist's covers resolve (lazy parallel load — watch the fill-in feel with
     many playlists); the composite adapts to the cover count with no empty
     cells — 2 albums = two full-height halves, 3 = one full-height + two
-    stacked, 4 = 2×2; a single-album playlist shows one full cover, an artless
+    stacked, 4 = 2×2; partial cells center-crop (the middle of the art, not
+    its left edge); a single-album playlist shows one full cover, an artless
     playlist stays on the placeholder. Check composite legibility at 10 ft
     (a 2×2 of small covers can read as clutter on a TV).
 17. Playlists with many entries: confirm the per-tile getPlaylist fan-out
@@ -334,11 +343,14 @@ build validation** (per the build plan) — Debug and Release differ under
   playlists this fans out to many parallel getPlaylist requests on page open —
   acceptable for v1, revisit if it stalls the shell on device.
 - **Composite artwork is a live XAML layout, not a rendered bitmap:** the tile
-  is composed from BitmapImages in a 2-column grid whose row spans adapt to
+  is a 2-column grid of ImageBrush-filled Rectangles whose row spans adapt to
   the cover count (2 = side-by-side halves, 3 = full-height + stacked,
-  4 = 2×2), so no cell is ever empty. No client-generated single flattened
-  image. Server-provided playlist coverArt is intentionally NOT used (§7.4
-  requires client-side composition).
+  4 = 2×2), so no cell is ever empty; ImageBrush (unlike Image) center-crops,
+  so partial cells show the middle of the artwork. No client-generated single
+  flattened image. Server-provided playlist coverArt is intentionally NOT
+  used (§7.4 requires client-side composition). The 3-cover "one big + two
+  stacked" layout was evaluated against vertical thirds (≈66 epx strips —
+  illegible at 10 ft) and kept.
 - Hiding the currently open section from Settings leaves its content shown
   until the next selection. Acceptable for now.
 - Detail pages reached from a hidden-then-shown section, and section history
