@@ -140,6 +140,7 @@
     <Compile Include="Models\AlbumCard.cs" />
     <Compile Include="Models\ArtistCard.cs" />
     <Compile Include="Models\IncrementalSource.cs" />
+    <Compile Include="Models\PlaylistCard.cs" />
     <Compile Include="Models\SongRow.cs" />
     <Compile Include="Models\TrackRow.cs" />
     <Compile Include="ArtistsPage.xaml.cs">
@@ -156,6 +157,9 @@
     </Compile>
     <Compile Include="SongsPage.xaml.cs">
       <DependentUpon>SongsPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="PlaylistsPage.xaml.cs">
+      <DependentUpon>PlaylistsPage.xaml</DependentUpon>
     </Compile>
     <Compile Include="SettingsPage.xaml.cs">
       <DependentUpon>SettingsPage.xaml</DependentUpon>
@@ -234,6 +238,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="SongsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="PlaylistsPage.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

@@ -197,6 +197,38 @@ public sealed class SubsonicApiClient
     }
 
     /// <summary>
+    /// getPlaylists — the user's playlists (requirements §7.4). Returns
+    /// summaries only; the track list (needed to compose tile artwork) comes
+    /// from <see cref="GetPlaylistAsync"/> per playlist.
+    /// </summary>
+    public async Task<IReadOnlyList<Playlist>> GetPlaylistsAsync(CancellationToken cancellationToken = default)
+    {
+        var root = await ExecuteAsync("getPlaylists", null, cancellationToken).ConfigureAwait(false);
+        var playlists = SubsonicXml.Element(root, "playlists")
+            ?? throw new SubsonicConnectionException("The server response is missing the <playlists> element.");
+        return SubsonicXml.Elements(playlists, "playlist").Select(MapPlaylist).ToList();
+    }
+
+    /// <summary>
+    /// getPlaylist — one playlist plus its songs (requirements §7.4). Songs are
+    /// returned as &lt;entry&gt; children in stored order; the client composes
+    /// tile artwork from their album covers.
+    /// </summary>
+    public async Task<PlaylistDetail> GetPlaylistAsync(string id, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            throw new ArgumentException("A playlist id is required.", nameof(id));
+
+        var parameters = new List<KeyValuePair<string, string>> { Param("id", id) };
+        var root = await ExecuteAsync("getPlaylist", parameters, cancellationToken).ConfigureAwait(false);
+        var element = SubsonicXml.Element(root, "playlist")
+            ?? throw new SubsonicConnectionException("The server response is missing the <playlist> element.");
+
+        var songs = SubsonicXml.Elements(element, "entry").Select(MapSong).ToList();
+        return new PlaylistDetail(MapPlaylist(element), songs);
+    }
+
+    /// <summary>
     /// star — mark an item (artist/album/song id) as a favorite (§8). The
     /// server echoes an empty ok envelope; a failure surfaces as an exception.
     /// </summary>
@@ -432,6 +464,24 @@ public sealed class SubsonicApiClient
             bitRate: SubsonicXml.AttrInt(element, "bitRate"),
             contentType: SubsonicXml.Attr(element, "contentType"),
             isStarred: SubsonicXml.Attr(element, "starred") != null);
+    }
+
+    private static Playlist MapPlaylist(XElement element)
+    {
+        var id = SubsonicXml.Attr(element, "id");
+        if (string.IsNullOrEmpty(id))
+        {
+            throw new SubsonicConnectionException("The server returned a playlist entry without an id.");
+        }
+
+        return new Playlist(
+            id: id!,
+            name: SubsonicXml.Attr(element, "name") ?? string.Empty,
+            owner: SubsonicXml.Attr(element, "owner"),
+            comment: SubsonicXml.Attr(element, "comment"),
+            songCount: SubsonicXml.AttrInt(element, "songCount") ?? 0,
+            duration: TimeSpan.FromSeconds(SubsonicXml.AttrInt(element, "duration") ?? 0),
+            coverArtId: SubsonicXml.Attr(element, "coverArt"));
     }
 
     private static Artist MapArtist(XElement element)

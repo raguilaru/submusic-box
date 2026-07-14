@@ -103,6 +103,32 @@ public class LiveServerTests
     }
 
     [SkippableFact]
+    public async Task Playlists_ListAndFetchOne()
+    {
+        var (client, _) = CreateClient();
+        await client.ConnectAsync();
+
+        var playlists = await client.GetPlaylistsAsync();
+        Skip.If(playlists.Count == 0, "No playlists on the server.");
+
+        foreach (var playlist in playlists)
+        {
+            Assert.False(string.IsNullOrEmpty(playlist.Id));
+            Assert.False(string.IsNullOrEmpty(playlist.Name));
+        }
+
+        var withSongs = playlists.FirstOrDefault(p => p.SongCount > 0) ?? playlists[0];
+        var detail = await client.GetPlaylistAsync(withSongs.Id);
+
+        Assert.Equal(withSongs.Id, detail.Playlist.Id);
+        foreach (var song in detail.Songs)
+        {
+            Assert.False(string.IsNullOrEmpty(song.Id));
+            Assert.False(string.IsNullOrEmpty(song.Title));
+        }
+    }
+
+    [SkippableFact]
     public async Task WrongPassword_SurfacesAsAuthenticationError()
     {
         var config = LiveServerConfig.Require();

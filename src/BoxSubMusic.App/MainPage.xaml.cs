@@ -192,6 +192,9 @@ namespace BoxSubMusic.App
                 case "songs":
                     ContentFrame.Navigate(typeof(SongsPage));
                     break;
+                case "playlists":
+                    ContentFrame.Navigate(typeof(PlaylistsPage));
+                    break;
                 case "settings":
                     ContentFrame.Navigate(typeof(SettingsPage));
                     break;

@@ -1,6 +1,9 @@
 # Current Status
 
-Last updated: 2026-07-13 (Slices 07a + 08 committed `d0cb046`; working mode changed: build all features first, one big console test pass at the end).
+Last updated: 2026-07-14 (Slice 09 Playlists committed, incl. the adaptive
+composite-tile layout after VM feedback; playlist editing scope resolved to
+read-only. Working mode: build all features first, one big console test pass
+at the end).
 
 ## Where we are
 
@@ -152,16 +155,53 @@ Last updated: 2026-07-13 (Slices 07a + 08 committed `d0cb046`; working mode chan
     Albums; **non-OpenSubsonic servers get an explicit "not supported" state
     (no Retry)** instead of a misleading empty list (§3).
 
-**Verification state:** x64 Debug compile green over SSH (APPX0703 at the
-packaging step is the known command-line-only failure); 23 Core + **52
-SubsonicClient** unit tests green in the VM incl. live Navidrome tests (which
-now cover getAlbum, alphabetical paging, and empty-query search3 paging).
-The setup flow (incl. checkpoint #2 item 1) is console-verified 2026-07-13.
-Slices 07a/08 are VM-desktop-checked only; their console items are in the
-deferred backlog below.
+- **2.8 Slice 09 — Playlists browse + composite artwork (implemented
+  2026-07-13):**
+  - **Playlist editing scope resolved: read-only for v1** (§16/§17). No
+    create/edit/delete/reorder. Playlist tiles are focusable but **inert** —
+    opening/playing a playlist depends on the Slice 10 queue infra, so a
+    detail/playback view lands with a later slice; the page carries a visible
+    "opening a playlist and playback arrive in a later update" note (§15).
+  - Client: `Playlist` + `PlaylistDetail` models, `GetPlaylistsAsync`
+    (getPlaylists → summaries) and `GetPlaylistAsync` (getPlaylist; song
+    `<entry>` children mapped in stored order).
+  - Core: `Playlists/PlaylistArtwork.SelectCoverArtIds` — the §7.4 composition
+    rule as a pure, unit-tested helper (up to 4 distinct album covers, deduped
+    by album with a cover-id fallback, single cover when one album, artless →
+    empty). Lives in Core so it needs no UWP host. 6 new Core tests.
+  - App `PlaylistsPage` (routed from the shell's `playlists` tag — previously
+    fell through to the SectionPage placeholder): grid default + list alternate
+    using the shared `ViewModeToggle` (§13.5); same connect-on-use +
+    loading/empty/error-with-Retry pattern as the other browse pages. Not
+    incremental — getPlaylists returns the full (small) set in one call, so it
+    follows the ArtistsPage load-all shape.
+  - **Composite artwork is client-side and lazy** (§7.4): getPlaylists carries
+    no track list, so each tile fetches its own getPlaylist **in parallel after
+    the grid is on screen** and fills in when ready. `PlaylistCard` is the
+    project's first observable display model (INotifyPropertyChanged) so tiles
+    update post-paint. Single-album playlists render one full cover; multi-album
+    render an **adaptive composite with no empty cells** (2 covers =
+    full-height halves side by side, 3 = one full-height + two stacked, 4 =
+    2×2 — via x:Bind-driven Grid.RowSpan; reworked same day after Rafael's VM
+    screenshot showed the 2-cover case wasting the bottom half); while
+    loading or artless the placeholder (same official Fluent codepoint as the
+    Playlists nav item) shows through. A per-tile fetch failure degrades to the
+    placeholder — the page does not fail.
+  - Live-verified: new `Playlists_ListAndFetchOne` live test passes against
+    Navidrome (getPlaylists + getPlaylist round trip).
 
-**Git state:** `main` holds the setup-flow fix (`f5e1908`) followed by the
-Slice 07a + 08 commit (this one); working tree clean.
+**Verification state:** x64 Debug compile green over SSH — the App project
+compiles to its .exe including all XAML x:Bind composite bindings (APPX0703 at
+the packaging step is the known command-line-only failure); **29 Core + 59
+SubsonicClient** unit tests green in the VM incl. live Navidrome tests (which
+now also cover getPlaylists/getPlaylist). The setup flow (incl. checkpoint #2
+item 1) is console-verified 2026-07-13. Slices 07a/08/09 are VM-desktop-checked
+only; their console items are in the deferred backlog below.
+
+**Git state:** `main` holds the setup-flow fix (`f5e1908`), the Slice 07a + 08
+commit (`d0cb046`), and the Slice 09 commit (client models/methods, Core
+`PlaylistArtwork`, `PlaylistsPage`/`PlaylistCard` with the adaptive composite,
+shell routing, tests, docs); working tree clean.
 
 ## Working mode (decided 2026-07-13)
 
@@ -182,12 +222,12 @@ Rules for every slice implemented in this mode:
 
 ## Next step: continue slicing (start here next session)
 
-**Slice 09 (Playlists browse + composite artwork)** — resolve the §17
-playlist editing-scope decision (read-only vs create/edit/delete) with Rafael
-first. Then **Slice 10 (now-playing bar + queue)** — the big unblocker for
-05b/06b/07b and the Songs row action — then 11 (expanded queue), 12 is done
-in essence (theme selector still missing — check §12), 13 (Search; §17
-paging decision), 05b/06b/07b wiring, 14 (resilience/polish).
+Slice 09 (Playlists, read-only) is code-complete. Next: **Slice 10
+(now-playing bar + queue)** — the big unblocker for 05b/06b/07b, the Songs row
+action, and the playlist detail/playback view deferred out of 09 — then 11
+(expanded queue), 12 is done in essence (theme selector still missing — check
+§12), 13 (Search; §17 paging decision), 05b/06b/07b wiring, 14
+(resilience/polish).
 
 ## Deferred on-device test backlog (run when the console is back)
 
@@ -238,6 +278,21 @@ build validation** (per the build plan) — Debug and Release differ under
     keyboard re-opens on each next field.
 14. Both themes across all new pages; focus visible everywhere.
 
+**From Slice 09 (2026-07-13):**
+15. Playlists browse: grid loads with real playlists; toggle flips grid/list;
+    the "opening a playlist / playback arrives later" note is visible; tiles
+    are focusable but pressing A does nothing (inert by design).
+16. **Composite artwork:** tiles start on the placeholder and fill in as each
+    playlist's covers resolve (lazy parallel load — watch the fill-in feel with
+    many playlists); the composite adapts to the cover count with no empty
+    cells — 2 albums = two full-height halves, 3 = one full-height + two
+    stacked, 4 = 2×2; a single-album playlist shows one full cover, an artless
+    playlist stays on the placeholder. Check composite legibility at 10 ft
+    (a 2×2 of small covers can read as clutter on a TV).
+17. Playlists with many entries: confirm the per-tile getPlaylist fan-out
+    doesn't stall the shell (N parallel requests on page open).
+18. Both themes on the Playlists page; focus visible on tiles at 10 ft.
+
 *(Future slices: append your console items here.)*
 
 ## Known gaps / notes from this session
@@ -269,9 +324,21 @@ build validation** (per the build plan) — Debug and Release differ under
 - Footer nav items (Settings/Account) sit outside NavigationView's selection
   model; selection visuals are mirrored manually (now also resynced after
   B-back) — verify they look right on device.
-- Remaining placeholder section pages (Search/Playlists) have no focusable
-  content, so Right-into-content has no target there. Fine until those
-  slices land.
+- The remaining placeholder section page (Search) has no focusable content,
+  so Right-into-content has no target there. Fine until that slice lands.
+- **Playlists are read-only (Slice 09):** tiles are focusable but inert — no
+  playlist detail/playback view until a later slice unblocks on Slice 10's
+  queue infra. Composite tile artwork loads lazily per tile (one getPlaylist
+  per playlist, run in parallel after the grid paints); a per-tile fetch
+  failure silently degrades to the placeholder. With a large number of
+  playlists this fans out to many parallel getPlaylist requests on page open —
+  acceptable for v1, revisit if it stalls the shell on device.
+- **Composite artwork is a live XAML layout, not a rendered bitmap:** the tile
+  is composed from BitmapImages in a 2-column grid whose row spans adapt to
+  the cover count (2 = side-by-side halves, 3 = full-height + stacked,
+  4 = 2×2), so no cell is ever empty. No client-generated single flattened
+  image. Server-provided playlist coverArt is intentionally NOT used (§7.4
+  requires client-side composition).
 - Hiding the currently open section from Settings leaves its content shown
   until the next selection. Acceptable for now.
 - Detail pages reached from a hidden-then-shown section, and section history
@@ -300,6 +367,9 @@ build validation** (per the build plan) — Debug and Release differ under
 - 2026-07-13: setup-flow Enter-advance + OSK chaining (console-verified);
   Songs row action, search3-empty-query data source, and incremental browse
   paging locked (§16); Slice 07 split 07a/07b; B-back wired in the shell.
+- 2026-07-13: playlist editing scope resolved **read-only** for v1 (§16/§17);
+  Slice 09 Playlists browse + client-side composite artwork
+  (`Core/Playlists/PlaylistArtwork`, lazy per-tile), tiles inert until Slice 10.
 
 ## How to deploy (quick reference)
 

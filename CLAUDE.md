@@ -81,4 +81,4 @@ See CLAUDE.local.md for the concrete, machine-local invocations (SSH alias, full
 # Open questions
 - Search result paging/virtualization policy is not yet locked (browse views settled on incremental loading 2026-07-13; search may follow).
 - Artwork fallback beyond server-provided metadata remains a risk item, not a committed feature.
-- Playlist read-only vs editing scope for v1 is not yet locked — ask before Slice 09.
+- Playlists are read-only for v1 (decided 2026-07-13, §16/§17); create/edit/delete deferred beyond v1.

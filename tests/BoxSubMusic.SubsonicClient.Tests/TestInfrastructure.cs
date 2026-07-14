@@ -113,6 +113,20 @@ public static class Canned
         $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\">" +
         $"<album {albumAttrs}>{songs}</album></subsonic-response>";
 
+    public static string Playlists(string playlists) =>
+        $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\">" +
+        $"<playlists>{playlists}</playlists></subsonic-response>";
+
+    public static string Playlist(string playlistAttrs, string entries) =>
+        $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\">" +
+        $"<playlist {playlistAttrs}>{entries}</playlist></subsonic-response>";
+
+    /// <summary>Two playlists; the second has no cover art.</summary>
+    public const string TwoPlaylists =
+        "<playlist id=\"pl-1\" name=\"Roadtrip\" owner=\"test\" comment=\"windows down\" " +
+        "songCount=\"12\" duration=\"2880\" coverArt=\"pl-1\"/>" +
+        "<playlist id=\"pl-2\" name=\"Focus\" owner=\"test\" songCount=\"0\" duration=\"0\"/>";
+
     public const string TwoAlbums =
         "<album id=\"al-1\" name=\"Abbey Road\" artist=\"The Beatles\" artistId=\"ar-1\" coverArt=\"al-1\" " +
         "songCount=\"17\" duration=\"2830\" created=\"2024-01-02T10:20:30Z\" year=\"1969\" genre=\"Rock\"/>" +
