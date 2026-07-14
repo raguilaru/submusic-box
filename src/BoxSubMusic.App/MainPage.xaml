@@ -16,6 +16,17 @@
     settings item is disabled because its gear glyph is Segoe MDL2 — mixing
     icon sets violates §13.3 (Fluent UI System Icons only).
     -->
+    <Page.Resources>
+        <!-- 10-ft sizing for the pane items (§2/§13.2): with the automatic
+             200% scale disabled (2026-07-14), the NavigationView's system
+             defaults (40 epx rows, ~14 epx text) read too small on a TV.
+             Implicit style: setters layer on top of the default template. -->
+        <Style TargetType="NavigationViewItem">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="MinHeight" Value="56" />
+        </Style>
+    </Page.Resources>
+
     <NavigationView
         x:Name="NavView"
         KeyDown="NavView_KeyDown"
@@ -28,32 +39,32 @@
         <NavigationView.MenuItems>
             <NavigationViewItem Content="Search" Tag="search">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF690;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xF690;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="HomeNavItem" Content="Home" Tag="home">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF481;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xF481;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="ArtistsNavItem" Content="Artists" Tag="artists">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF5A9;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xF5A9;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="AlbumsNavItem" Content="Albums" Tag="albums">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE010;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xE010;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem Content="Songs" Tag="songs">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE855;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xE855;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="PlaylistsNavItem" Content="Playlists" Tag="playlists">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xF4EE;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
 
@@ -68,12 +79,12 @@
             <NavigationViewItemSeparator />
             <NavigationViewItem x:Name="SettingsNavItem" Content="Settings" Tag="settings">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF6AA;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xF6AA;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="AccountNavItem" Content="Account" Tag="account">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE929;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xE929;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
         </NavigationView.MenuItems>

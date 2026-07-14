@@ -297,12 +297,10 @@ requirements §14 validation-throughout:
 - New slices append their console items to the backlog below **and the next
   checkpoint prompt covers everything still unchecked there**.
 
-**⚠️ Pending now (backlog below): in-content navigation focus fix, favorite
-heart visibility fix, setup gamepad editing, album-detail track context
-menu, Release run. Console-verified so far: Songs context menu,
-Settings/Account reachability, XYFocusDown hints (toggle/heart), the
-nav-initiated content focus flows. This session is bug fixing only —
-Slice 10 starts in a fresh session.**
+**⚠️ Pending now (backlog below): nav pane 10-ft sizing, setup gamepad
+editing, screen-edge clipping check, Release run. Everything else from
+checkpoint #3 and its fix rounds is console-verified. This session is bug
+fixing only — Slice 10 starts in a fresh session.**
 
 ## Next step (start here next session)
 
@@ -320,47 +318,25 @@ Slice 10 starts in a fresh session.**
 Rafael reported three issues (fixed same day — see "Where we are"); no other
 problems were reported. Still open:
 
-1. ~~Nav restructure~~ **verified on console 2026-07-14 (re-test #4):
-   Settings and Account are reachable and open by gamepad.** (Hide/show
-   rewiring not explicitly re-checked — fold into the next pass.)
-2. ~~XYFocusDown hints~~ **verified on console 2026-07-14 (re-test #5):
-   toggle → grid/list and favorite heart → tracks/albums all land
-   correctly.**
-3. **Verify in-content navigation focus (re-test #5 finding, fixed same
-   day):** opening album detail from the Albums browse or from an artist's
-   album grid left focus in the nav — `ContentFocus` could run before the
-   just-revealed content (detail pages and Songs keep ALL content in a
-   collapsed-until-loaded panel) had a layout pass, found nothing
-   focusable, and silently gave up. Browse pages escaped it because their
-   always-visible header toggle was findable. Fix: `UpdateLayout()` before
-   the search + bounded retries. **Verify:** card → artist detail, card →
-   album detail (both entry paths), Songs section open, and B-back — focus
-   lands in the new content each time.
-4. **Verify the favorite heart renders (re-test #5 finding, fixed same
-   day):** the heart glyph was invisible on every unstarred item —
-   `UpdateFavoriteVisual` set `Foreground = null`, which paints the glyph
-   with no brush instead of reverting to the theme brush (now
-   `ClearValue`). **Verify:** unstarred = outline heart in theme color,
-   starred = accent fill, on both detail pages and both themes.
-5. **Verify full-screen 1:1 rendering (re-test #5 finding, fixed same
-   day):** the app rendered inside the system TV-safe border (black bands
-   on every edge) at the default 200% XAML scale (doubled fonts/cards —
-   "content too big"). Now `TrySetDisableLayoutScaling(true)` +
-   `SetDesiredBoundsMode(UseCoreWindow)` per §2. **Verify:** app fills the
-   screen edge to edge; content sizes look right at 10 ft (everything
-   renders at HALF its previous size — flag anything now too small);
-   nothing important is clipped at the screen edges (overscan check —
-   pages keep their own 48 px padding, nav pane touches the left edge).
-6. **Verify setup gamepad editing** (sign out via Account): with the OSK
+**Console-verified 2026-07-14 (re-tests #4–#6):** nav restructure
+(Settings/Account reachable), XYFocusDown hints (toggle/heart), in-content
+navigation focus (card → detail both paths, Songs, B-back), favorite heart
+renders, main-content sizing at 1:1 scale, Songs AND album-track context
+menus. Still open:
+
+1. **Verify nav pane 10-ft sizing (re-test #6 finding, fixed same day):**
+   with the 200% scale gone the pane's system defaults read too small —
+   items are now 56 epx tall with 20 epx text and 24 epx icons. **Verify:**
+   pane legible at 10 ft and rows don't look cramped or clipped.
+2. **Verify setup gamepad editing** (sign out via Account): with the OSK
    dismissed, X deletes a character in the URL/username boxes and LB/RB
    move the caret; X on the password field clears it; the hint line is
    legible at 10 ft; the Enter-advance/OSK chaining flow still works
    (regression check).
-7. **Verify album detail track context menu:** Menu button on a track row
-   opens the flyout; "Go to artist" navigates; Play shows disabled. (Same
-   mechanism as the console-verified Songs menu — expected low-risk.)
-8. ~~Songs context menu~~ **verified working on console 2026-07-14.**
-9. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
+3. **Edge check (low priority):** with the TV-safe border opt-out, confirm
+   nothing important is clipped at the screen edges on this TV (pages keep
+   their own 48 px padding; the nav pane touches the left edge).
+4. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
    Debug and Release differ under .NET Native, so at least one full Release
    run is needed.
 
