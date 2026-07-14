@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.System;
+using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
@@ -28,6 +29,13 @@ namespace BoxSubMusic.App
             // Desktop is unaffected, so this difference never shows in the VM.
             this.RequiresPointerMode = ApplicationRequiresPointerMode.WhenRequested;
 
+            // Requirement §2: precise 1920×1080 layout control. Xbox applies
+            // an automatic 200% XAML scale by default (960×540 effective
+            // layout), which doubled every content dimension on the TV —
+            // the layouts are designed for a true 1920-epx canvas. Console
+            // finding 2026-07-14. No-op (returns false) on desktop.
+            ApplicationViewScaling.TrySetDisableLayoutScaling(true);
+
             this.InitializeComponent();
             this.Suspending += OnSuspending;
 
@@ -47,6 +55,16 @@ namespace BoxSubMusic.App
         /// <param name="e">Details about the launch request and process.</param>
         protected override void OnLaunched(LaunchActivatedEventArgs e)
         {
+            // Requirement §2: opt out of the system-reserved TV-safe border
+            // (the default UseVisible bounds inset the whole window, showing
+            // black bands on every edge — console finding 2026-07-14) and
+            // draw edge to edge. Overscan is instead handled by the app's
+            // own layout padding on the pages (§2 allows exactly this
+            // trade). Harmless on desktop, where visible bounds already
+            // equal the window.
+            ApplicationView.GetForCurrentView().SetDesiredBoundsMode(
+                ApplicationViewBoundsMode.UseCoreWindow);
+
             Frame rootFrame = Window.Current.Content as Frame;
 
             // Do not repeat app initialization when the Window already has content,

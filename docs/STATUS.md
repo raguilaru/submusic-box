@@ -342,16 +342,25 @@ problems were reported. Still open:
    with no brush instead of reverting to the theme brush (now
    `ClearValue`). **Verify:** unstarred = outline heart in theme color,
    starred = accent fill, on both detail pages and both themes.
-5. **Verify setup gamepad editing** (sign out via Account): with the OSK
+5. **Verify full-screen 1:1 rendering (re-test #5 finding, fixed same
+   day):** the app rendered inside the system TV-safe border (black bands
+   on every edge) at the default 200% XAML scale (doubled fonts/cards —
+   "content too big"). Now `TrySetDisableLayoutScaling(true)` +
+   `SetDesiredBoundsMode(UseCoreWindow)` per §2. **Verify:** app fills the
+   screen edge to edge; content sizes look right at 10 ft (everything
+   renders at HALF its previous size — flag anything now too small);
+   nothing important is clipped at the screen edges (overscan check —
+   pages keep their own 48 px padding, nav pane touches the left edge).
+6. **Verify setup gamepad editing** (sign out via Account): with the OSK
    dismissed, X deletes a character in the URL/username boxes and LB/RB
    move the caret; X on the password field clears it; the hint line is
    legible at 10 ft; the Enter-advance/OSK chaining flow still works
    (regression check).
-6. **Verify album detail track context menu:** Menu button on a track row
+7. **Verify album detail track context menu:** Menu button on a track row
    opens the flyout; "Go to artist" navigates; Play shows disabled. (Same
    mechanism as the console-verified Songs menu — expected low-risk.)
-7. ~~Songs context menu~~ **verified working on console 2026-07-14.**
-8. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
+8. ~~Songs context menu~~ **verified working on console 2026-07-14.**
+9. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
    Debug and Release differ under .NET Native, so at least one full Release
    run is needed.
 
