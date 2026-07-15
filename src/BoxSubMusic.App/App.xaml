@@ -11,12 +11,15 @@
              FluentSystemIcons-Regular.json map. -->
         <FontFamily x:Key="FluentIconFont">ms-appx:///Assets/Fonts/FluentSystemIcons-Regular.ttf#FluentSystemIcons-Regular</FontFamily>
 
-        <!-- 10-ft nav pane icons (console finding 2026-07-14): the
-             NavigationView template renders each item's icon inside a
-             Viewbox sized by this theme resource (default 16 epx), so
-             FontIcon.FontSize alone cannot grow them. 28 epx pairs with
-             the 20 epx item text set in MainPage. -->
-        <x:Double x:Key="NavigationViewItemOnLeftIconBoxHeight">28</x:Double>
+        <!-- 10-ft nav pane icons (console findings 2026-07-14/15): the OS
+             NavigationView left-pane template puts each item's icon in a
+             Viewbox whose size is 40 epx (hardcoded row height) minus this
+             margin — 12+12 vertical by default, i.e. a 16 epx icon.
+             FontIcon.FontSize is a no-op (Viewbox rescales), and the WinUI
+             resource NavigationViewItemOnLeftIconBoxHeight does not exist
+             in the OS generic.xaml (verified in the 26100 SDK). 6+6 gives
+             28 epx icons, pairing with the 20 epx item text in MainPage. -->
+        <Thickness x:Key="NavigationViewItemIconBoxMargin">10,6,16,6</Thickness>
     </Application.Resources>
 
 </Application>

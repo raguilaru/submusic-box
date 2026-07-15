@@ -25,20 +25,31 @@
             FontSize="20"
             Opacity="0.7" />
 
+        <!-- Explicit XYFocus chain (console finding 2026-07-15): gamepad
+             up/down between the switches strayed into the nav pane instead
+             of walking the column. The edges pin to themselves so up/down
+             never leaves the page — the nav is reached with Left, per the
+             focus convention. -->
         <ToggleSwitch
             x:Name="ArtistsToggle"
             Header="Show Artists"
             FontSize="20"
+            XYFocusUp="{x:Bind ArtistsToggle}"
+            XYFocusDown="{x:Bind AlbumsToggle}"
             Toggled="Toggle_Toggled" />
         <ToggleSwitch
             x:Name="AlbumsToggle"
             Header="Show Albums"
             FontSize="20"
+            XYFocusUp="{x:Bind ArtistsToggle}"
+            XYFocusDown="{x:Bind PlaylistsToggle}"
             Toggled="Toggle_Toggled" />
         <ToggleSwitch
             x:Name="PlaylistsToggle"
             Header="Show Playlists"
             FontSize="20"
+            XYFocusUp="{x:Bind AlbumsToggle}"
+            XYFocusDown="{x:Bind PlaylistsToggle}"
             Toggled="Toggle_Toggled" />
 
         <TextBlock
