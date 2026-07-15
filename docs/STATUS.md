@@ -1,9 +1,9 @@
 # Current Status
 
-Last updated: 2026-07-14 (**Console checkpoint #3 RUN** — the accumulated
-items 1–18 backlog went through on device, followed by several same-day
-fix/re-test rounds. **Session scope decision: this session is bug fixing
-only; Slice 10 starts in a fresh session.**)
+Last updated: 2026-07-15 (**bug-fix session CLOSED** — console checkpoint #3
+plus eight fix/re-test rounds; everything is console-verified except the
+nav-pane icon size, which Rafael deprioritized to the end-of-project
+refinement phase. **Next session: Slice 10.**)
 
 ## Where we are
 
@@ -297,21 +297,22 @@ requirements §14 validation-throughout:
 - New slices append their console items to the backlog below **and the next
   checkpoint prompt covers everything still unchecked there**.
 
-**⚠️ Pending now (backlog below): nav icon size (attempt #2 — the real
-template mechanism this time), Settings toggle focus chain, screen-edge
-clipping check, Release run. Everything else from checkpoint #3 and its fix
-rounds is console-verified. This session is bug fixing only — Slice 10
-starts in a fresh session.**
+**Bug-fix session closed 2026-07-15 (re-test #9): Settings toggle focus
+chain verified; no edge clipping found. Nav icon size remains small after
+two attempts and is DEFERRED to the refinement phase by Rafael's call
+(low priority). Only the Release|x64 run is still outstanding as a
+pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-1. **Quick console re-verify** of the three checkpoint-#3 fixes (backlog
-   below).
-2. Then **Slice 10 (now-playing bar + queue)** — the big unblocker for
+1. **Slice 10 (now-playing bar + queue)** — the big unblocker for
    05b/06b/07b, the Songs row action, and the playlist detail/playback view
    deferred out of 09 — then 11 (expanded queue), 12 is done in essence
    (theme selector still missing — check §12), 13 (Search; §17 paging
-   decision), 05b/06b/07b wiring, 14 (resilience/polish).
+   decision), 05b/06b/07b wiring, 14 (resilience/polish incl. the deferred
+   nav-icon-size refinement).
+2. Fold the outstanding **Release|x64 .NET Native run** into the Slice 10
+   session (start or first checkpoint).
 
 ## On-device test backlog (next console pass)
 
@@ -325,29 +326,26 @@ navigation focus (card → detail both paths, Songs, B-back), favorite heart
 renders, main-content sizing at 1:1 scale, Songs AND album-track context
 menus. Still open:
 
-**Also console-verified (re-test #8, 2026-07-15):** starred-heart visuals,
-edge-to-edge rendering (spans the full TV width). Still open:
+**Also console-verified (re-tests #8–#9, 2026-07-15):** starred-heart
+visuals, edge-to-edge rendering, no edge clipping, Settings toggle focus
+chain (up/down walks the switches, Left reaches the nav). Still open:
 
-1. **Verify nav icon size, attempt #2 (re-test #8: still too small):** the
-   first override (`NavigationViewItemOnLeftIconBoxHeight`) turned out to
-   be a WinUI-only resource — it does not exist in the OS generic.xaml
-   (verified in the 26100 SDK). The OS left-pane template actually sizes
-   the icon as the hardcoded 40 epx row minus the
-   `NavigationViewItemIconBoxMargin` theme resource (12+12 vertical →
-   16 epx icon). Now overridden to 6+6 → 28 epx icons. **Verify:** pane
-   icons read clearly at 10 ft next to the 20 epx text.
-2. **Verify Settings toggle focus chain (re-test #8 finding, fixed same
-   day):** gamepad up/down between the three nav-visibility switches
-   strayed into the nav pane. Explicit XYFocusUp/Down chain wired,
-   edges pinned to themselves. **Verify:** down/up walks Artists →
-   Albums → Playlists and back, never leaving the page; Left still
-   reaches the nav.
-3. **Edge clipping check (low priority):** nothing important clipped at
-   the screen edges (pages keep their own 48 px padding; the nav pane
-   touches the left edge).
-4. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
+1. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
    Debug and Release differ under .NET Native, so at least one full Release
-   run is needed.
+   run is needed. Do this at the start of the Slice 10 session or with its
+   first checkpoint.
+2. **DEFERRED to the refinement phase (Rafael's call 2026-07-15, low
+   priority): nav pane icon size.** Two attempts failed on device: the
+   WinUI-only `NavigationViewItemOnLeftIconBoxHeight` resource (absent
+   from the OS generic.xaml — verified in the 26100 SDK) and the
+   `NavigationViewItemIconBoxMargin` override (`10,6,16,6`, still in
+   App.xaml — the template math said 40-epx row minus margin = icon
+   height, but on-device the icons did not grow). Next candidates when
+   picked back up: verify whether the override is being consulted at all
+   on the console's OS build (the 26100 *SDK* template may not match the
+   console's), or bypass the template entirely — retemplate
+   NavigationViewItem, or drop the Icon property and put the FontIcon in
+   the item Content.
 
 *(Future slices: append your console items here.)*
 
