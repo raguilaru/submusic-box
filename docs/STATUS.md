@@ -372,11 +372,17 @@ list.)
     re-navigates to the section's list page when the frame is showing
     something else (B-back still returns to the detail page — standard
     frame history).
-  - SMTC note from the checkpoint: the guide's media strip (icons at the
-    bottom edge: shuffle/prev/pause/next/repeat + elapsed) IS driven by the
-    app's SMTC integration and was visible in Rafael's screenshot; the
-    text labels ("Y Skip forward, X Pause") are the guide's own shortcut
-    hints. That presentation is OS-rendered — nothing further to implement.
+  - SMTC note from the checkpoint (corrected — the icon strip visible at
+    the screenshot's bottom edge was the app's OWN now-playing bar behind
+    the guide overlay, not an OS surface): what the OS renders from the
+    app's SMTC integration is the guide's media tile ("BoxSubMusic.App" +
+    current track title) and its quick-action hints (X Pause, Y Skip
+    forward) — both fed by our per-item display properties and
+    CommandManager. The richer icon-based media card (as seen with
+    Spotify) is the same OS surface one level deeper — expected via A /
+    "More options" on that tile; presentation is OS-chosen, nothing known
+    to implement app-side. TO VERIFY on the next console pass: selecting
+    the tile opens the full media card, and it shows our cover art.
 
 **Verification state:** Slice 10 console-verified (checkpoint #4, incl.
 Release|x64). The five same-day fixes compile green (x64 Debug over SSH;
@@ -476,6 +482,10 @@ items for the next console pass:
    current section (Artists/Albums/Playlists) in the nav returns to that
    section's list; pressing it while already on the list does nothing;
    B-back after the jump returns to the detail page (standard history).
+8. **Guide media card:** with music playing, open the guide, focus the
+   BoxSubMusic media tile and press A / "More options" — the OS's full
+   media card should appear with icon controls and our cover art (this is
+   the Spotify-style surface; it is OS-rendered from our SMTC data).
 
 *(Future slices: append your console items here.)*
 
