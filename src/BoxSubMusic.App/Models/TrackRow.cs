@@ -14,6 +14,8 @@ namespace BoxSubMusic.App.Models
     {
         private bool _isCurrent;
 
+        private bool _isStarred;
+
         public TrackRow(string id, string number, string title, string artist, string durationLabel, string artistId, bool isStarred)
         {
             Id = id;
@@ -22,15 +24,44 @@ namespace BoxSubMusic.App.Models
             Artist = artist;
             DurationLabel = durationLabel;
             ArtistId = artistId;
-            IsStarred = isStarred;
+            _isStarred = isStarred;
         }
 
-        /// <summary>Favorite snapshot from load time (checkpoint #4: song lists mark starred songs).</summary>
-        public bool IsStarred { get; }
+        /// <summary>
+        /// Favorite state (checkpoint #4: song lists mark starred songs).
+        /// Mutable + observable since the context menu can toggle it in
+        /// place (checkpoint #4 third round).
+        /// </summary>
+        public bool IsStarred
+        {
+            get { return _isStarred; }
+            set
+            {
+                if (_isStarred == value)
+                {
+                    return;
+                }
+
+                _isStarred = value;
+                var handler = PropertyChanged;
+                if (handler != null)
+                {
+                    handler(this, new PropertyChangedEventArgs(nameof(IsStarred)));
+                    handler(this, new PropertyChangedEventArgs(nameof(StarredVisibility)));
+                    handler(this, new PropertyChangedEventArgs(nameof(FavoriteLabel)));
+                }
+            }
+        }
 
         public Visibility StarredVisibility
         {
-            get { return IsStarred ? Visibility.Visible : Visibility.Collapsed; }
+            get { return _isStarred ? Visibility.Visible : Visibility.Collapsed; }
+        }
+
+        /// <summary>Context-menu label for the favorite toggle.</summary>
+        public string FavoriteLabel
+        {
+            get { return _isStarred ? "Remove from favorites" : "Add to favorites"; }
         }
 
         public string Id { get; }

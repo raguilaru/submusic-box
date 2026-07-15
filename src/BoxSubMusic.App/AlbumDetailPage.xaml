@@ -136,6 +136,10 @@
                                                 Tag="{x:Bind}"
                                                 Click="PlayTrack_Click" />
                                             <MenuFlyoutItem
+                                                Text="{x:Bind FavoriteLabel, Mode=OneWay}"
+                                                Tag="{x:Bind}"
+                                                Click="ToggleFavorite_Click" />
+                                            <MenuFlyoutItem
                                                 Text="Go to artist"
                                                 Tag="{x:Bind}"
                                                 IsEnabled="{x:Bind HasArtistId}"
@@ -182,7 +186,7 @@
                                         Glyph="&#xF47E;"
                                         FontSize="16"
                                         Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
-                                        Visibility="{x:Bind StarredVisibility}"
+                                        Visibility="{x:Bind StarredVisibility, Mode=OneWay}"
                                         VerticalAlignment="Center" />
                                     <TextBlock
                                         Grid.Column="3"

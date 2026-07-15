@@ -134,6 +134,10 @@
                                             Tag="{x:Bind}"
                                             Click="PlaySong_Click" />
                                         <MenuFlyoutItem
+                                            Text="{x:Bind FavoriteLabel, Mode=OneWay}"
+                                            Tag="{x:Bind}"
+                                            Click="ToggleFavorite_Click" />
+                                        <MenuFlyoutItem
                                             Text="Go to album"
                                             Tag="{x:Bind}"
                                             Click="GoToAlbum_Click" />
@@ -157,7 +161,7 @@
                                     Glyph="&#xF47E;"
                                     FontSize="16"
                                     Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
-                                    Visibility="{x:Bind StarredVisibility}"
+                                    Visibility="{x:Bind StarredVisibility, Mode=OneWay}"
                                     VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="2" Text="{x:Bind Artist}" FontSize="18" Opacity="0.8" TextTrimming="CharacterEllipsis" />
                                 <TextBlock Grid.Column="3" Text="{x:Bind Album}" FontSize="18" Opacity="0.8" TextTrimming="CharacterEllipsis" />

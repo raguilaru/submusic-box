@@ -1,12 +1,12 @@
 # Current Status
 
-Last updated: 2026-07-15 evening (**Slice 10 console-verified end to end**,
-incl. the Release|x64 .NET Native pass. The first fix round — bar Up/Left
-focus, bar favorite heart, now-playing scrobble, nav re-click — was
-**re-tested and verified on console the same day**. Second feedback round
-fixed, NOT yet console-verified: favorite-heart visual redesign everywhere
-(Filled font added), starred markers in song rows, browse-page Up-to-toggle
-focus.)
+Last updated: 2026-07-15 night (**Slice 10 session CLOSED.** Slice 10 +
+three feedback rounds all landed; console-verified: playback end to end
+incl. Release|x64, first fix round (bar focus, bar heart, scrobbling, nav
+re-click), heart visual redesign, browse Up-to-toggle, guide media card.
+Last increment NOT yet console-verified: the context-menu favorite toggle
+on song rows (+ the row starred markers were never explicitly confirmed) —
+first items of the next console pass. **Next session: Slice 11.**)
 
 ## Where we are
 
@@ -412,11 +412,25 @@ focus.)
      inner button (new `ViewModeToggle.FocusTarget` — hints must target a
      focusable element, not the UserControl wrapper).
 
-**Verification state:** Slice 10 + the first fix round console-verified.
-The second round (heart redesign, row markers, Up-to-toggle) compiles green
+- **Third feedback round (2026-07-15 night):** heart redesign, browse
+  Up-to-toggle, and the guide media card (A on the media tile shows the
+  full OS control card) all **verified on console**. One request:
+  **favorite toggle in the song context menus** — both menus (Songs rows,
+  album track rows) gained an "Add to favorites"/"Remove from favorites"
+  item whose label tracks the state; a successful star/unstar repaints the
+  row's heart marker in place (TrackRow/SongRow raise change
+  notifications; the album's loaded Song instances are updated too so the
+  queue/bar read the new state). The row state changes only after the
+  server accepted the call — a failure leaves everything untouched (the
+  menu is closed by then, so there is no status line; nothing shown ever
+  lies).
+
+**Verification state:** Slice 10, fix round one, the heart redesign,
+Up-to-toggle, and the guide card are console-verified. The context-menu
+favorite toggle (and, in passing, the row starred markers) compile green
 (x64 Debug over SSH; APPX0703 packaging is the known command-line-only
-failure) with **44 Core + 66 SubsonicClient** tests green, but awaits
-console re-verification (backlog below).
+failure) with **44 Core + 66 SubsonicClient** tests green, but await the
+next console pass.
 
 **Git state:** `main` holds Slice 10 (`f571bb4`) and the checkpoint-#4 fix
 commits on top (see log).
@@ -446,9 +460,9 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-1. **Console re-test of the 2026-07-15 evening fixes** (backlog items 3–6):
-   heart redesign everywhere, row starred markers, browse-page Up-to-toggle,
-   guide media card.
+1. **Console check of the last increment** (backlog items 3–4): context-menu
+   favorite toggle + row starred markers. Small enough to fold into the
+   Slice 11 checkpoint.
 2. **Slice 11 (expanded queue)** — enables the bar's queue button + the Y
    mapping and jump-to-track from the queue.
 3. Then: **05b** (queue persistence + Home resume card — the model is
@@ -496,21 +510,19 @@ verified working on console.** Two new findings from that pass (heart visual
 redesign + browse-page Up-to-toggle) were fixed the same day. Open items for
 the next console pass:
 
-3. **Favorite heart redesign (everywhere):** starred = accent-filled heart
-   with a thick black rim, unstarred = plain outline heart — the button
-   chrome no longer floods accent. Check on artist detail, album detail,
-   and the now-playing bar, in both themes at 10 ft; toggling still
-   persists (Navidrome) and reverts on failure.
-4. **Row starred markers:** Songs list and album track lists show a small
+**Console-verified 2026-07-15 (third round):** heart redesign on all three
+surfaces, browse-page Up-to-toggle (grid + list, all three sections), guide
+media card (A on the media tile shows the full OS control set). Still open:
+
+3. **Context-menu favorite toggle** (added after the third round): Menu on
+   a Songs row or an album track row → "Add to favorites"/"Remove from
+   favorites"; the label matches the row's current state, toggling updates
+   the row's heart marker immediately and persists (check Navidrome), and
+   a failed call changes nothing.
+4. **Row starred markers** (implemented with the heart redesign, never
+   explicitly confirmed): Songs list and album track lists show a small
    filled accent heart next to starred songs (column after the title);
    unstarred rows show nothing. Legible at 10 ft, not distracting.
-5. **Browse pages, Up-to-toggle:** on Artists/Albums/Playlists, Up from the
-   top of the grid (and list mode) lands on the Grid/List toggle, not the
-   nav pane. Down from the toggle still enters the content.
-6. **Guide media card:** with music playing, open the guide, focus the
-   BoxSubMusic media tile and press A / "More options" — the OS's full
-   media card should appear with icon controls and our cover art (this is
-   the Spotify-style surface; it is OS-rendered from our SMTC data).
 
 *(Future slices: append your console items here.)*
 
@@ -539,11 +551,14 @@ the next console pass:
   the queue does not fetch further pages (§16 decision 2026-07-15).
 - **The bar's favorite heart reverts silently on failure** (no room for a
   status line — the snap-back is the feedback; detail pages keep their
-  worded status). Starring from the bar mutates the loaded `Song` instance
-  (`IsStarred` is settable since checkpoint #4) so the bar stays honest
-  across track changes; other already-rendered lists don't repaint, but
-  every page refetches on navigation, so staleness cannot outlive a page
-  visit.
+  worded status). The context-menu toggle changes state only AFTER the
+  server accepts, so its failure mode is "nothing happened". Starring from
+  any surface mutates the loaded `Song` instance (`IsStarred` is settable
+  since checkpoint #4) and repaints its own row, but OTHER already-rendered
+  surfaces don't repaint (e.g. the bar's heart won't flip mid-track when
+  its song is starred from a list row); every page refetches on navigation
+  and the bar re-reads on track change, so staleness cannot outlive the
+  current view.
 - **The now-playing report (`submission=false`) fires on every track start**,
   fire-and-forget like the play-count submission; both are silent on
   failure.

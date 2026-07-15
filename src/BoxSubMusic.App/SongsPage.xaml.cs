@@ -264,6 +264,41 @@ namespace BoxSubMusic.App
             }
         }
 
+        private async void ToggleFavorite_Click(object sender, RoutedEventArgs e)
+        {
+            // Context-menu favorite toggle (checkpoint #4 third round). The
+            // row state only changes after the server accepted the call, so
+            // a failure simply leaves everything as it was — the shown state
+            // never lies (§8 spirit; the menu is closed by now, so there is
+            // no place for a status line).
+            var row = (sender as FrameworkElement)?.Tag as SongRow;
+            var client = AppSession.Client;
+            if (row == null || client == null)
+            {
+                return;
+            }
+
+            bool wantStarred = !row.Song.IsStarred;
+            try
+            {
+                if (wantStarred)
+                {
+                    await client.StarAsync(row.Song.Id);
+                }
+                else
+                {
+                    await client.UnstarAsync(row.Song.Id);
+                }
+
+                row.Song.IsStarred = wantStarred;
+                row.NotifyStarredChanged();
+            }
+            catch (SubsonicClientException)
+            {
+                // Nothing changed; the action simply didn't take.
+            }
+        }
+
         private void GoToAlbum_Click(object sender, RoutedEventArgs e)
         {
             var row = (sender as FrameworkElement)?.Tag as SongRow;

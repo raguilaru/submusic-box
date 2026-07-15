@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using BoxSubMusic.SubsonicClient.Models;
 using Windows.UI.Xaml;
 
@@ -5,11 +6,12 @@ namespace BoxSubMusic.App.Models
 {
     /// <summary>
     /// Display model for one row of the Songs browse list (requirements
-    /// §7.3: title, artist, album, length, format, bitrate). Immutable.
-    /// Carries its <see cref="Song"/> since Slice 10 so the row's play
-    /// action can queue the real track model.
+    /// §7.3: title, artist, album, length, format, bitrate). Carries its
+    /// <see cref="Song"/> since Slice 10 so the row's play action can queue
+    /// the real track model; observable since the context menu can toggle
+    /// the favorite state in place (checkpoint #4 third round).
     /// </summary>
-    public sealed class SongRow
+    public sealed class SongRow : INotifyPropertyChanged
     {
         public SongRow(
             Song song,
@@ -38,13 +40,33 @@ namespace BoxSubMusic.App.Models
 
         /// <summary>
         /// Shows the row's favorite-heart marker (checkpoint #4 feedback:
-        /// every song list shows a heart next to starred songs). Snapshot
-        /// from load time; pages refetch on navigation.
+        /// every song list shows a heart next to starred songs). Reads the
+        /// carried Song; call <see cref="NotifyStarredChanged"/> after
+        /// mutating it so the row repaints.
         /// </summary>
         public Visibility StarredVisibility
         {
             get { return Song.IsStarred ? Visibility.Visible : Visibility.Collapsed; }
         }
+
+        /// <summary>Context-menu label for the favorite toggle.</summary>
+        public string FavoriteLabel
+        {
+            get { return Song.IsStarred ? "Remove from favorites" : "Add to favorites"; }
+        }
+
+        /// <summary>Repaints the starred marker + menu label after Song.IsStarred changed.</summary>
+        public void NotifyStarredChanged()
+        {
+            var handler = PropertyChanged;
+            if (handler != null)
+            {
+                handler(this, new PropertyChangedEventArgs(nameof(StarredVisibility)));
+                handler(this, new PropertyChangedEventArgs(nameof(FavoriteLabel)));
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
 
         public string Id { get; }
 

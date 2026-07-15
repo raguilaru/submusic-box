@@ -265,6 +265,51 @@ namespace BoxSubMusic.App
             }
         }
 
+        private async void ToggleFavorite_Click(object sender, RoutedEventArgs e)
+        {
+            // Context-menu favorite toggle (checkpoint #4 third round); same
+            // change-only-after-success contract as the Songs page.
+            var row = (sender as FrameworkElement)?.Tag as TrackRow;
+            var client = AppSession.Client;
+            if (row == null || client == null)
+            {
+                return;
+            }
+
+            bool wantStarred = !row.IsStarred;
+            try
+            {
+                if (wantStarred)
+                {
+                    await client.StarAsync(row.Id);
+                }
+                else
+                {
+                    await client.UnstarAsync(row.Id);
+                }
+
+                row.IsStarred = wantStarred;
+
+                // Keep the loaded album model honest too: the queue and the
+                // now-playing bar read starred state from these instances.
+                var detail = _detail;
+                if (detail != null)
+                {
+                    foreach (Song song in detail.Songs)
+                    {
+                        if (song.Id == row.Id)
+                        {
+                            song.IsStarred = wantStarred;
+                        }
+                    }
+                }
+            }
+            catch (SubsonicClientException)
+            {
+                // Nothing changed; the action simply didn't take.
+            }
+        }
+
         private void GoToArtist_Click(object sender, RoutedEventArgs e)
         {
             var row = (sender as FrameworkElement)?.Tag as TrackRow;
