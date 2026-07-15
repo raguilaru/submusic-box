@@ -83,10 +83,13 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <!-- Column headers, mirroring the row template's grid. -->
+                <!-- Column headers, mirroring the row template's grid. The
+                     28-epx column after Title is the starred-heart marker
+                     (checkpoint #4 feedback) — no header text. -->
                 <Grid Grid.Row="0" ColumnSpacing="16" Padding="12,0,12,10" Opacity="0.6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="28" />
                         <ColumnDefinition Width="180" />
                         <ColumnDefinition Width="180" />
                         <ColumnDefinition Width="70" />
@@ -94,11 +97,11 @@
                         <ColumnDefinition Width="90" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="Title" FontSize="16" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="1" Text="Artist" FontSize="16" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="2" Text="Album" FontSize="16" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="3" Text="Length" FontSize="16" FontWeight="SemiBold" TextAlignment="Right" />
-                    <TextBlock Grid.Column="4" Text="Format" FontSize="16" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="5" Text="Bitrate" FontSize="16" FontWeight="SemiBold" TextAlignment="Right" />
+                    <TextBlock Grid.Column="2" Text="Artist" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="3" Text="Album" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="4" Text="Length" FontSize="16" FontWeight="SemiBold" TextAlignment="Right" />
+                    <TextBlock Grid.Column="5" Text="Format" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="6" Text="Bitrate" FontSize="16" FontWeight="SemiBold" TextAlignment="Right" />
                 </Grid>
 
                 <ListView
@@ -138,6 +141,7 @@
                                 </Grid.ContextFlyout>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="28" />
                                     <ColumnDefinition Width="180" />
                                     <ColumnDefinition Width="180" />
                                     <ColumnDefinition Width="70" />
@@ -145,11 +149,21 @@
                                     <ColumnDefinition Width="90" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="{x:Bind Title}" FontSize="18" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Grid.Column="1" Text="{x:Bind Artist}" FontSize="18" Opacity="0.8" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Grid.Column="2" Text="{x:Bind Album}" FontSize="18" Opacity="0.8" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Grid.Column="3" Text="{x:Bind DurationLabel}" FontSize="18" Opacity="0.7" TextAlignment="Right" />
-                                <TextBlock Grid.Column="4" Text="{x:Bind Format}" FontSize="18" Opacity="0.7" />
-                                <TextBlock Grid.Column="5" Text="{x:Bind BitRateLabel}" FontSize="18" Opacity="0.7" TextAlignment="Right" />
+                                <!-- Starred marker (checkpoint #4): filled
+                                     heart, accent, shown only on favorites. -->
+                                <FontIcon
+                                    Grid.Column="1"
+                                    FontFamily="{StaticResource FluentIconFilledFont}"
+                                    Glyph="&#xF47E;"
+                                    FontSize="16"
+                                    Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                    Visibility="{x:Bind StarredVisibility}"
+                                    VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="{x:Bind Artist}" FontSize="18" Opacity="0.8" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="3" Text="{x:Bind Album}" FontSize="18" Opacity="0.8" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="4" Text="{x:Bind DurationLabel}" FontSize="18" Opacity="0.7" TextAlignment="Right" />
+                                <TextBlock Grid.Column="5" Text="{x:Bind Format}" FontSize="18" Opacity="0.7" />
+                                <TextBlock Grid.Column="6" Text="{x:Bind BitRateLabel}" FontSize="18" Opacity="0.7" TextAlignment="Right" />
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>

@@ -36,6 +36,19 @@ namespace BoxSubMusic.App.Controls
             set { Toggle.XYFocusDown = value; }
         }
 
+        /// <summary>
+        /// The focusable element XYFocus hints should target — the inner
+        /// ToggleButton, since a hint pointing at the (unfocusable)
+        /// UserControl wrapper would be ignored. Console checkpoint #4
+        /// finding 2026-07-15: Up from the browse grids jumped to the nav
+        /// pane instead of this toggle; hosts pin their views' XYFocusUp
+        /// here.
+        /// </summary>
+        public Control FocusTarget
+        {
+            get { return Toggle; }
+        }
+
         private void Toggle_Changed(object sender, RoutedEventArgs e)
         {
             bool listMode = IsListMode;

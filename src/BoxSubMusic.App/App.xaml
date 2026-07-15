@@ -11,6 +11,12 @@
              FluentSystemIcons-Regular.json map. -->
         <FontFamily x:Key="FluentIconFont">ms-appx:///Assets/Fonts/FluentSystemIcons-Regular.ttf#FluentSystemIcons-Regular</FontFamily>
 
+        <!-- The set's Filled style (added 2026-07-15, console checkpoint #4
+             follow-up): the favorite heart's starred state is a color-filled
+             heart, and the Regular font ships no filled glyphs. Same set,
+             same MIT license file. -->
+        <FontFamily x:Key="FluentIconFilledFont">ms-appx:///Assets/Fonts/FluentSystemIcons-Filled.ttf#FluentSystemIcons-Filled</FontFamily>
+
         <!-- 10-ft nav pane icons (console findings 2026-07-14/15): the OS
              NavigationView left-pane template puts each item's icon in a
              Viewbox whose size is 40 epx (hardcoded row height) minus this

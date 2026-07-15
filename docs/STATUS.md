@@ -1,11 +1,12 @@
 # Current Status
 
-Last updated: 2026-07-15 (**Slice 10 committed (`f571bb4`) and console
-checkpoint #4 RUN** — including the long-outstanding Release|x64 .NET Native
-pass. Playback works end to end on device. Four findings, all fixed same day
-(fixes NOT yet console-verified): bar Up/Left focus, bar favorite heart
-added, now-playing scrobble added, nav re-click returns to the section
-list.)
+Last updated: 2026-07-15 evening (**Slice 10 console-verified end to end**,
+incl. the Release|x64 .NET Native pass. The first fix round — bar Up/Left
+focus, bar favorite heart, now-playing scrobble, nav re-click — was
+**re-tested and verified on console the same day**. Second feedback round
+fixed, NOT yet console-verified: favorite-heart visual redesign everywhere
+(Filled font added), starred markers in song rows, browse-page Up-to-toggle
+focus.)
 
 ## Where we are
 
@@ -384,14 +385,41 @@ list.)
     to implement app-side. TO VERIFY on the next console pass: selecting
     the tile opens the full media card, and it shows our cover art.
 
-**Verification state:** Slice 10 console-verified (checkpoint #4, incl.
-Release|x64). The five same-day fixes compile green (x64 Debug over SSH;
-APPX0703 packaging is the known command-line-only failure) with **44 Core +
-66 SubsonicClient** tests green, but await console re-verification (backlog
-below).
+- **Checkpoint #4 re-test + second feedback round (2026-07-15 evening):**
+  scrobbling, bar Up/Left focus, bar favorite heart, and nav re-click all
+  **verified on console**. Two new requests, implemented the same day:
+  1. **Favorite heart visual redesign (everywhere):** the starred state now
+     lives in the glyph — an accent-filled heart over a slightly larger
+     black filled heart (reads as a thick black rim), unstarred stays the
+     outline heart in theme foreground. The old accent-flooded ToggleButton
+     chrome is silenced via per-instance lightweight styling. Implemented
+     as the shared `Controls/FavoriteHeart` (a ToggleButton subclass, so
+     focus/XYFocus/IsChecked/events stay native — no wrapper-control focus
+     risk), used by artist detail, album detail, and the bar. This required
+     shipping the icon set's **Filled font variant**
+     (`Assets/Fonts/FluentSystemIcons-Filled.ttf`, same MIT license; filled
+     heart U+F47E verified against its cmap) — the Regular font has no
+     filled glyphs (the 2026-07-14 console finding that forced the old
+     chrome-based treatment in the first place).
+  2. **Starred markers in song lists:** Songs rows and album track rows
+     show a small filled accent heart next to starred songs (dedicated
+     28-epx column after the title). Snapshot from load; pages refetch on
+     navigation. Playlist song lists will get the same treatment when the
+     playlist detail view lands.
+  3. **Browse pages, Up-to-toggle (bug):** Up from the grid/list content
+     jumped to the nav pane instead of the view-mode toggle. Fix:
+     `XYFocusUp` hints on all six view elements pinned to the toggle's
+     inner button (new `ViewModeToggle.FocusTarget` — hints must target a
+     focusable element, not the UserControl wrapper).
 
-**Git state:** `main` holds Slice 10 (`f571bb4`); the checkpoint-#4 fixes are
-committed on top (see log).
+**Verification state:** Slice 10 + the first fix round console-verified.
+The second round (heart redesign, row markers, Up-to-toggle) compiles green
+(x64 Debug over SSH; APPX0703 packaging is the known command-line-only
+failure) with **44 Core + 66 SubsonicClient** tests green, but awaits
+console re-verification (backlog below).
+
+**Git state:** `main` holds Slice 10 (`f571bb4`) and the checkpoint-#4 fix
+commits on top (see log).
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -418,9 +446,9 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-1. **Console re-test of the checkpoint-#4 fixes** (backlog items 3–7): bar
-   Up/Left focus, bar favorite heart, now-playing scrobble visibility, nav
-   re-click.
+1. **Console re-test of the 2026-07-15 evening fixes** (backlog items 3–6):
+   heart redesign everywhere, row starred markers, browse-page Up-to-toggle,
+   guide media card.
 2. **Slice 11 (expanded queue)** — enables the bar's queue button + the Y
    mapping and jump-to-track from the queue.
 3. Then: **05b** (queue persistence + Home resume card — the model is
@@ -445,10 +473,9 @@ menus. Still open:
 visuals, edge-to-edge rendering, no edge clipping, Settings toggle focus
 chain (up/down walks the switches, Left reaches the nav). Still open:
 
-1. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
-   Debug and Release differ under .NET Native, so at least one full Release
-   run is needed. Do this at the start of the Slice 10 session or with its
-   first checkpoint.
+1. ~~Release|x64 .NET Native run~~ — **DONE, console checkpoint #4
+   2026-07-15** ("plays music as expected"). Debug/Release parity risk for
+   the media stack is retired.
 2. **DEFERRED to the refinement phase (Rafael's call 2026-07-15, low
    priority): nav pane icon size.** Two attempts failed on device: the
    WinUI-only `NavigationViewItemOnLeftIconBoxHeight` resource (absent
@@ -463,26 +490,24 @@ chain (up/down walks the switches, Left reaches the nav). Still open:
    the item Content.
 
 **Checkpoint #4 (2026-07-15) ran all Slice 10 items** — everything passed
-except the four findings fixed the same day (see "Where we are"). Re-test
-items for the next console pass:
+except the four findings fixed the same day. **Re-test (same day):
+scrobbling, bar Up/Left focus, bar favorite heart, and nav re-click all
+verified working on console.** Two new findings from that pass (heart visual
+redesign + browse-page Up-to-toggle) were fixed the same day. Open items for
+the next console pass:
 
-3. **Bar focus, Up:** from any bar control, Up lands on the page content
-   above (bottom-most focusable), not the nav pane.
-4. **Bar focus, Left/Right:** Left/Right walk the bar's buttons
-   (shuffle · previous · play/pause · next · repeat · heart · queue);
-   only Left from the leftmost (shuffle) exits into the nav pane.
-5. **Bar favorite heart:** shows the current track's starred state, follows
-   track changes, A toggles + persists (check Navidrome), reverts visibly
-   if the server call fails, heart legible in both states at 10 ft.
-6. **Scrobbling re-check:** Navidrome → Now Playing shows the track within
-   seconds of starting it; the song's play count (song → info) rises after
-   half the track / 4 min; Most Played on Home eventually reflects repeat
-   listening.
-7. **Nav re-click:** from an artist/album/playlist detail page, pressing the
-   current section (Artists/Albums/Playlists) in the nav returns to that
-   section's list; pressing it while already on the list does nothing;
-   B-back after the jump returns to the detail page (standard history).
-8. **Guide media card:** with music playing, open the guide, focus the
+3. **Favorite heart redesign (everywhere):** starred = accent-filled heart
+   with a thick black rim, unstarred = plain outline heart — the button
+   chrome no longer floods accent. Check on artist detail, album detail,
+   and the now-playing bar, in both themes at 10 ft; toggling still
+   persists (Navidrome) and reverts on failure.
+4. **Row starred markers:** Songs list and album track lists show a small
+   filled accent heart next to starred songs (column after the title);
+   unstarred rows show nothing. Legible at 10 ft, not distracting.
+5. **Browse pages, Up-to-toggle:** on Artists/Albums/Playlists, Up from the
+   top of the grid (and list mode) lands on the Grid/List toggle, not the
+   nav pane. Down from the toggle still enters the content.
+6. **Guide media card:** with music playing, open the guide, focus the
    BoxSubMusic media tile and press A / "More options" — the OS's full
    media card should appear with icon controls and our cover art (this is
    the Spotify-style surface; it is OS-rendered from our SMTC data).

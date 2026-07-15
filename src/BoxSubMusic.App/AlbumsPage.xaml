@@ -79,6 +79,7 @@
             <!-- Default mode: grid. -->
             <GridView
                 x:Name="AlbumsGrid"
+                XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"
                 SelectionMode="None"
                 IsItemClickEnabled="True"
@@ -120,6 +121,7 @@
             <!-- Alternate mode: list. -->
             <ListView
                 x:Name="AlbumsList"
+                XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"
                 SelectionMode="None"
                 IsItemClickEnabled="True"

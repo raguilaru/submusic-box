@@ -1,4 +1,5 @@
 using BoxSubMusic.SubsonicClient.Models;
+using Windows.UI.Xaml;
 
 namespace BoxSubMusic.App.Models
 {
@@ -34,6 +35,16 @@ namespace BoxSubMusic.App.Models
 
         /// <summary>The underlying track, queued by the row's play action (§7.3).</summary>
         public Song Song { get; }
+
+        /// <summary>
+        /// Shows the row's favorite-heart marker (checkpoint #4 feedback:
+        /// every song list shows a heart next to starred songs). Snapshot
+        /// from load time; pages refetch on navigation.
+        /// </summary>
+        public Visibility StarredVisibility
+        {
+            get { return Song.IsStarred ? Visibility.Visible : Visibility.Collapsed; }
+        }
 
         public string Id { get; }
 

@@ -14,7 +14,7 @@ namespace BoxSubMusic.App.Models
     {
         private bool _isCurrent;
 
-        public TrackRow(string id, string number, string title, string artist, string durationLabel, string artistId)
+        public TrackRow(string id, string number, string title, string artist, string durationLabel, string artistId, bool isStarred)
         {
             Id = id;
             Number = number;
@@ -22,6 +22,15 @@ namespace BoxSubMusic.App.Models
             Artist = artist;
             DurationLabel = durationLabel;
             ArtistId = artistId;
+            IsStarred = isStarred;
+        }
+
+        /// <summary>Favorite snapshot from load time (checkpoint #4: song lists mark starred songs).</summary>
+        public bool IsStarred { get; }
+
+        public Visibility StarredVisibility
+        {
+            get { return IsStarred ? Visibility.Visible : Visibility.Collapsed; }
         }
 
         public string Id { get; }

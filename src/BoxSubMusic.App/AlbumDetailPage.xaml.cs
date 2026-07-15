@@ -242,7 +242,8 @@ namespace BoxSubMusic.App
                 song.Title,
                 artist,
                 FormatTrackDuration(song.Duration),
-                song.ArtistId);
+                song.ArtistId,
+                song.IsStarred);
         }
 
         // --- Context menu (console feedback 2026-07-14: same secondary-action
@@ -357,12 +358,9 @@ namespace BoxSubMusic.App
             }
         }
 
-        // The heart glyph is NEVER painted directly: the ToggleButton's own
-        // checked visuals carry the starred state (accent background +
-        // checked foreground). Two console findings 2026-07-14 killed the
-        // hand-painting: Foreground=null made the unstarred heart invisible,
-        // and an accent glyph on the accent checked background made the
-        // starred heart invisible.
+        // Starred visuals live in the shared FavoriteHeart control (filled
+        // accent heart + black rim since checkpoint #4); this page only
+        // drives IsChecked and persistence.
 
         // --- View states -----------------------------------------------------
 

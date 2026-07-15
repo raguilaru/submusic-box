@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:models="using:BoxSubMusic.App.Models"
+    xmlns:controls="using:BoxSubMusic.App.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -48,19 +49,17 @@
                             Opacity="0.8" />
 
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                            <ToggleButton
+                            <!-- Starred = accent-filled heart with a black
+                                 rim (shared FavoriteHeart; checkpoint #4
+                                 redesign) — the state lives in the glyph,
+                                 not the button chrome. -->
+                            <controls:FavoriteHeart
                                 x:Name="FavoriteToggle"
-                                MinWidth="0"
                                 Padding="12"
+                                GlyphSize="28"
                                 Checked="FavoriteToggle_Changed"
                                 Unchecked="FavoriteToggle_Changed"
-                                ToolTipService.ToolTip="Favorite">
-                                <FontIcon
-                                    x:Name="FavoriteIcon"
-                                    FontFamily="{StaticResource FluentIconFont}"
-                                    Glyph="&#xF47A;"
-                                    FontSize="28" />
-                            </ToggleButton>
+                                ToolTipService.ToolTip="Favorite" />
                             <TextBlock
                                 x:Name="FavoriteStatusText"
                                 VerticalAlignment="Center"
@@ -146,6 +145,9 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="48" />
                                         <ColumnDefinition Width="*" />
+                                        <!-- Starred-heart marker column
+                                             (checkpoint #4 feedback). -->
+                                        <ColumnDefinition Width="28" />
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="72" />
                                     </Grid.ColumnDefinitions>
@@ -174,15 +176,23 @@
                                         Text="{x:Bind Title}"
                                         FontSize="20"
                                         TextTrimming="CharacterEllipsis" />
-                                    <TextBlock
+                                    <FontIcon
                                         Grid.Column="2"
+                                        FontFamily="{StaticResource FluentIconFilledFont}"
+                                        Glyph="&#xF47E;"
+                                        FontSize="16"
+                                        Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                        Visibility="{x:Bind StarredVisibility}"
+                                        VerticalAlignment="Center" />
+                                    <TextBlock
+                                        Grid.Column="3"
                                         Text="{x:Bind Artist}"
                                         FontSize="18"
                                         Opacity="0.7"
                                         TextTrimming="CharacterEllipsis"
                                         MaxWidth="420" />
                                     <TextBlock
-                                        Grid.Column="3"
+                                        Grid.Column="4"
                                         Text="{x:Bind DurationLabel}"
                                         FontSize="20"
                                         Opacity="0.6"

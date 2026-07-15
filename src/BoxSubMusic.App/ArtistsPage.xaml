@@ -78,6 +78,7 @@
             <!-- Default mode: grid. -->
             <GridView
                 x:Name="ArtistsGrid"
+                XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"
                 SelectionMode="None"
                 IsItemClickEnabled="True"
@@ -119,6 +120,7 @@
             <!-- Alternate mode: list. -->
             <ListView
                 x:Name="ArtistsList"
+                XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"
                 SelectionMode="None"
                 IsItemClickEnabled="True"

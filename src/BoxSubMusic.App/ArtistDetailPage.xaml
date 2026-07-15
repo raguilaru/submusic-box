@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:models="using:BoxSubMusic.App.Models"
+    xmlns:controls="using:BoxSubMusic.App.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -42,19 +43,17 @@
                             TextWrapping="Wrap" />
 
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                            <ToggleButton
+                            <!-- Starred = accent-filled heart with a black
+                                 rim (shared FavoriteHeart; checkpoint #4
+                                 redesign) — the state lives in the glyph,
+                                 not the button chrome. -->
+                            <controls:FavoriteHeart
                                 x:Name="FavoriteToggle"
-                                MinWidth="0"
                                 Padding="12"
+                                GlyphSize="28"
                                 Checked="FavoriteToggle_Changed"
                                 Unchecked="FavoriteToggle_Changed"
-                                ToolTipService.ToolTip="Favorite">
-                                <FontIcon
-                                    x:Name="FavoriteIcon"
-                                    FontFamily="{StaticResource FluentIconFont}"
-                                    Glyph="&#xF47A;"
-                                    FontSize="28" />
-                            </ToggleButton>
+                                ToolTipService.ToolTip="Favorite" />
                             <TextBlock
                                 x:Name="FavoriteStatusText"
                                 VerticalAlignment="Center"

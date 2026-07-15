@@ -92,6 +92,7 @@
             <!-- Default mode: grid. Cards are focusable but inert in v1. -->
             <GridView
                 x:Name="PlaylistsGrid"
+                XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"
                 SelectionMode="None"
                 IsItemClickEnabled="True"
@@ -198,6 +199,7 @@
             <!-- Alternate mode: list. -->
             <ListView
                 x:Name="PlaylistsList"
+                XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"
                 SelectionMode="None"
                 IsItemClickEnabled="True">
