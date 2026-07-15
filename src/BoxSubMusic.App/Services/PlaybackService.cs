@@ -312,6 +312,17 @@ namespace BoxSubMusic.App.Services
 
             if (song != null)
             {
+                // "Now playing" report (submission=false): keeps the server's
+                // now-playing panel live. The play-count submission still
+                // waits for the min(50 %, 4 min) threshold. Added after
+                // checkpoint #4: without it Navidrome's UI shows nothing
+                // until a track passes the threshold, which read as broken.
+                var client = AppSession.Client;
+                if (client != null)
+                {
+                    _ = ScrobbleQuietlyAsync(client, song.Id, submission: false);
+                }
+
                 _ = RunOnUiAsync(() => Queue.NotifyAdvanced(song));
             }
         }
@@ -389,11 +400,12 @@ namespace BoxSubMusic.App.Services
             Previous();
         }
 
-        private static async Task ScrobbleQuietlyAsync(SubsonicApiClient client, string songId)
+        private static async Task ScrobbleQuietlyAsync(
+            SubsonicApiClient client, string songId, bool submission = true)
         {
             try
             {
-                await client.ScrobbleAsync(songId);
+                await client.ScrobbleAsync(songId, submission);
             }
             catch (Exception)
             {

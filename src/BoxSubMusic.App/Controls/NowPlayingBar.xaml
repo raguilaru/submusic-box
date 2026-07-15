@@ -103,7 +103,10 @@
 
         <!-- Transport cluster: shuffle · previous · play/pause · next ·
              repeat. Play/pause is the visual primary (larger, accent ring
-             drawn by its own size — the theme's focus visuals stay). -->
+             drawn by its own size — the theme's focus visuals stay).
+             Left/Right neighbors are pinned with explicit XYFocus hints:
+             console checkpoint #4 found the XY engine jumping from bar
+             buttons into the nav pane instead of the adjacent button. -->
         <StackPanel
             Grid.Column="2"
             Orientation="Horizontal"
@@ -119,6 +122,7 @@
                 Background="Transparent"
                 Checked="ShuffleToggle_Changed"
                 Unchecked="ShuffleToggle_Changed"
+                XYFocusRight="{x:Bind PreviousButton}"
                 ToolTipService.ToolTip="Shuffle"
                 AutomationProperties.Name="Shuffle">
                 <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xEF37;" FontSize="20" />
@@ -127,6 +131,8 @@
                 x:Name="PreviousButton"
                 Style="{StaticResource TransportButton}"
                 Click="PreviousButton_Click"
+                XYFocusLeft="{x:Bind ShuffleToggle}"
+                XYFocusRight="{x:Bind PlayPauseButton}"
                 ToolTipService.ToolTip="Previous"
                 AutomationProperties.Name="Previous">
                 <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF629;" FontSize="20" />
@@ -140,6 +146,8 @@
                 CornerRadius="32"
                 Background="{ThemeResource SystemControlBackgroundBaseLowBrush}"
                 Click="PlayPauseButton_Click"
+                XYFocusLeft="{x:Bind PreviousButton}"
+                XYFocusRight="{x:Bind NextButton}"
                 ToolTipService.ToolTip="Play/Pause"
                 AutomationProperties.Name="Play or pause">
                 <FontIcon x:Name="PlayPauseIcon" FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" FontSize="26" />
@@ -148,6 +156,8 @@
                 x:Name="NextButton"
                 Style="{StaticResource TransportButton}"
                 Click="NextButton_Click"
+                XYFocusLeft="{x:Bind PlayPauseButton}"
+                XYFocusRight="{x:Bind RepeatButton}"
                 ToolTipService.ToolTip="Next"
                 AutomationProperties.Name="Next">
                 <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" FontSize="20" />
@@ -156,6 +166,8 @@
                 x:Name="RepeatButton"
                 Style="{StaticResource TransportButton}"
                 Click="RepeatButton_Click"
+                XYFocusLeft="{x:Bind NextButton}"
+                XYFocusRight="{x:Bind FavoriteToggle}"
                 ToolTipService.ToolTip="Repeat"
                 AutomationProperties.Name="Repeat">
                 <FontIcon x:Name="RepeatIcon" FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF172;" FontSize="20" Opacity="0.45" />
@@ -180,18 +192,42 @@
             <TextBlock x:Name="TotalText" Grid.Column="2" FontSize="17" Opacity="0.8" Text="0:00" />
         </Grid>
 
-        <!-- Queue expand (§10): control is present, the expanded two-pane
-             view is Slice 11 — disabled until then, per the project's
+        <!-- Utility cluster: favorite heart for the current track (console
+             checkpoint #4 request; same star/unstar + checked-visuals
+             pattern as the detail pages — the glyph is never painted) and
+             the queue expand (§10): present, but the expanded two-pane view
+             is Slice 11 — disabled until then, per the project's
              visible-deferral pattern. -->
-        <Button
-            x:Name="QueueButton"
+        <StackPanel
             Grid.Column="4"
-            Style="{StaticResource TransportButton}"
+            Orientation="Horizontal"
             VerticalAlignment="Center"
-            IsEnabled="False"
-            ToolTipService.ToolTip="Queue (arrives in a later update)"
-            AutomationProperties.Name="Show queue (arrives in a later update)">
-            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" FontSize="20" />
-        </Button>
+            Spacing="10">
+            <ToggleButton
+                x:Name="FavoriteToggle"
+                MinWidth="0"
+                Width="48"
+                Height="48"
+                Padding="0"
+                CornerRadius="24"
+                Background="Transparent"
+                Checked="FavoriteToggle_Changed"
+                Unchecked="FavoriteToggle_Changed"
+                XYFocusLeft="{x:Bind RepeatButton}"
+                XYFocusRight="{x:Bind QueueButton}"
+                ToolTipService.ToolTip="Favorite"
+                AutomationProperties.Name="Favorite">
+                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF47A;" FontSize="20" />
+            </ToggleButton>
+            <Button
+                x:Name="QueueButton"
+                Style="{StaticResource TransportButton}"
+                IsEnabled="False"
+                XYFocusLeft="{x:Bind FavoriteToggle}"
+                ToolTipService.ToolTip="Queue (arrives in a later update)"
+                AutomationProperties.Name="Show queue (arrives in a later update)">
+                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" FontSize="20" />
+            </Button>
+        </StackPanel>
     </Grid>
 </UserControl>

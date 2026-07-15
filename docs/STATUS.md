@@ -1,9 +1,11 @@
 # Current Status
 
-Last updated: 2026-07-15 (**Slice 10 implemented** — playback queue,
-rewritten PlaybackService, now-playing bar, plus the deferred 06b/07b/Songs
-wiring. Compile + all unit tests green; **console checkpoint #4 pending**,
-including the outstanding Release|x64 run. Changes not yet committed.)
+Last updated: 2026-07-15 (**Slice 10 committed (`f571bb4`) and console
+checkpoint #4 RUN** — including the long-outstanding Release|x64 .NET Native
+pass. Playback works end to end on device. Four findings, all fixed same day
+(fixes NOT yet console-verified): bar Up/Left focus, bar favorite heart
+added, now-playing scrobble added, nav re-click returns to the section
+list.)
 
 ## Where we are
 
@@ -327,15 +329,63 @@ including the outstanding Release|x64 run. Changes not yet committed.)
     `XYFocusDown` pins on the favorite hearts are gone (Play/Shuffle below
     are focusable again).
 
-**Verification state:** x64 Debug compile green over SSH (App .exe produced;
-APPX0703 at the packaging step is the known command-line-only failure);
-**44 Core + 66 SubsonicClient** unit tests green in the VM incl. live
-Navidrome tests. Slice 10 has NOT run on any device yet — VM arm64 F5 smoke
-test and console checkpoint #4 (incl. the outstanding Release|x64 run) are
-the next verification steps (backlog below).
+- **Console checkpoint #4 (2026-07-15): Slice 10 verified on device,
+  including the Release|x64 .NET Native run (finally done — plays music as
+  expected).** Passed: album/artist/Songs playback entry points, jump-to-
+  track + current-track marker, gapless album playback, background audio
+  with real streams + SMTC metadata/art/controls, sign-out silence, and the
+  failure path (playback stops after a queue's worth of failures). Four
+  findings, all addressed the same day (fixes NOT yet console-verified):
+  1. **Bar focus, Up:** from any bar control, Up landed in the nav pane
+     instead of the page content — the XY engine preferred the pane's bottom
+     items (vertically adjacent to the bar) over content further up. Fix: a
+     `KeyDown` handler on the bar in MainPage constrains the Up search to
+     the content frame via `FocusManager.FindNextElement(SearchRoot =
+     ContentFrame)`; falls through to the default when the page has nothing
+     focusable.
+  2. **Bar focus, Left:** Left from a bar button jumped to the nav pane
+     instead of the adjacent button. Fix: explicit `XYFocusLeft`/`XYFocusRight`
+     chains pin every bar button to its neighbors (in-tree XYFocus hints are
+     console-verified tech — the detail-page pins worked; only the
+     NavigationView-internal ones didn't). Leftmost control still exits to
+     the nav, by design.
+  3. **Favorite heart on the bar** (feature request): added at the bar's
+     right, before the queue button — same star/unstar + checked-visuals +
+     revert-on-failure pattern as the detail pages (no room for a status
+     line; the visible snap-back is the failure feedback). `Song.IsStarred`
+     became settable so a successful toggle keeps the queue's loaded
+     instance honest across track changes.
+  4. **Scrobbling read as broken:** Navidrome's "Now Playing" panel showed
+     nothing and Most Played didn't move. Diagnosed live from the Mac: a
+     `scrobble?submission=true` with the app's exact URL shape increments
+     `playCount` immediately — the endpoint and auth are fine. The panel
+     Rafael checked is fed by `submission=false` ("now playing") reports,
+     which the app never sent. Fix: the service now also fires a
+     now-playing scrobble on every track start (the play-count submission
+     still waits for the min(50 %, 4 min) threshold). Re-verify on console:
+     Navidrome → Now Playing should show within seconds of starting a
+     track, and the song's play count (song → info) should rise after the
+     threshold.
+  - Plus a navigation finding: pressing the current section (e.g. Artists)
+    in the nav while inside a detail page did nothing — `SelectionChanged`
+    never fires for an already-selected item. Fix: `ItemInvoked` handler
+    re-navigates to the section's list page when the frame is showing
+    something else (B-back still returns to the detail page — standard
+    frame history).
+  - SMTC note from the checkpoint: the guide's media strip (icons at the
+    bottom edge: shuffle/prev/pause/next/repeat + elapsed) IS driven by the
+    app's SMTC integration and was visible in Rafael's screenshot; the
+    text labels ("Y Skip forward, X Pause") are the guide's own shortcut
+    hints. That presentation is OS-rendered — nothing further to implement.
 
-**Git state:** `main` holds everything through the checkpoint-#3 fixes; the
-Slice 10 changes are in the working tree, not yet committed.
+**Verification state:** Slice 10 console-verified (checkpoint #4, incl.
+Release|x64). The five same-day fixes compile green (x64 Debug over SSH;
+APPX0703 packaging is the known command-line-only failure) with **44 Core +
+66 SubsonicClient** tests green, but await console re-verification (backlog
+below).
+
+**Git state:** `main` holds Slice 10 (`f571bb4`); the checkpoint-#4 fixes are
+committed on top (see log).
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -362,8 +412,9 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-1. **Console checkpoint #4** (if not yet run — see backlog): all Slice 10
-   items plus the long-outstanding **Release|x64 .NET Native run**.
+1. **Console re-test of the checkpoint-#4 fixes** (backlog items 3–7): bar
+   Up/Left focus, bar favorite heart, now-playing scrobble visibility, nav
+   re-click.
 2. **Slice 11 (expanded queue)** — enables the bar's queue button + the Y
    mapping and jump-to-track from the queue.
 3. Then: **05b** (queue persistence + Home resume card — the model is
@@ -405,40 +456,26 @@ chain (up/down walks the switches, Left reaches the nav). Still open:
    NavigationViewItem, or drop the Icon property and put the FontIcon in
    the item Content.
 
-**Slice 10 items (checkpoint #4, added 2026-07-15) — first VM arm64 F5
-smoke-test, then console:**
+**Checkpoint #4 (2026-07-15) ran all Slice 10 items** — everything passed
+except the four findings fixed the same day (see "Where we are"). Re-test
+items for the next console pass:
 
-3. **Release|x64 .NET Native run now matters double:** the new
-   MediaPlaybackList/SMTC code paths have never run under .NET Native
-   optimization. Deploy Release|x64 once and do a quick playback pass.
-4. **Album detail:** Play, Shuffle, A on a track row jumps to it,
-   context-menu Play, current-track marker follows track changes, Play/
-   Shuffle disabled on a trackless album.
-5. **Artist detail:** Play queues oldest-album-first across all albums
-   (spot-check the order), Shuffle randomizes; buttons disable during the
-   per-album fetch — is the delay acceptable on a many-album artist?
-6. **Songs:** A on a row plays from that song; Menu → Play works; the queue
-   is the loaded rows (Next from the last loaded song wraps/stops rather
-   than fetching more — expected).
-7. **Now-playing bar:** reveals with a slide on first Play; metadata correct
-   (title/artist/album/format/bitrate); elapsed ticks and total is right;
-   play/pause glyph swaps; shuffle toggle mid-play keeps the current track;
-   repeat cycles Off→All→One (dimmed → repeat-all → repeat-1 glyph) and
-   behaves at queue end; previous restarts after >5 s, double-press goes
-   back; queue button visibly disabled; D-pad reaches the bar from page
-   content and returns; legible at 10 ft in both themes.
-8. **Gapless:** album playback advances without an audible gap.
-9. **Background audio with real streams (§11):** checkpoint #1 verified only
-   the test tone. Backgrounded playback continues; SMTC/system media flyout
-   shows per-track metadata + cover art; system play/pause/next/previous
-   work; return to the app shows the bar in the right state.
-10. **Sign-out during playback:** audio stops, bar hides, setup page is
-    silent.
-11. **Scrobbling:** after playing a track past half, the play count rises on
-    Navidrome (Most Played on Home reflects it eventually).
-12. **Failure path:** stop the server / drop the network mid-queue — the
-    app must not loop forever; playback stops after the queue's worth of
-    failures (§3 note: silent per-track skip is a known v1 gap).
+3. **Bar focus, Up:** from any bar control, Up lands on the page content
+   above (bottom-most focusable), not the nav pane.
+4. **Bar focus, Left/Right:** Left/Right walk the bar's buttons
+   (shuffle · previous · play/pause · next · repeat · heart · queue);
+   only Left from the leftmost (shuffle) exits into the nav pane.
+5. **Bar favorite heart:** shows the current track's starred state, follows
+   track changes, A toggles + persists (check Navidrome), reverts visibly
+   if the server call fails, heart legible in both states at 10 ft.
+6. **Scrobbling re-check:** Navidrome → Now Playing shows the track within
+   seconds of starting it; the song's play count (song → info) rises after
+   half the track / 4 min; Most Played on Home eventually reflects repeat
+   listening.
+7. **Nav re-click:** from an artist/album/playlist detail page, pressing the
+   current section (Artists/Albums/Playlists) in the nav returns to that
+   section's list; pressing it while already on the list does nothing;
+   B-back after the jump returns to the detail page (standard history).
 
 *(Future slices: append your console items here.)*
 
@@ -465,6 +502,16 @@ smoke-test, then console:**
   (conventional); only natural track end repeats.
 - The Songs-row queue is **the rows loaded so far** — reaching the end of
   the queue does not fetch further pages (§16 decision 2026-07-15).
+- **The bar's favorite heart reverts silently on failure** (no room for a
+  status line — the snap-back is the feedback; detail pages keep their
+  worded status). Starring from the bar mutates the loaded `Song` instance
+  (`IsStarred` is settable since checkpoint #4) so the bar stays honest
+  across track changes; other already-rendered lists don't repaint, but
+  every page refetches on navigation, so staleness cannot outlive a page
+  visit.
+- **The now-playing report (`submission=false`) fires on every track start**,
+  fire-and-forget like the play-count submission; both are silent on
+  failure.
 - **Mid-scroll page failure loses the scroll position:** a failed incremental
   page shows the page-level error, and Retry reloads from the top. Acceptable
   v1 trade-off, documented in §16.

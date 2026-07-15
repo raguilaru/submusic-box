@@ -35,7 +35,8 @@
         IsSettingsVisible="False"
         PaneDisplayMode="Left"
         OpenPaneLength="280"
-        SelectionChanged="NavView_SelectionChanged">
+        SelectionChanged="NavView_SelectionChanged"
+        ItemInvoked="NavView_ItemInvoked">
 
         <NavigationView.MenuItems>
             <NavigationViewItem Content="Search" Tag="search">
@@ -100,7 +101,13 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Frame x:Name="ContentFrame" />
-            <controls:NowPlayingBar x:Name="NowPlaying" Grid.Row="1" />
+            <!-- KeyDown: Up from a bar control must land in the page content
+                 above, not in the nav pane (console checkpoint #4 finding —
+                 the XY engine preferred the pane's bottom items). -->
+            <controls:NowPlayingBar
+                x:Name="NowPlaying"
+                Grid.Row="1"
+                KeyDown="NowPlaying_KeyDown" />
         </Grid>
     </NavigationView>
 </Page>

@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Text;
 using BoxSubMusic.Core.Playback;
+using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
 using BoxSubMusic.App.Services;
 using Windows.Media.Playback;
@@ -35,6 +36,7 @@ namespace BoxSubMusic.App.Controls
         private PlaybackService _playback;
         private bool _revealed;
         private bool _suppressShuffleEvents;
+        private bool _suppressFavoriteEvents;
         private string _artworkSongId;
 
         public NowPlayingBar()
@@ -99,6 +101,13 @@ namespace BoxSubMusic.App.Controls
             _suppressShuffleEvents = true;
             ShuffleToggle.IsChecked = queue.ShuffleEnabled;
             _suppressShuffleEvents = false;
+
+            // Favorite heart follows the current track (checkpoint #4
+            // request). A successful toggle writes back to the Song model,
+            // so this re-read stays honest across track changes.
+            _suppressFavoriteEvents = true;
+            FavoriteToggle.IsChecked = song.IsStarred;
+            _suppressFavoriteEvents = false;
 
             RepeatIcon.Glyph = queue.RepeatMode == RepeatMode.One ? RepeatOneGlyph : RepeatAllGlyph;
             RepeatIcon.Opacity = queue.RepeatMode == RepeatMode.Off ? 0.45 : 1.0;
@@ -213,6 +222,50 @@ namespace BoxSubMusic.App.Controls
         private void RepeatButton_Click(object sender, RoutedEventArgs e)
         {
             _playback.CycleRepeat();
+        }
+
+        private async void FavoriteToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_suppressFavoriteEvents)
+            {
+                return;
+            }
+
+            Song song = _playback.Queue.CurrentTrack;
+            var client = AppSession.Client;
+            if (song == null || client == null)
+            {
+                return;
+            }
+
+            bool wantStarred = FavoriteToggle.IsChecked == true;
+            FavoriteToggle.IsEnabled = false;
+            try
+            {
+                if (wantStarred)
+                {
+                    await client.StarAsync(song.Id);
+                }
+                else
+                {
+                    await client.UnstarAsync(song.Id);
+                }
+
+                song.IsStarred = wantStarred;
+            }
+            catch (SubsonicClientException)
+            {
+                // Persist failed: revert so the heart never lies about what
+                // the server holds (§8). The bar has no room for a status
+                // line; the visible snap-back is the feedback.
+                _suppressFavoriteEvents = true;
+                FavoriteToggle.IsChecked = !wantStarred;
+                _suppressFavoriteEvents = false;
+            }
+            finally
+            {
+                FavoriteToggle.IsEnabled = true;
+            }
         }
     }
 }

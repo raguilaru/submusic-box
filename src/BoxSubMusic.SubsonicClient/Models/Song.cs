@@ -71,6 +71,11 @@ public sealed class Song
 
     public string? ContentType { get; }
 
-    /// <summary>Favorite flag: a <c>starred</c> timestamp is present only on favorites.</summary>
-    public bool IsStarred { get; }
+    /// <summary>
+    /// Favorite flag: a <c>starred</c> timestamp is present only on
+    /// favorites. Settable so a successful star/unstar can keep an already
+    /// loaded instance honest (the now-playing bar re-reads it on every
+    /// track change) without refetching.
+    /// </summary>
+    public bool IsStarred { get; set; }
 }

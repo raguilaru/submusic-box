@@ -127,6 +127,24 @@ namespace BoxSubMusic.App
             NavigateToSection(item.Tag as string);
         }
 
+        private void NavView_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+        {
+            // Invoking the already selected section while a detail page is
+            // shown must return to the section's list (console checkpoint #4
+            // feedback 2026-07-15). SelectionChanged never fires in that
+            // case — the item is already selected — so it lands here.
+            string tag = (args.InvokedItemContainer as NavigationViewItem)?.Tag as string;
+            if (tag == null || tag != _currentSectionTag)
+            {
+                return;
+            }
+
+            if (ContentFrame.Content?.GetType() != PageTypeFor(tag))
+            {
+                NavigateToSectionCore(tag);
+            }
+        }
+
         private void NavigateToSection(string tag)
         {
             if (string.IsNullOrEmpty(tag) || tag == _currentSectionTag)
@@ -135,32 +153,53 @@ namespace BoxSubMusic.App
             }
 
             _currentSectionTag = tag;
+            NavigateToSectionCore(tag);
+        }
+
+        private void NavigateToSectionCore(string tag)
+        {
+            Type pageType = PageTypeFor(tag);
+            ContentFrame.Navigate(pageType, pageType == typeof(SectionPage) ? tag : null);
+        }
+
+        private static Type PageTypeFor(string tag)
+        {
             switch (tag)
             {
-                case "home":
-                    ContentFrame.Navigate(typeof(HomePage));
-                    break;
-                case "artists":
-                    ContentFrame.Navigate(typeof(ArtistsPage));
-                    break;
-                case "albums":
-                    ContentFrame.Navigate(typeof(AlbumsPage));
-                    break;
-                case "songs":
-                    ContentFrame.Navigate(typeof(SongsPage));
-                    break;
-                case "playlists":
-                    ContentFrame.Navigate(typeof(PlaylistsPage));
-                    break;
-                case "settings":
-                    ContentFrame.Navigate(typeof(SettingsPage));
-                    break;
-                case "account":
-                    ContentFrame.Navigate(typeof(AccountPage));
-                    break;
-                default:
-                    ContentFrame.Navigate(typeof(SectionPage), tag);
-                    break;
+                case "home": return typeof(HomePage);
+                case "artists": return typeof(ArtistsPage);
+                case "albums": return typeof(AlbumsPage);
+                case "songs": return typeof(SongsPage);
+                case "playlists": return typeof(PlaylistsPage);
+                case "settings": return typeof(SettingsPage);
+                case "account": return typeof(AccountPage);
+                default: return typeof(SectionPage);
+            }
+        }
+
+        private void NowPlaying_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            // Up from the now-playing bar must land in the page content
+            // above it, not in the nav pane: checkpoint #4 showed the XY
+            // engine preferring the pane's bottom items (they sit closer to
+            // the bar's vertical band than most page content). Constrain the
+            // search to the content frame; when the page has nothing
+            // focusable, fall through to the engine's default.
+            if (e.Handled)
+            {
+                return;
+            }
+
+            if (e.Key == VirtualKey.GamepadDPadUp
+                || e.Key == VirtualKey.GamepadLeftThumbstickUp
+                || e.Key == VirtualKey.Up)
+            {
+                var options = new FindNextElementOptions { SearchRoot = ContentFrame };
+                if (FocusManager.FindNextElement(FocusNavigationDirection.Up, options) is Control target)
+                {
+                    target.Focus(FocusState.Keyboard);
+                    e.Handled = true;
+                }
             }
         }
 
