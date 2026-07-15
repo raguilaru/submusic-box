@@ -8,13 +8,13 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <!-- Album detail (Slice 07a, requirements §9): mirrors the artist detail
-         layout — large artwork, title, artist, year, favorite heart (persisted
-         via star/unstar), song count + total duration, and the track list in
-         disc/track order. Play/Shuffle and track-row playback (jump/highlight)
-         are Slice 07b, after the Slice 10 queue exists; the buttons are shown
-         disabled with an explicit note and the rows are inert (§15: no silent
-         degradation). -->
+    <!-- Album detail (Slices 07a + 07b, requirements §9): mirrors the artist
+         detail layout — large artwork, title, artist, year, favorite heart
+         (persisted via star/unstar), song count + total duration, and the
+         track list in disc/track order. Since Slice 10 the deferred 07b
+         behavior is live: Play/Shuffle replace the queue with this album's
+         tracks, selecting a row jumps playback to that track, and the
+         current track is highlighted. -->
     <Grid>
         <ScrollViewer x:Name="ContentScroller" Visibility="Collapsed" Padding="48,36,48,36">
             <StackPanel Spacing="36">
@@ -48,18 +48,12 @@
                             Opacity="0.8" />
 
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                            <!-- XYFocusDown: Play/Shuffle below are disabled
-                                 (unfocusable) until Slice 10, so gamepad down
-                                 is pinned to the track list instead of the XY
-                                 engine's fallback (which could stray to the
-                                 nav pane — console finding 2026-07-14). -->
                             <ToggleButton
                                 x:Name="FavoriteToggle"
                                 MinWidth="0"
                                 Padding="12"
                                 Checked="FavoriteToggle_Changed"
                                 Unchecked="FavoriteToggle_Changed"
-                                XYFocusDown="{x:Bind TracksList}"
                                 ToolTipService.ToolTip="Favorite">
                                 <FontIcon
                                     x:Name="FavoriteIcon"
@@ -83,33 +77,26 @@
                             Opacity="0.8" />
 
                         <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,8,0,0">
-                            <!-- Play/Shuffle land in Slice 07b (queue + now-playing
-                                 bar). Disabled and labelled so the §9 layout is
-                                 faithful and the deferral is visible. -->
-                            <Button x:Name="PlayButton" IsEnabled="False" Padding="28,12">
+                            <!-- §9: Play/Shuffle replace the queue with this
+                                 album's tracks only (live since Slice 10). -->
+                            <Button x:Name="PlayButton" Padding="28,12" Click="PlayButton_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" FontSize="20" />
                                     <TextBlock Text="Play" FontSize="20" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
-                            <Button x:Name="ShuffleButton" IsEnabled="False" Padding="28,12">
+                            <Button x:Name="ShuffleButton" Padding="28,12" Click="ShuffleButton_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xEF37;" FontSize="20" />
                                     <TextBlock Text="Shuffle" FontSize="20" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
-                        <TextBlock
-                            Text="Playback arrives in a later update."
-                            FontSize="15"
-                            Opacity="0.6"
-                            FontStyle="Italic" />
                     </StackPanel>
                 </Grid>
 
-                <!-- Track list in original disc/track order (§9). Rows are
-                     focusable for D-pad travel but inert until Slice 07b wires
-                     jump-to-track playback. -->
+                <!-- Track list in original disc/track order (§9). A/Enter on a
+                     row jumps playback directly to that track (Slice 10). -->
                 <StackPanel Spacing="16">
                     <TextBlock Text="Tracks" FontSize="32" FontWeight="SemiBold" />
                     <TextBlock
@@ -121,7 +108,8 @@
                     <ListView
                         x:Name="TracksList"
                         SelectionMode="None"
-                        IsItemClickEnabled="False"
+                        IsItemClickEnabled="True"
+                        ItemClick="TracksList_ItemClick"
                         ContextRequested="TracksList_ContextRequested">
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
@@ -145,8 +133,9 @@
                                              "Go to artist". -->
                                         <MenuFlyout>
                                             <MenuFlyoutItem
-                                                Text="Play (arrives in a later update)"
-                                                IsEnabled="False" />
+                                                Text="Play"
+                                                Tag="{x:Bind}"
+                                                Click="PlayTrack_Click" />
                                             <MenuFlyoutItem
                                                 Text="Go to artist"
                                                 Tag="{x:Bind}"
@@ -160,12 +149,26 @@
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="72" />
                                     </Grid.ColumnDefinitions>
+                                    <!-- §9 current-track highlight: the number
+                                         column swaps to an accent now-playing
+                                         marker (accent glyph on the normal row
+                                         background — NOT the accent-on-accent
+                                         trap from the favorite heart). -->
                                     <TextBlock
                                         Grid.Column="0"
                                         Text="{x:Bind Number}"
+                                        Visibility="{x:Bind NumberVisibility, Mode=OneWay}"
                                         FontSize="20"
                                         Opacity="0.6"
                                         TextAlignment="Right" />
+                                    <FontIcon
+                                        Grid.Column="0"
+                                        FontFamily="{StaticResource FluentIconFont}"
+                                        Glyph="&#xE855;"
+                                        FontSize="20"
+                                        Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                        Visibility="{x:Bind NowPlayingVisibility, Mode=OneWay}"
+                                        HorizontalAlignment="Right" />
                                     <TextBlock
                                         Grid.Column="1"
                                         Text="{x:Bind Title}"

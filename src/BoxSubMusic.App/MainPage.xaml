@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:BoxSubMusic.App"
+    xmlns:controls="using:BoxSubMusic.App.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -89,6 +90,17 @@
             </NavigationViewItem>
         </NavigationView.MenuItems>
 
-        <Frame x:Name="ContentFrame" />
+        <!-- Slice 10 (§10): the now-playing bar owns its own Auto row below
+             the content frame — visually floating, but never overlapping
+             page content (list bottoms stay reachable). It collapses to
+             zero height until the first Play action. -->
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Frame x:Name="ContentFrame" />
+            <controls:NowPlayingBar x:Name="NowPlaying" Grid.Row="1" />
+        </Grid>
     </NavigationView>
 </Page>

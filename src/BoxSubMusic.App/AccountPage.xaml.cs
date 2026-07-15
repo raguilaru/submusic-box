@@ -58,6 +58,10 @@ namespace BoxSubMusic.App
 
         private void SignOutButton_Click(object sender, RoutedEventArgs e)
         {
+            // Slice 10: no audio (or queue, or now-playing bar) may survive
+            // into the setup page — the stream URLs belong to this login.
+            PlaybackService.Instance.Stop();
+
             CredentialStore.ClearActive();
             AppSession.Clear();
 

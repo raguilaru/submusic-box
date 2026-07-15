@@ -269,6 +269,40 @@ public sealed class SubsonicApiClient
     }
 
     /// <summary>
+    /// Builds an authenticated stream URL for a song, usable directly as a
+    /// MediaPlayer source (§10/§11). No format/maxBitRate overrides in v1:
+    /// the server's own player defaults decide the delivered stream. In
+    /// token mode each URL embeds a fresh salt+token pair.
+    /// </summary>
+    public Uri GetStreamUri(string songId)
+    {
+        if (string.IsNullOrWhiteSpace(songId))
+            throw new ArgumentException("A song id is required.", nameof(songId));
+
+        var parameters = new List<KeyValuePair<string, string>> { Param("id", songId) };
+        return BuildRequestUri("stream", parameters);
+    }
+
+    /// <summary>
+    /// scrobble — reports a play to the server so play counts (and the
+    /// Most Played list, §6.2) reflect listening done in this client.
+    /// <paramref name="submission"/> true registers a play; false is the
+    /// "now playing" notification. Core Subsonic API since 1.5.0.
+    /// </summary>
+    public async Task ScrobbleAsync(string id, bool submission = true, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            throw new ArgumentException("A song id is required.", nameof(id));
+
+        var parameters = new List<KeyValuePair<string, string>>
+        {
+            Param("id", id),
+            Param("submission", submission ? "true" : "false"),
+        };
+        await ExecuteAsync("scrobble", parameters, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// One explicit renegotiation attempt, driven by the API version the
     /// server reports in its error response:
     /// - pre-1.13 servers do not understand the t/s token params → retry with

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BoxSubMusic.App.Models;
 using BoxSubMusic.App.Services;
+using BoxSubMusic.Core.Playback;
 using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
 using Windows.UI.Xaml;
@@ -22,10 +23,11 @@ namespace BoxSubMusic.App
     /// with an empty query — the OpenSubsonic full-library listing — in
     /// incrementally loaded pages (decisions 2026-07-13); servers that are
     /// not OpenSubsonic get an explicit unsupported state (§3), never a
-    /// wrong empty list. The A/Enter primary action (immediate playback,
-    /// queue replace) is deferred to Slice 10 and rows are inert with a
-    /// visible note (§15); the Menu-button context menu's "Go to album" is
-    /// live.
+    /// wrong empty list. A/Enter on a row starts immediate playback (decision
+    /// 2026-07-13, live since Slice 10): the queue is replaced with all rows
+    /// loaded so far, positioned at the chosen song, and no further pages are
+    /// auto-fetched into the queue (§16 decision 2026-07-15). The Menu-button
+    /// context menu carries Play and "Go to album".
     /// </summary>
     public sealed partial class SongsPage : Page
     {
@@ -154,6 +156,7 @@ namespace BoxSubMusic.App
         private static SongRow ToRow(Song song)
         {
             return new SongRow(
+                song,
                 song.Id,
                 song.AlbumId,
                 song.Title,
@@ -185,6 +188,60 @@ namespace BoxSubMusic.App
             }
 
             ShowConnectError("Couldn't load more songs. " + ex.Message);
+        }
+
+        // --- Playback (decision 2026-07-13, live since Slice 10) --------------
+
+        private void SongsList_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            var row = e.ClickedItem as SongRow;
+            if (row != null)
+            {
+                StartPlayback(row);
+            }
+        }
+
+        private void PlaySong_Click(object sender, RoutedEventArgs e)
+        {
+            var row = (sender as FrameworkElement)?.Tag as SongRow;
+            if (row != null)
+            {
+                StartPlayback(row);
+            }
+        }
+
+        private void StartPlayback(SongRow row)
+        {
+            var source = _songs;
+            if (source == null)
+            {
+                return;
+            }
+
+            // Queue = every row loaded so far, positioned at the chosen song
+            // (§16 decision 2026-07-15). No further pages are pulled in.
+            var songs = new List<Song>(source.Count);
+            int startIndex = -1;
+            foreach (SongRow loaded in source)
+            {
+                if (ReferenceEquals(loaded, row))
+                {
+                    startIndex = songs.Count;
+                }
+
+                songs.Add(loaded.Song);
+            }
+
+            if (startIndex < 0)
+            {
+                return;
+            }
+
+            PlaybackService.Instance.Play(
+                songs,
+                startIndex,
+                shuffle: false,
+                context: new QueueContext("Songs", null));
         }
 
         // --- Context menu (decision 2026-07-13: secondary actions) -----------

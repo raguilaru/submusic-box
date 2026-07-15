@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BoxSubMusic.App.Models;
 using BoxSubMusic.App.Services;
+using BoxSubMusic.Core.Playback;
 using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
 using Windows.UI;
@@ -16,11 +18,12 @@ using Windows.UI.Xaml.Navigation;
 namespace BoxSubMusic.App
 {
     /// <summary>
-    /// Artist detail (Slice 06a, requirements §8): large artwork, name,
+    /// Artist detail (Slices 06a + 06b, requirements §8): large artwork, name,
     /// favorite heart persisted through star/unstar, album + song counts, and
-    /// the lower album grid. Play/Shuffle are deferred to Slice 06b (queue +
-    /// now-playing bar) and rendered disabled. Connects the restored client on
-    /// first use; load failure is a retryable error state (§3).
+    /// the lower album grid. Since Slice 10: Play queues every song
+    /// oldest-album-first, Shuffle the same pool randomized — both replace the
+    /// queue. Connects the restored client on first use; load failure is a
+    /// retryable error state (§3).
     /// </summary>
     public sealed partial class ArtistDetailPage : Page
     {
@@ -31,6 +34,7 @@ namespace BoxSubMusic.App
 
         private CancellationTokenSource _cts;
         private string _artistId;
+        private ArtistDetail _detail;
 
         // Guards the favorite handler while we set IsChecked from loaded state,
         // so restoring the toggle never fires a network call.
@@ -123,6 +127,14 @@ namespace BoxSubMusic.App
 
         private void Populate(ArtistDetail detail)
         {
+            _detail = detail;
+            PlaybackStatusText.Visibility = Visibility.Collapsed;
+
+            // Nothing to queue for an album-less artist (§15: visibly disabled
+            // beats a Play that silently does nothing).
+            PlayButton.IsEnabled = detail.Albums.Count > 0;
+            ShuffleButton.IsEnabled = detail.Albums.Count > 0;
+
             ArtistNameText.Text = detail.Artist.Name;
             CountsText.Text = FormatCounts(detail.Artist.AlbumCount, detail.SongCount);
 
@@ -157,6 +169,83 @@ namespace BoxSubMusic.App
             string albums = albumCount == 1 ? "1 album" : albumCount + " albums";
             string songs = songCount == 1 ? "1 song" : songCount + " songs";
             return albums + "  ·  " + songs;
+        }
+
+        // --- Playback (Slice 06b behavior, live since Slice 10) ---------------
+
+        private async void PlayButton_Click(object sender, RoutedEventArgs e)
+        {
+            await StartPlaybackAsync(shuffle: false);
+        }
+
+        private async void ShuffleButton_Click(object sender, RoutedEventArgs e)
+        {
+            await StartPlaybackAsync(shuffle: true);
+        }
+
+        /// <summary>
+        /// §8: Play queues ALL of the artist's songs oldest-album-first (year
+        /// ascending, unknown years last, then name); Shuffle queues the same
+        /// pool randomized. getArtist carries albums without songs, so the
+        /// pool needs one getAlbum per album — fetched in parallel, like the
+        /// playlist tiles' artwork fan-out.
+        /// </summary>
+        private async Task StartPlaybackAsync(bool shuffle)
+        {
+            ArtistDetail detail = _detail;
+            var client = AppSession.Client;
+            var cancellationToken = _cts?.Token ?? CancellationToken.None;
+            if (detail == null || client == null || detail.Albums.Count == 0)
+            {
+                return;
+            }
+
+            PlayButton.IsEnabled = false;
+            ShuffleButton.IsEnabled = false;
+            PlaybackStatusText.Visibility = Visibility.Collapsed;
+            try
+            {
+                var albums = detail.Albums
+                    .OrderBy(a => a.Year ?? int.MaxValue)
+                    .ThenBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+                AlbumDetail[] loaded = await Task.WhenAll(
+                    albums.Select(a => client.GetAlbumAsync(a.Id, cancellationToken)));
+
+                var songs = new List<Song>();
+                foreach (AlbumDetail album in loaded)
+                {
+                    songs.AddRange(album.Songs);
+                }
+
+                if (songs.Count == 0)
+                {
+                    PlaybackStatusText.Text = "This artist has no playable songs.";
+                    PlaybackStatusText.Visibility = Visibility.Visible;
+                    return;
+                }
+
+                PlaybackService.Instance.Play(
+                    songs,
+                    0,
+                    shuffle,
+                    new QueueContext(detail.Artist.Name, detail.Artist.CoverArtId));
+            }
+            catch (OperationCanceledException)
+            {
+                // Page was left mid-fetch; nothing to start.
+            }
+            catch (SubsonicClientException ex)
+            {
+                PlaybackStatusText.Text = "Couldn't start playback. " + ex.Message;
+                PlaybackStatusText.Visibility = Visibility.Visible;
+            }
+            finally
+            {
+                bool hasAlbums = _detail != null && _detail.Albums.Count > 0;
+                PlayButton.IsEnabled = hasAlbums;
+                ShuffleButton.IsEnabled = hasAlbums;
+            }
         }
 
         // --- Favorite heart (§8) --------------------------------------------

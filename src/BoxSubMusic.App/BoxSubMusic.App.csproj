@@ -134,6 +134,9 @@
     <Compile Include="Controls\AlbumCarousel.xaml.cs">
       <DependentUpon>AlbumCarousel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\NowPlayingBar.xaml.cs">
+      <DependentUpon>NowPlayingBar.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Controls\ViewModeToggle.xaml.cs">
       <DependentUpon>ViewModeToggle.xaml</DependentUpon>
     </Compile>
@@ -189,7 +192,6 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
-    <Content Include="Assets\TestTone.wav" />
     <Content Include="Assets\Fonts\FluentSystemIcons-Regular.ttf" />
     <Content Include="Assets\Fonts\LICENSE.txt" />
   </ItemGroup>
@@ -215,6 +217,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\AlbumCarousel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\NowPlayingBar.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

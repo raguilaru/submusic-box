@@ -8,11 +8,11 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <!-- Artist detail (Slice 06a, requirements §8): large artwork, name,
-         favorite heart (persisted via star/unstar), album + song counts, and
-         the lower album grid. Play/Shuffle are shown disabled with an explicit
-         note because queue playback lands in Slice 06b after the now-playing
-         bar exists (§15: no silent degradation). -->
+    <!-- Artist detail (Slices 06a + 06b, requirements §8): large artwork,
+         name, favorite heart (persisted via star/unstar), album + song
+         counts, and the lower album grid. Since Slice 10 the deferred 06b
+         behavior is live: Play queues every song oldest-album-first, Shuffle
+         queues the same pool randomized — both replace the current queue. -->
     <Grid>
         <ScrollViewer x:Name="ContentScroller" Visibility="Collapsed" Padding="48,36,48,36">
             <StackPanel Spacing="36">
@@ -42,18 +42,12 @@
                             TextWrapping="Wrap" />
 
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                            <!-- XYFocusDown: Play/Shuffle below are disabled
-                                 (unfocusable) until Slice 10, so gamepad down
-                                 is pinned to the album grid instead of the XY
-                                 engine's fallback (which could stray to the
-                                 nav pane — console finding 2026-07-14). -->
                             <ToggleButton
                                 x:Name="FavoriteToggle"
                                 MinWidth="0"
                                 Padding="12"
                                 Checked="FavoriteToggle_Changed"
                                 Unchecked="FavoriteToggle_Changed"
-                                XYFocusDown="{x:Bind AlbumsGrid}"
                                 ToolTipService.ToolTip="Favorite">
                                 <FontIcon
                                     x:Name="FavoriteIcon"
@@ -76,16 +70,19 @@
                             Opacity="0.8" />
 
                         <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,8,0,0">
-                            <!-- Play/Shuffle land in Slice 06b (queue + now-playing
-                                 bar). Disabled and labelled so the §8 layout is
-                                 faithful and the deferral is visible. -->
-                            <Button x:Name="PlayButton" IsEnabled="False" Padding="28,12">
+                            <!-- §8: Play = every song oldest-album-first,
+                                 Shuffle = the same pool randomized; both
+                                 replace the queue (live since Slice 10). The
+                                 song pool needs one getAlbum per album, so the
+                                 buttons disable while it is fetched and
+                                 PlaybackStatusText reports a failure. -->
+                            <Button x:Name="PlayButton" Padding="28,12" Click="PlayButton_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" FontSize="20" />
                                     <TextBlock Text="Play" FontSize="20" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
-                            <Button x:Name="ShuffleButton" IsEnabled="False" Padding="28,12">
+                            <Button x:Name="ShuffleButton" Padding="28,12" Click="ShuffleButton_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xEF37;" FontSize="20" />
                                     <TextBlock Text="Shuffle" FontSize="20" VerticalAlignment="Center" />
@@ -93,10 +90,11 @@
                             </Button>
                         </StackPanel>
                         <TextBlock
-                            Text="Playback arrives in a later update."
-                            FontSize="15"
-                            Opacity="0.6"
-                            FontStyle="Italic" />
+                            x:Name="PlaybackStatusText"
+                            FontSize="16"
+                            Opacity="0.8"
+                            Visibility="Collapsed"
+                            TextWrapping="Wrap" />
                     </StackPanel>
                 </Grid>
 

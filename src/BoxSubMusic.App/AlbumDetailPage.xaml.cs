@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BoxSubMusic.App.Models;
 using BoxSubMusic.App.Services;
+using BoxSubMusic.Core.Playback;
 using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
 using Windows.UI;
@@ -20,13 +21,13 @@ using Windows.UI.Xaml.Navigation;
 namespace BoxSubMusic.App
 {
     /// <summary>
-    /// Album detail (Slice 07a, requirements §9): mirrors the artist detail
-    /// layout — large artwork, title, artist, year, favorite heart persisted
-    /// through star/unstar, song count + total duration, and the track list in
-    /// disc/track order. Play/Shuffle and track-row playback are deferred to
-    /// Slice 07b (queue + now-playing bar) and rendered disabled/inert.
-    /// Connects the restored client on first use; load failure is a retryable
-    /// error state (§3).
+    /// Album detail (Slices 07a + 07b, requirements §9): mirrors the artist
+    /// detail layout — large artwork, title, artist, year, favorite heart
+    /// persisted through star/unstar, song count + total duration, and the
+    /// track list in disc/track order. Since Slice 10: Play/Shuffle replace
+    /// the queue with this album's tracks, a track row jumps playback to that
+    /// track, and the current track is highlighted. Connects the restored
+    /// client on first use; load failure is a retryable error state (§3).
     /// </summary>
     public sealed partial class AlbumDetailPage : Page
     {
@@ -35,6 +36,8 @@ namespace BoxSubMusic.App
 
         private CancellationTokenSource _cts;
         private string _albumId;
+        private AlbumDetail _detail;
+        private System.Collections.Generic.List<TrackRow> _rows;
 
         // Guards the favorite handler while we set IsChecked from loaded state,
         // so restoring the toggle never fires a network call.
@@ -50,12 +53,14 @@ namespace BoxSubMusic.App
             base.OnNavigatedTo(e);
             _albumId = e.Parameter as string;
             _cts = new CancellationTokenSource();
+            PlaybackService.Instance.Changed += UpdateNowPlayingHighlight;
             _ = LoadAsync(_cts.Token);
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             base.OnNavigatedFrom(e);
+            PlaybackService.Instance.Changed -= UpdateNowPlayingHighlight;
             _cts?.Cancel();
             _cts = null;
         }
@@ -147,9 +152,81 @@ namespace BoxSubMusic.App
             FavoriteStatusText.Visibility = Visibility.Collapsed;
 
             var rows = detail.Songs.Select(s => ToRow(s, album.Artist)).ToList();
+            _detail = detail;
+            _rows = rows;
             TracksList.ItemsSource = rows;
             TracksList.Visibility = rows.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
             NoTracksText.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            // Nothing to queue on a trackless album (§15: visibly disabled
+            // beats a Play that silently does nothing).
+            PlayButton.IsEnabled = rows.Count > 0;
+            ShuffleButton.IsEnabled = rows.Count > 0;
+            UpdateNowPlayingHighlight();
+        }
+
+        // --- Playback (Slice 07b behavior, live since Slice 10) ---------------
+
+        private void PlayButton_Click(object sender, RoutedEventArgs e)
+        {
+            StartPlayback(0, shuffle: false);
+        }
+
+        private void ShuffleButton_Click(object sender, RoutedEventArgs e)
+        {
+            StartPlayback(0, shuffle: true);
+        }
+
+        private void TracksList_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            // §9: selecting a track jumps playback directly to it — the queue
+            // becomes this album, positioned at the chosen track.
+            var row = e.ClickedItem as TrackRow;
+            if (row != null && _rows != null)
+            {
+                StartPlayback(_rows.IndexOf(row), shuffle: false);
+            }
+        }
+
+        private void PlayTrack_Click(object sender, RoutedEventArgs e)
+        {
+            var row = (sender as FrameworkElement)?.Tag as TrackRow;
+            if (row != null && _rows != null)
+            {
+                StartPlayback(_rows.IndexOf(row), shuffle: false);
+            }
+        }
+
+        private void StartPlayback(int startIndex, bool shuffle)
+        {
+            AlbumDetail detail = _detail;
+            if (detail == null || detail.Songs.Count == 0 || startIndex < 0)
+            {
+                return;
+            }
+
+            // §9/§10: replace the queue with this album's tracks only; the
+            // now-playing bar reveals itself off the service's change event.
+            PlaybackService.Instance.Play(
+                detail.Songs,
+                startIndex,
+                shuffle,
+                new QueueContext(detail.Album.Name, detail.Album.CoverArtId));
+        }
+
+        private void UpdateNowPlayingHighlight()
+        {
+            var rows = _rows;
+            if (rows == null)
+            {
+                return;
+            }
+
+            string currentId = PlaybackService.Instance.Queue.CurrentTrack?.Id;
+            foreach (TrackRow row in rows)
+            {
+                row.IsCurrent = currentId != null && row.Id == currentId;
+            }
         }
 
         private static TrackRow ToRow(Song song, string albumArtist)

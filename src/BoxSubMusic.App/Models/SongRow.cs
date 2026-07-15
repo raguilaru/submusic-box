@@ -1,12 +1,17 @@
+using BoxSubMusic.SubsonicClient.Models;
+
 namespace BoxSubMusic.App.Models
 {
     /// <summary>
     /// Display model for one row of the Songs browse list (requirements
     /// §7.3: title, artist, album, length, format, bitrate). Immutable.
+    /// Carries its <see cref="Song"/> since Slice 10 so the row's play
+    /// action can queue the real track model.
     /// </summary>
     public sealed class SongRow
     {
         public SongRow(
+            Song song,
             string id,
             string albumId,
             string title,
@@ -16,6 +21,7 @@ namespace BoxSubMusic.App.Models
             string format,
             string bitRateLabel)
         {
+            Song = song;
             Id = id;
             AlbumId = albumId;
             Title = title;
@@ -25,6 +31,9 @@ namespace BoxSubMusic.App.Models
             Format = format;
             BitRateLabel = bitRateLabel;
         }
+
+        /// <summary>The underlying track, queued by the row's play action (§7.3).</summary>
+        public Song Song { get; }
 
         public string Id { get; }
 

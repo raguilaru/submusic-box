@@ -13,10 +13,10 @@
          bitrate columns. Songs come from search3 with an empty query
          (OpenSubsonic full-library listing, decision 2026-07-13) in
          incrementally loaded pages; non-OpenSubsonic servers get an explicit
-         unsupported state instead of a wrong empty list (§3). The row primary
-         action (A/Enter = immediate playback, decision 2026-07-13) arrives
-         with Slice 10; rows are inert with a visible note (§15). The Menu
-         button opens the secondary context menu; "Go to album" is live. -->
+         unsupported state instead of a wrong empty list (§3). A/Enter on a
+         row starts immediate playback (decision 2026-07-13, live since Slice
+         10): the queue becomes all rows loaded so far, positioned at the
+         chosen song. The Menu button opens the secondary context menu. -->
     <Grid Padding="48,36,48,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -29,7 +29,7 @@
                 FontSize="48"
                 FontWeight="SemiBold" />
             <TextBlock
-                Text="Playback arrives in a later update. Press Menu on a song for options."
+                Text="Press A to play a song. Press Menu for more options."
                 FontSize="15"
                 Opacity="0.6"
                 FontStyle="Italic" />
@@ -105,7 +105,8 @@
                     x:Name="SongsList"
                     Grid.Row="1"
                     SelectionMode="None"
-                    IsItemClickEnabled="False"
+                    IsItemClickEnabled="True"
+                    ItemClick="SongsList_ItemClick"
                     ContextRequested="SongsList_ContextRequested">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
@@ -126,8 +127,9 @@
                                          (console finding 2026-07-14). -->
                                     <MenuFlyout>
                                         <MenuFlyoutItem
-                                            Text="Play (arrives in a later update)"
-                                            IsEnabled="False" />
+                                            Text="Play"
+                                            Tag="{x:Bind}"
+                                            Click="PlaySong_Click" />
                                         <MenuFlyoutItem
                                             Text="Go to album"
                                             Tag="{x:Bind}"

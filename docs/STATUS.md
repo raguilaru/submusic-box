@@ -1,9 +1,9 @@
 # Current Status
 
-Last updated: 2026-07-15 (**bug-fix session CLOSED** — console checkpoint #3
-plus eight fix/re-test rounds; everything is console-verified except the
-nav-pane icon size, which Rafael deprioritized to the end-of-project
-refinement phase. **Next session: Slice 10.**)
+Last updated: 2026-07-15 (**Slice 10 implemented** — playback queue,
+rewritten PlaybackService, now-playing bar, plus the deferred 06b/07b/Songs
+wiring. Compile + all unit tests green; **console checkpoint #4 pending**,
+including the outstanding Release|x64 run. Changes not yet committed.)
 
 ## Where we are
 
@@ -267,18 +267,75 @@ refinement phase. **Next session: Slice 10.**)
   pointer input, ListView-level `ContextRequested` handler for the gamepad.
   `TrackRow` gained `ArtistId`/`HasArtistId`.
 
-**Verification state:** x64 Debug compile green over SSH after the
-checkpoint-#3 fixes — the App project compiles to its .exe (APPX0703 at the
-packaging step is the known command-line-only failure); **29 Core + 59
-SubsonicClient** unit tests green in the VM incl. live Navidrome tests (no
-library code changed since that run). Slices 03–09 have now been exercised on
-the console (checkpoint #3, 2026-07-14); only the three same-day fixes await
-console re-verification (backlog below).
+- **2.9 Slice 10 — playback queue + now-playing bar (implemented 2026-07-15),
+  including the 06b/07b/Songs-row retrofits deferred onto it:**
+  - **Design doc written before coding:**
+    `docs/architecture/30-playback-architecture.md` (scope + 4 decisions
+    confirmed with Rafael up front: engine = Core queue mirrored into a
+    MediaPlaybackList; §6.1 persistence deferred to 05b; scrobbling in;
+    Songs-row queue semantics).
+  - Client: `GetStreamUri(songId)` (authenticated /rest/stream URL, no
+    format/maxBitRate overrides in v1 — server player defaults decide) and
+    `ScrobbleAsync(id, submission)`. 7 new tests → **66 SubsonicClient tests
+    green** (was 59).
+  - Core: `Playback/PlayQueue` (+ `RepeatMode`, `QueueContext`) — pure,
+    injectable-Random-tested queue logic: replace-not-append (§10), full
+    randomization on Shuffle actions (§8: the first track is random too),
+    mid-play shuffle toggle pins the current track first / un-toggle restores
+    the original order at the current track, repeat Off→All→One, index sync
+    back from the player via `NotifyAdvanced`. 15 new tests → **44 Core tests
+    green** (was 29).
+  - **`PlaybackService` rewritten** (Slice 02 spike + TestTone.wav deleted):
+    one app-lifetime MediaPlayer fed by a `MediaPlaybackList` mirror —
+    gapless playback with next-track prefetch and native SMTC next/previous.
+    List items always sit in original order; shuffle is expressed via
+    `ShuffleEnabled` + `SetShuffledItems`, so toggling never interrupts the
+    current track. Per-item SMTC metadata + cover thumbnail;
+    `MaxPlayedItemsToKeepOpen = 2` (Xbox background memory, §11); repeat-one
+    handled manually (end-of-stream MoveTo; MediaEnded path for the last
+    track); `ItemFailed` skip with a consecutive-failure stop guard; scrobble
+    fired at min(50 %, 4 min) from `PositionChanged` on the media thread
+    (works while backgrounded), fire-and-forget, silent failures; Previous =
+    restart-track when >5 s in (in-app AND SMTC, via a `PreviousReceived`
+    intercept), else previous track; `Stop()` for sign-out. Service events
+    marshal to the UI dispatcher captured at first use.
+  - **`Controls/NowPlayingBar`** hosted in MainPage (NavigationView content is
+    now a Grid: content `Frame` + an Auto bottom row) — its own layout row,
+    so pages are never overlapped; "floating" is visual (margins + corner
+    radius). §10 compact bar: 84-epx artwork (music-note placeholder), title,
+    artist · album, format · bitrate, elapsed / thin progress / total, and
+    shuffle (ToggleButton, checked visuals) · previous · play/pause (64-epx
+    primary) · next · repeat · queue-expand. Slide-up + fade reveal on first
+    Play; hides on Stop. **Repeat state is glyph + opacity only** (F172 all /
+    EF34 one / dimmed when off) — never painted Foreground (favorite-heart
+    console lesson). Elapsed display runs on a 500 ms DispatcherTimer only
+    while playing. **Queue-expand is present but disabled until Slice 11**
+    (visible-deferral pattern). New glyphs verified against the shipped TTF
+    cmap: pause F5A2, previous F629, next F56A, repeat-all F172, repeat-one
+    EF34 (queue button reuses list F4EE).
+  - **Retrofits, all live now:** ArtistDetail Play/Shuffle (§8 pool =
+    oldest-album-first via one getAlbum per album fetched in parallel — year
+    ascending, unknown last, then name; buttons disable during the fetch;
+    failures surface in a status line, §15); AlbumDetail Play/Shuffle (§9,
+    album tracks only), track-row A/Enter = jump-to-track (queue = album at
+    that track), context-menu "Play" live, **current-track highlight** (the
+    number column swaps to an accent music-note marker; `TrackRow` is now
+    observable); SongsPage rows play (queue = all rows loaded so far,
+    positioned at the clicked song — §16 decision), context-menu "Play" live,
+    header note now describes A/Menu instead of "arrives later"; sign-out
+    calls `PlaybackService.Stop()` so no audio/queue survives to setup; the
+    `XYFocusDown` pins on the favorite hearts are gone (Play/Shuffle below
+    are focusable again).
 
-**Git state:** `main` holds the setup-flow fix (`f5e1908`), the Slice 07a + 08
-commit (`d0cb046`), the Slice 09 commit (`6174e22`), the composite
-center-crop fix + working-mode docs commit (`52fa145`), and the checkpoint-#3
-input fixes + focus architecture commit; working tree clean.
+**Verification state:** x64 Debug compile green over SSH (App .exe produced;
+APPX0703 at the packaging step is the known command-line-only failure);
+**44 Core + 66 SubsonicClient** unit tests green in the VM incl. live
+Navidrome tests. Slice 10 has NOT run on any device yet — VM arm64 F5 smoke
+test and console checkpoint #4 (incl. the outstanding Release|x64 run) are
+the next verification steps (backlog below).
+
+**Git state:** `main` holds everything through the checkpoint-#3 fixes; the
+Slice 10 changes are in the working tree, not yet committed.
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -305,14 +362,15 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-1. **Slice 10 (now-playing bar + queue)** — the big unblocker for
-   05b/06b/07b, the Songs row action, and the playlist detail/playback view
-   deferred out of 09 — then 11 (expanded queue), 12 is done in essence
-   (theme selector still missing — check §12), 13 (Search; §17 paging
-   decision), 05b/06b/07b wiring, 14 (resilience/polish incl. the deferred
-   nav-icon-size refinement).
-2. Fold the outstanding **Release|x64 .NET Native run** into the Slice 10
-   session (start or first checkpoint).
+1. **Console checkpoint #4** (if not yet run — see backlog): all Slice 10
+   items plus the long-outstanding **Release|x64 .NET Native run**.
+2. **Slice 11 (expanded queue)** — enables the bar's queue button + the Y
+   mapping and jump-to-track from the queue.
+3. Then: **05b** (queue persistence + Home resume card — the model is
+   ready, `QueueContext` is already carried), **playlist detail/playback
+   view** (deferred out of 09, unblocked now), **12** (theme selector still
+   missing — check §12), **13** (Search; §17 paging decision), **14**
+   (resilience/polish incl. the deferred nav-icon-size refinement).
 
 ## On-device test backlog (next console pass)
 
@@ -347,14 +405,66 @@ chain (up/down walks the switches, Left reaches the nav). Still open:
    NavigationViewItem, or drop the Icon property and put the FontIcon in
    the item Content.
 
+**Slice 10 items (checkpoint #4, added 2026-07-15) — first VM arm64 F5
+smoke-test, then console:**
+
+3. **Release|x64 .NET Native run now matters double:** the new
+   MediaPlaybackList/SMTC code paths have never run under .NET Native
+   optimization. Deploy Release|x64 once and do a quick playback pass.
+4. **Album detail:** Play, Shuffle, A on a track row jumps to it,
+   context-menu Play, current-track marker follows track changes, Play/
+   Shuffle disabled on a trackless album.
+5. **Artist detail:** Play queues oldest-album-first across all albums
+   (spot-check the order), Shuffle randomizes; buttons disable during the
+   per-album fetch — is the delay acceptable on a many-album artist?
+6. **Songs:** A on a row plays from that song; Menu → Play works; the queue
+   is the loaded rows (Next from the last loaded song wraps/stops rather
+   than fetching more — expected).
+7. **Now-playing bar:** reveals with a slide on first Play; metadata correct
+   (title/artist/album/format/bitrate); elapsed ticks and total is right;
+   play/pause glyph swaps; shuffle toggle mid-play keeps the current track;
+   repeat cycles Off→All→One (dimmed → repeat-all → repeat-1 glyph) and
+   behaves at queue end; previous restarts after >5 s, double-press goes
+   back; queue button visibly disabled; D-pad reaches the bar from page
+   content and returns; legible at 10 ft in both themes.
+8. **Gapless:** album playback advances without an audible gap.
+9. **Background audio with real streams (§11):** checkpoint #1 verified only
+   the test tone. Backgrounded playback continues; SMTC/system media flyout
+   shows per-track metadata + cover art; system play/pause/next/previous
+   work; return to the app shows the bar in the right state.
+10. **Sign-out during playback:** audio stops, bar hides, setup page is
+    silent.
+11. **Scrobbling:** after playing a track past half, the play count rises on
+    Navidrome (Most Played on Home reflects it eventually).
+12. **Failure path:** stop the server / drop the network mid-queue — the
+    app must not loop forever; playback stops after the queue's worth of
+    failures (§3 note: silent per-track skip is a known v1 gap).
+
 *(Future slices: append your console items here.)*
 
 ## Known gaps / notes from this session
 
-- **No playback yet (Slice 10):** Play/Shuffle on artist + album detail are
-  disabled with a visible note (06b/07b); Songs rows and album track rows are
-  focusable but inert; no now-playing bar. All of 05b/06b/07b and the Songs
-  row action unblock on Slice 10.
+- **Playback is in (Slice 10) — remaining playback gaps:** no expanded queue
+  view yet (Slice 11; the bar's queue button is visibly disabled, no Y
+  mapping), no queue persistence/resume (05b), no seek from the compact bar
+  (not a §10 requirement; the progress line is display-only; SMTC/system
+  seek still works where the system offers it), and playlists still have no
+  detail/playback view.
+- **Stream format/bitrate labels describe the file's tags, not the delivered
+  stream:** v1 sends no transcoding overrides, so a server configured to
+  transcode will play a different bitrate than the bar shows. Revisit with
+  the OpenSubsonic `transcoding` extension in the refinement phase.
+- **Artist Play fans out one getAlbum per album in parallel** (same shape as
+  the playlist-tile artwork fan-out). Fine for typical artists; a 100-album
+  artist will hammer the server and delay start — revisit throttling if the
+  console feel-test stalls.
+- **A failed stream item is skipped silently** (the MediaPlaybackList moves
+  on); only a whole queue's worth of consecutive failures stops playback.
+  Per-track error surfacing is a §3 refinement candidate.
+- **Repeat-one + SMTC previous/next:** manual next in repeat-one advances
+  (conventional); only natural track end repeats.
+- The Songs-row queue is **the rows loaded so far** — reaching the end of
+  the queue does not fetch further pages (§16 decision 2026-07-15).
 - **Mid-scroll page failure loses the scroll position:** a failed incremental
   page shows the page-level error, and Retry reloads from the top. Acceptable
   v1 trade-off, documented in §16.
@@ -387,9 +497,10 @@ chain (up/down walks the switches, Left reaches the nav). Still open:
   fast and the alternative (guards) adds complexity.
 - The remaining placeholder section page (Search) has no focusable content,
   so Right-into-content has no target there. Fine until that slice lands.
-- **Playlists are read-only (Slice 09):** tiles are focusable but inert — no
-  playlist detail/playback view until a later slice unblocks on Slice 10's
-  queue infra. Composite tile artwork loads lazily per tile (one getPlaylist
+- **Playlists are read-only (Slice 09):** tiles are focusable but inert — the
+  detail/playback view is now UNBLOCKED (Slice 10 queue exists) but not yet
+  built; its note still reads "arrive in a later update", which stays true.
+  Composite tile artwork loads lazily per tile (one getPlaylist
   per playlist, run in parallel after the grid paints); a per-tile fetch
   failure silently degrades to the placeholder. With a large number of
   playlists this fans out to many parallel getPlaylist requests on page open —
@@ -408,9 +519,13 @@ chain (up/down walks the switches, Left reaches the nav). Still open:
 - Detail pages reached from a hidden-then-shown section, and section history
   under B-back, use the frame's natural back stack — section switches
   accumulate history (standard NavigationView behavior).
-- The Slice 02 spike UI (test-tone buttons) was removed with the MainPage
-  rebuild; `PlaybackService` remains for Slice 10. Background audio itself
-  was already console-verified in checkpoint #1.
+- The last Slice 02 spike remnants are gone: `PlaybackService` was rewritten
+  for the real queue and `Assets/TestTone.wav` deleted. Background audio with
+  the test tone was console-verified in checkpoint #1; real-stream background
+  audio awaits checkpoint #4.
+- `PlaybackService.Instance` must be first touched on the UI thread (it
+  captures that dispatcher); every current touch point is a UI handler or
+  page/control Loaded, so this is a convention, not a runtime check.
 
 ## Milestones (compressed history)
 
@@ -434,6 +549,10 @@ chain (up/down walks the switches, Left reaches the nav). Still open:
 - 2026-07-13: playlist editing scope resolved **read-only** for v1 (§16/§17);
   Slice 09 Playlists browse + client-side composite artwork
   (`Core/Playlists/PlaylistArtwork`, lazy per-tile), tiles inert until Slice 10.
+- 2026-07-15: **Slice 10** — Core `PlayQueue` mirrored into a
+  MediaPlaybackList (gapless + native SMTC), stream/scrobble client
+  endpoints, `NowPlayingBar` in the shell, 06b/07b/Songs-row playback wired.
+  Design doc: docs/architecture/30-playback-architecture.md.
 
 ## How to deploy (quick reference)
 
