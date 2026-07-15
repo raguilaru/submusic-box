@@ -36,34 +36,9 @@ namespace BoxSubMusic.App
         // so restoring the toggle never fires a network call.
         private bool _suppressFavoriteEvents;
 
-        private readonly Brush _favoriteActiveBrush;
-
         public ArtistDetailPage()
         {
             InitializeComponent();
-            _favoriteActiveBrush = ResolveAccentBrush();
-        }
-
-        // The starred heart is tinted with the system accent (the Regular
-        // Fluent font has no filled heart). Resolve defensively so a missing
-        // resource can never break page construction.
-        private static Brush ResolveAccentBrush()
-        {
-            try
-            {
-                if (Application.Current.Resources.TryGetValue("SystemAccentColor", out var value)
-                    && value is Color color)
-                {
-                    return new SolidColorBrush(color);
-                }
-            }
-            catch (Exception)
-            {
-                // fall through to the accent-brush fallback below
-            }
-
-            return Application.Current.Resources["SystemControlForegroundAccentBrush"] as Brush
-                ?? new SolidColorBrush(Colors.DodgerBlue);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -163,7 +138,6 @@ namespace BoxSubMusic.App
             _suppressFavoriteEvents = true;
             FavoriteToggle.IsChecked = detail.Artist.IsStarred;
             _suppressFavoriteEvents = false;
-            UpdateFavoriteVisual(detail.Artist.IsStarred);
             FavoriteStatusText.Visibility = Visibility.Collapsed;
 
             var cards = detail.Albums
@@ -195,7 +169,6 @@ namespace BoxSubMusic.App
             }
 
             bool wantStarred = FavoriteToggle.IsChecked == true;
-            UpdateFavoriteVisual(wantStarred);
             FavoriteStatusText.Visibility = Visibility.Collapsed;
 
             var client = AppSession.Client;
@@ -223,7 +196,6 @@ namespace BoxSubMusic.App
                 _suppressFavoriteEvents = true;
                 FavoriteToggle.IsChecked = !wantStarred;
                 _suppressFavoriteEvents = false;
-                UpdateFavoriteVisual(!wantStarred);
                 FavoriteStatusText.Text = "Couldn't update favorite. Try again.";
                 FavoriteStatusText.Visibility = Visibility.Visible;
             }
@@ -233,21 +205,12 @@ namespace BoxSubMusic.App
             }
         }
 
-        private void UpdateFavoriteVisual(bool starred)
-        {
-            if (starred)
-            {
-                FavoriteIcon.Foreground = _favoriteActiveBrush;
-            }
-            else
-            {
-                // ClearValue, not null: a null Foreground paints the glyph
-                // with no brush at all — the heart was invisible on every
-                // unstarred item (console finding 2026-07-14). Clearing
-                // restores the inherited theme brush.
-                FavoriteIcon.ClearValue(ForegroundProperty);
-            }
-        }
+        // The heart glyph is NEVER painted directly: the ToggleButton's own
+        // checked visuals carry the starred state (accent background +
+        // checked foreground). Two console findings 2026-07-14 killed the
+        // hand-painting: Foreground=null made the unstarred heart invisible,
+        // and an accent glyph on the accent checked background made the
+        // starred heart invisible.
 
         // --- View states -----------------------------------------------------
 

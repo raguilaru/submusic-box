@@ -297,10 +297,11 @@ requirements §14 validation-throughout:
 - New slices append their console items to the backlog below **and the next
   checkpoint prompt covers everything still unchecked there**.
 
-**⚠️ Pending now (backlog below): nav pane 10-ft sizing, setup gamepad
-editing, screen-edge clipping check, Release run. Everything else from
-checkpoint #3 and its fix rounds is console-verified. This session is bug
-fixing only — Slice 10 starts in a fresh session.**
+**⚠️ Pending now (backlog below): nav icon size, starred-heart visuals,
+screen-edge clipping check, Release run. Everything else from checkpoint #3
+and its fix rounds is console-verified (incl. setup gamepad editing,
+re-test #7). This session is bug fixing only — Slice 10 starts in a fresh
+session.**
 
 ## Next step (start here next session)
 
@@ -324,19 +325,26 @@ navigation focus (card → detail both paths, Songs, B-back), favorite heart
 renders, main-content sizing at 1:1 scale, Songs AND album-track context
 menus. Still open:
 
-1. **Verify nav pane 10-ft sizing (re-test #6 finding, fixed same day):**
-   with the 200% scale gone the pane's system defaults read too small —
-   items are now 56 epx tall with 20 epx text and 24 epx icons. **Verify:**
-   pane legible at 10 ft and rows don't look cramped or clipped.
-2. **Verify setup gamepad editing** (sign out via Account): with the OSK
-   dismissed, X deletes a character in the URL/username boxes and LB/RB
-   move the caret; X on the password field clears it; the hint line is
-   legible at 10 ft; the Enter-advance/OSK chaining flow still works
-   (regression check).
-3. **Edge check (low priority):** with the TV-safe border opt-out, confirm
+1. **Verify nav icon size (re-test #7: text size OK, icons still too
+   small):** the NavigationView template scales each item's icon inside a
+   Viewbox sized by the `NavigationViewItemOnLeftIconBoxHeight` theme
+   resource (default 16 epx) — FontIcon.FontSize alone was a no-op. Now
+   overridden app-wide to 28 epx. **Verify:** pane icons read clearly at
+   10 ft next to the 20 epx text.
+2. **Verify the starred heart (re-test #7 finding, fixed same day):**
+   pressing favorite turned the button accent ("green") and the heart
+   vanished — the glyph was hand-painted with the accent brush on top of
+   the ToggleButton's accent checked background. All glyph painting is
+   removed; the button's own checked visuals carry the state (accent
+   background, checked-foreground heart on top). **Verify:** starred =
+   accent button with visible heart, unstarred = plain button with
+   theme-color heart, both detail pages, both themes.
+3. ~~Setup gamepad editing~~ **verified working on console 2026-07-14
+   (re-test #7).**
+4. **Edge check (low priority):** with the TV-safe border opt-out, confirm
    nothing important is clipped at the screen edges on this TV (pages keep
    their own 48 px padding; the nav pane touches the left edge).
-4. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
+5. **Release|x64 .NET Native run** (from the build plan) — still outstanding;
    Debug and Release differ under .NET Native, so at least one full Release
    run is needed.
 
@@ -358,9 +366,11 @@ menus. Still open:
   Length 70/Format 70/Bitrate 90 epx) — tune after the 10-ft check.
 - **Multi-disc albums render as one flat list** ordered disc→track; no disc
   headers yet.
-- **Favorite heart shows state by color, not a filled glyph:** the shipped
-  Fluent Regular font has no filled heart, so starred = accent-color fill of
-  the outline heart. Verify legibility at 10 ft on device.
+- **Favorite state is carried by the ToggleButton's checked visuals** (accent
+  background + checked-foreground outline heart), not by painting the glyph:
+  the shipped Fluent Regular font has no filled heart, and both hand-painting
+  attempts made the heart invisible on console (Foreground=null when
+  unstarred; accent-on-accent when starred). The glyph always inherits.
 - **Resume card (§6.1) intentionally absent** until Slice 05b (after queue
   persistence exists); acceptance criterion "shows resume card when
   persisted context exists" is vacuously satisfied — nothing can persist

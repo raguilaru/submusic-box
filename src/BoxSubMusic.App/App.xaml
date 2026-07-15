@@ -10,6 +10,13 @@
              Regular icon font; glyph codepoints come from the set's official
              FluentSystemIcons-Regular.json map. -->
         <FontFamily x:Key="FluentIconFont">ms-appx:///Assets/Fonts/FluentSystemIcons-Regular.ttf#FluentSystemIcons-Regular</FontFamily>
+
+        <!-- 10-ft nav pane icons (console finding 2026-07-14): the
+             NavigationView template renders each item's icon inside a
+             Viewbox sized by this theme resource (default 16 epx), so
+             FontIcon.FontSize alone cannot grow them. 28 epx pairs with
+             the 20 epx item text set in MainPage. -->
+        <x:Double x:Key="NavigationViewItemOnLeftIconBoxHeight">28</x:Double>
     </Application.Resources>
 
 </Application>
