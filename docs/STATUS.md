@@ -1,12 +1,12 @@
 # Current Status
 
-Last updated: 2026-07-16 (**Slice 11 implemented** — expanded two-pane
-queue overlay, jump-to-track, global Y toggle, bar queue button enabled.
-Compiles green (x64 Debug over SSH; APPX0703 = known command-line-only
-packaging failure), 44 Core + 66 SubsonicClient tests green. NOT yet
-console-verified — nor are the two leftovers from the Slice 10 session
-(context-menu favorite toggle, row starred markers). **Next: console
-checkpoint #5 covering backlog items 3–8.**)
+Last updated: 2026-07-16 (**Slice 11 session CLOSED.** Expanded queue
+implemented and committed (`87c5f28`); checkpoint #5 run the same day:
+context-menu favorite toggle, row starred markers, and the expanded queue
+view all verified by Rafael. **One test remains open: the overlay's focus
+trap (backlog item 6)** — the Xbox is temporarily unavailable, so it waits
+for the next console pass. **Next session: Slice 05b or playlist detail —
+run the focus-trap test first.**)
 
 ## Where we are
 
@@ -466,11 +466,14 @@ checkpoint #5 covering backlog items 3–8.**)
   - Bar: queue button now enabled → raises `QueueExpandRequested`; tooltip
     "Queue (Y)".
 
-**Verification state:** Slice 10 + its three feedback rounds are
-console-verified. **Slice 11, the context-menu favorite toggle, and the row
-starred markers are NOT** — they compile green (x64 Debug over SSH;
-APPX0703 packaging is the known command-line-only failure) with **44 Core +
-66 SubsonicClient** tests green, and await console checkpoint #5.
+**Verification state (checkpoint #5, 2026-07-16):** the context-menu
+favorite toggle, the row starred markers, and the expanded queue view
+(open/close paths, jump-to-track, live updates) are **verified by Rafael**.
+The **only open item is the overlay's focus trap** (backlog item 6 —
+NavView.IsEnabled=false is a new trapping mechanism on console): the Xbox
+is temporarily unavailable, so it carries to the next console pass. Build
+green (x64 Debug over SSH; APPX0703 packaging is the known
+command-line-only failure), **44 Core + 66 SubsonicClient** tests green.
 
 **Git state:** `main` holds Slice 10 (`f571bb4`), the checkpoint-#4 fix
 commits, and Slice 11 on top (see log).
@@ -500,9 +503,9 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-1. **Console checkpoint #5** (backlog items 3–8): the Slice 10 leftovers
-   (context-menu favorite toggle, row starred markers) + all Slice 11
-   items. Rafael drives F5.
+1. **When the Xbox is back: the focus-trap test** (backlog item 1) — the
+   one checkpoint-#5 item that couldn't run. Small; fold into the next
+   checkpoint.
 2. Then: **05b** (queue persistence + Home resume card — the model is
    ready, `QueueContext` is already carried), **playlist detail/playback
    view** (deferred out of 09, unblocked now), **12** (theme selector still
@@ -553,41 +556,19 @@ the next console pass:
 surfaces, browse-page Up-to-toggle (grid + list, all three sections), guide
 media card (A on the media tile shows the full OS control set). Still open:
 
-3. **Context-menu favorite toggle** (added after the third round): Menu on
-   a Songs row or an album track row → "Add to favorites"/"Remove from
-   favorites"; the label matches the row's current state, toggling updates
-   the row's heart marker immediately and persists (check Navidrome), and
-   a failed call changes nothing.
-4. **Row starred markers** (implemented with the heart redesign, never
-   explicitly confirmed): Songs list and album track lists show a small
-   filled accent heart next to starred songs (column after the title);
-   unstarred rows show nothing. Legible at 10 ft, not distracting.
+**Checkpoint #5 (2026-07-16) ran items 3–8:** context-menu favorite toggle
+(3), row starred markers (4), and the expanded queue view (5, 7, 8 —
+open/close paths, jump-to-track, live updates) all **verified by Rafael**.
+One item could not be run (Xbox temporarily unavailable) and stays open:
 
-**Slice 11 (2026-07-16) — expanded queue:**
-
-5. **Open/close paths:** the bar's queue button (now enabled) opens the
-   overlay; **Y from anywhere** (a browse page, a detail page, the bar)
-   opens it while a queue exists; Y with no queue does nothing. Inside:
-   **Y, B, and the chevron button** each close it; the slide-up/down
-   animates both ways. After closing, focus sits on the bar's queue button.
-6. **Focus while open:** focus lands on the current track's queue row on
-   open (visible ring); XY can reach every transport control and the queue
-   list, and **cannot escape into the nav pane or the page behind** —
-   especially Left from the leftmost transport buttons and Up from the top
-   row (the trap is NavView.IsEnabled=false, a new mechanism on console).
-7. **Jump-to-track (§10):** A on any queue row — earlier AND later than the
-   current track — jumps playback there immediately; the now-playing marker
-   moves; the queue order does not change. **Critical sub-case: with
-   shuffle ON**, A on a row must play exactly that song (MoveTo's index
-   space under shuffle is undocumented; the code self-corrects via the
-   returned item, so a wrong first landing would surface as a brief blip of
-   the wrong track — report if audible). A on the current row restarts it.
-8. **Live updates while open:** track advancement moves the marker without
-   resetting the list's scroll position or stealing focus; toggling shuffle
-   from the overlay reorders the list (current track pinned first) and
-   scrolls back to the current row; elapsed/progress tick; play/pause,
-   repeat, and the favorite heart behave like the bar (heart also repaints
-   the row's starred marker in place). 10-ft legibility of both panes.
+1. **Focus trap while the overlay is open** (was item 6): focus lands on
+   the current track's queue row on open (visible ring); XY can reach every
+   transport control and the queue list, and **cannot escape into the nav
+   pane or the page behind** — especially Left from the leftmost transport
+   buttons and Up from the top row. The trap is `NavView.IsEnabled=false`,
+   a mechanism not yet exercised on console (the PaneFooter history is why
+   this deserves an explicit check). Also confirm that after closing, focus
+   returns to the bar's queue button.
 
 *(Future slices: append your console items here.)*
 
@@ -608,8 +589,8 @@ media card (A on the media tile shows the full OS control set). Still open:
   during the 300 ms slide; accepted.
 - **JumpTo under shuffle self-corrects:** MoveTo's index space with
   ShuffleEnabled is undocumented, so a platform mismatch would produce one
-  imperceptible wrong-item MoveTo before the corrective one. Verify on
-  console (backlog item 7).
+  imperceptible wrong-item MoveTo before the corrective one. Jump-to-track
+  verified at checkpoint #5; no wrong-track blip reported.
 - **Stream format/bitrate labels describe the file's tags, not the delivered
   stream:** v1 sends no transcoding overrides, so a server configured to
   transcode will play a different bitrate than the bar shows. Revisit with
