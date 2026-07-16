@@ -314,7 +314,22 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   ComboBox for 10-ft/controller use — no popup focus scope, all options
   visible, one A-press), applying instantly like the console's own theme
   setting; the page's XYFocus chain extends through them.
-- 2026-07-15: **Queue persistence (Section 6.1) stays with Slice 05b.** `PlayQueue` already carries everything the resume contract needs (track references + `QueueContext` display name/artwork), so persistence bolts on without model changes. The now-playing bar's **queue-expand control ships disabled until Slice 11** (visible-deferral pattern, Section 15 spirit); the Y-button mapping lands with Slice 11 (§10's "documented as pending" clause).
+- 2026-07-16: **Slice 05b resume semantics + persistence shape** (Section
+  6.1): the Home card's **Play starts playback immediately** at the saved
+  track and in-track position (confirmed with Rafael; "MUST NOT auto-play
+  on launch" is satisfied because launch restores nothing — only the card
+  renders, and the queue is rebuilt when Play is pressed). Persistence
+  splits by write rate: the queue **structure** (tracks in original order,
+  shuffled play order as indices, shuffle/repeat, `QueueContext`, owning
+  server URL + username) is a LocalFolder XML file (`ResumeState` in Core,
+  reflection-free XDocument) rewritten only on structural changes; the
+  **current index + position** are LocalSettings scalars written on track
+  change/pause/suspend and ~10 s throttled during playback, overriding the
+  file at load. **Stream URLs never persist** (they embed the auth token —
+  §4); only song ids do, and URLs are rebuilt at resume. State is
+  validated against the active server login at load and cleared on
+  sign-out/stop; any malformed part rejects the whole state. The card
+  shows only when no queue is active in the session. `PlayQueue` already carries everything the resume contract needs (track references + `QueueContext` display name/artwork), so persistence bolts on without model changes. The now-playing bar's **queue-expand control ships disabled until Slice 11** (visible-deferral pattern, Section 15 spirit); the Y-button mapping lands with Slice 11 (§10's "documented as pending" clause).
 
 ## 17. Open Decisions / TODO
 

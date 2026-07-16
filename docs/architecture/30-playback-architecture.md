@@ -247,3 +247,54 @@ Mechanics worth remembering:
   after the close animation so the host restores focus exactly once. The
   favorite toggle mirrors the bar's silent-snap-back failure mode and
   repaints the matching row heart in place.
+
+## Slice 05b: queue persistence + resume (added 2026-07-16)
+
+§6.1's local resume contract on top of the Slice 10/11 machinery. One
+decision confirmed with Rafael up front: **the Home resume card's Play
+starts playback immediately** at the saved track + position ("MUST NOT
+auto-play on launch" is satisfied because launch itself restores nothing —
+only the card renders; the queue is rebuilt when the user presses Play).
+The literal-paused reading (restore paused, press play again on the bar)
+was explicitly not chosen.
+
+Storage split (both under the 2026-07-09 §16 persistence decision):
+
+- **Structure → `resume-state.xml` in LocalFolder** (reflection-free
+  XDocument, Core-serialized): the full track list in original order with
+  the §7.3/§10 display metadata per song, the shuffled play order (as
+  original-order indices, present only when shuffle is on), shuffle flag,
+  repeat mode, the `QueueContext` (display name + cover art id), and the
+  owning server identity (URL + username). Rewritten only on structural
+  changes: queue replace, shuffle toggle, repeat change — user-initiated
+  and rare.
+- **Fast-moving scalars → LocalSettings** (`resume.index`,
+  `resume.positionSeconds`): updated on track change (index, position 0),
+  on pause, on suspend, and throttled to ~10 s of playback from
+  `PositionChanged` (media thread — ApplicationData is agile/thread-safe).
+  At load they override the XML's snapshot values when valid.
+
+Rules that matter:
+
+- **No stream URLs in the file** — they embed the auth token+salt (§4:
+  secrets never in plain storage). Only song ids persist; URLs are rebuilt
+  from the connected client at resume.
+- **Server identity is validated at load**: a state saved for a different
+  server/user (stale file surviving an interrupted sign-out) reads as
+  absent and is deleted. Normal sign-out clears everything via
+  `PlaybackService.Stop()` → `ResumeStore.ClearAsync()`; the
+  consecutive-failure stop clears too (accepted: the queue is gone from
+  the UI, persistence stays consistent with what the user sees).
+- **All-or-nothing parse**: any malformed song entry, index out of range,
+  or non-permutation play order rejects the whole state (Core
+  `ResumeState.Parse` returns null) — a partially restored queue would
+  lie about what "where you left off" was. Corrupt = no card, file
+  deleted best-effort (RecentServersStore convention).
+- `PlayQueue.Restore(...)` (Core, tested) rehydrates tracks/order/index/
+  shuffle/repeat/context in one atomic mutation; `PlaybackService.Resume`
+  then reuses the normal `RebuildList()` mirror and seeks via a one-shot
+  pending-seek consumed on `MediaPlayer.MediaOpened` (a failed seek
+  degrades to track start).
+- The Home card renders only when the persisted state loads AND no queue
+  is active this session (an active queue means the bar already shows the
+  same truth; after Resume the card hides for the same reason).

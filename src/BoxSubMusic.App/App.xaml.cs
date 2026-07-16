@@ -173,7 +173,11 @@ namespace BoxSubMusic.App
         private void OnSuspending(object sender, SuspendingEventArgs e)
         {
             var deferral = e.SuspendingOperation.GetDeferral();
-            //TODO: Save application state and stop any background activity
+            // §6.1: flush the in-track resume position — termination happens
+            // from the suspended state, and the periodic saves are ~10 s
+            // coarse. The queue structure is already on disk (persisted on
+            // every structural change).
+            Services.PlaybackService.NotifySuspending();
             deferral.Complete();
         }
     }

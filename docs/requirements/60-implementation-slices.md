@@ -176,6 +176,12 @@ Split decided 2026-07-10: **Slice 05a** delivers the three carousels with
 loading/empty/error states now; the resume card renders only when persisted
 playback context exists — impossible until the playback slices produce that
 state. **Slice 05b** (the real resume card) follows Slices 10/11.
+**05b implemented 2026-07-16** (§16 / design doc Slice 05b section): Core
+`ResumeState` + `PlayQueue.Restore`, app `ResumeStore`
+(LocalFolder XML structure + LocalSettings index/position scalars),
+`PlaybackService.Resume` with one-shot in-track seek, Home card whose Play
+restores and plays immediately. Console verification pending (STATUS
+backlog items 8–12).
 
 ### Deliverables
 - resume section (05a: stub that renders nothing without persisted context; 05b: real card)

@@ -104,6 +104,43 @@ namespace BoxSubMusic.Core.Playback
             Changed?.Invoke();
         }
 
+        /// <summary>
+        /// Rehydrates the queue from a persisted §6.1 resume state in one
+        /// atomic mutation: tracks, exact play order, current index, shuffle
+        /// and repeat flags, and context. The state's own invariants
+        /// (permutation, index range) were enforced at parse/construction;
+        /// this trusts them.
+        /// </summary>
+        public void Restore(ResumeState state)
+        {
+            if (state == null)
+            {
+                throw new ArgumentNullException(nameof(state));
+            }
+
+            _tracks.Clear();
+            _tracks.AddRange(state.Tracks);
+            ShuffleEnabled = state.ShuffleEnabled;
+            RepeatMode = state.RepeatMode;
+            Context = state.Context;
+
+            _playOrder.Clear();
+            if (state.PlayOrderIndices != null)
+            {
+                foreach (int index in state.PlayOrderIndices)
+                {
+                    _playOrder.Add(_tracks[index]);
+                }
+            }
+            else
+            {
+                _playOrder.AddRange(_tracks);
+            }
+
+            CurrentIndex = state.CurrentIndex;
+            Changed?.Invoke();
+        }
+
         /// <summary>Empties the queue (sign-out / stop).</summary>
         public void Clear()
         {

@@ -57,6 +57,20 @@ namespace BoxSubMusic.App.Services
         // (unreachable server), stop instead of skipping forever.
         private int _consecutiveFailures;
 
+        // §6.1 resume: one-shot seek applied when the first item after a
+        // Resume() opens (a MediaPlaybackList position can only be set once
+        // its media is open). Pinned to the track it was saved for, so a
+        // failed-and-skipped first item cannot start the NEXT track mid-song.
+        // Media-thread consumed.
+        private TimeSpan? _pendingSeek;
+        private Song _pendingSeekSong;
+
+        // Last position written to the resume scalars, media thread; bounds
+        // the LocalSettings write rate.
+        private TimeSpan _lastSavedPosition;
+
+        private static readonly TimeSpan PositionSaveInterval = TimeSpan.FromSeconds(10);
+
         public MediaPlayer Player { get; }
 
         public PlayQueue Queue { get; } = new PlayQueue();
@@ -84,6 +98,7 @@ namespace BoxSubMusic.App.Services
             // Keep the SMTC Previous button consistent with the in-app one
             // (restart the track when it is already underway).
             Player.CommandManager.PreviousReceived += OnCommandManagerPreviousReceived;
+            Player.MediaOpened += OnMediaOpened;
             Player.MediaEnded += OnMediaEnded;
             Player.PlaybackSession.PlaybackStateChanged += OnPlaybackStateChanged;
             Player.PlaybackSession.PositionChanged += OnPositionChanged;
@@ -106,6 +121,30 @@ namespace BoxSubMusic.App.Services
             }
 
             RebuildList();
+            PersistQueueStructure(TimeSpan.Zero);
+            Player.Play();
+        }
+
+        /// <summary>
+        /// Restores a persisted queue and starts playing at its saved track
+        /// and position (§6.1 resume card — decision 2026-07-16: Play on the
+        /// card plays immediately; launch itself never restores anything).
+        /// The in-track seek is applied once the stream opens; if the stream
+        /// is not seekable the track simply starts over.
+        /// </summary>
+        public void Resume(ResumeState state)
+        {
+            Queue.Restore(state);
+            RebuildList();
+            if (state.PositionSeconds > 0)
+            {
+                _pendingSeekSong = Queue.CurrentTrack;
+                _pendingSeek = TimeSpan.FromSeconds(state.PositionSeconds);
+            }
+
+            // The structure is already on disk (it was just loaded), but the
+            // rebuilt list re-persists so the scalars re-baseline too.
+            PersistQueueStructure(TimeSpan.FromSeconds(state.PositionSeconds));
             Player.Play();
         }
 
@@ -152,6 +191,7 @@ namespace BoxSubMusic.App.Services
         {
             Queue.SetShuffle(enabled);
             ApplyShuffleToList();
+            PersistQueueStructure(Session.Position);
         }
 
         /// <summary>
@@ -224,6 +264,8 @@ namespace BoxSubMusic.App.Services
                 // on end-of-stream (the list has no per-item repeat).
                 _list.AutoRepeatEnabled = Queue.RepeatMode == RepeatMode.All;
             }
+
+            PersistQueueStructure(Session.Position);
         }
 
         /// <summary>Sign-out / hard stop: silence, empty queue, bar hides.</summary>
@@ -233,7 +275,78 @@ namespace BoxSubMusic.App.Services
             DetachList();
             Player.Source = null;
             _scrobbleSong = null;
+            _pendingSeek = null;
+            _pendingSeekSong = null;
             Queue.Clear();
+
+            // No queue on screen = nothing to resume (§6.1 stays honest with
+            // what the user sees). Sign-out lands here too.
+            _ = ResumeStore.ClearAsync();
+        }
+
+        /// <summary>
+        /// Suspend hook (App.OnSuspending): flush the current position so a
+        /// termination from the suspended state resumes where the listener
+        /// actually was. Static so a launch that never touched playback does
+        /// not create the instance.
+        /// </summary>
+        public static void NotifySuspending()
+        {
+            var instance = _instance;
+            if (instance != null && !instance.Queue.IsEmpty)
+            {
+                ResumeStore.UpdatePosition(
+                    instance.Queue.CurrentIndex, instance.Session.Position.TotalSeconds);
+            }
+        }
+
+        // --- §6.1 persistence ---------------------------------------------------
+
+        /// <summary>
+        /// Fire-and-forget snapshot of the queue structure (UI thread only —
+        /// reads the queue). Called on the rare structural mutations:
+        /// replace, shuffle toggle, repeat change, resume.
+        /// </summary>
+        private void PersistQueueStructure(TimeSpan position)
+        {
+            string serverUrl;
+            string username;
+            if (Queue.IsEmpty || !CredentialStore.TryGetActiveIdentity(out serverUrl, out username))
+            {
+                _ = ResumeStore.ClearAsync();
+                return;
+            }
+
+            IReadOnlyList<int> playOrderIndices = null;
+            if (Queue.ShuffleEnabled)
+            {
+                // PlayOrder → original-order indices, by reference identity.
+                var indexOf = new Dictionary<Song, int>(Queue.Tracks.Count);
+                for (int i = 0; i < Queue.Tracks.Count; i++)
+                {
+                    indexOf[Queue.Tracks[i]] = i;
+                }
+
+                var indices = new int[Queue.PlayOrder.Count];
+                for (int i = 0; i < Queue.PlayOrder.Count; i++)
+                {
+                    indices[i] = indexOf[Queue.PlayOrder[i]];
+                }
+
+                playOrderIndices = indices;
+            }
+
+            var state = new ResumeState(
+                serverUrl,
+                username,
+                new List<Song>(Queue.Tracks),
+                playOrderIndices,
+                Queue.CurrentIndex,
+                position.TotalSeconds,
+                Queue.ShuffleEnabled,
+                Queue.RepeatMode,
+                Queue.Context);
+            _ = ResumeStore.SaveAsync(state);
         }
 
         // --- Queue → MediaPlaybackList mirror ---------------------------------
@@ -241,6 +354,8 @@ namespace BoxSubMusic.App.Services
         private void RebuildList()
         {
             DetachList();
+            _pendingSeek = null; // only Resume() seeks, and it sets this after the rebuild
+            _pendingSeekSong = null;
 
             var client = AppSession.Client;
             if (client == null)
@@ -371,6 +486,10 @@ namespace BoxSubMusic.App.Services
             _scrobbleSong = song;
             _scrobbleSent = false;
 
+            // A new track starts at zero; re-baseline the resume scalars and
+            // the throttle (both consumed on this thread).
+            _lastSavedPosition = TimeSpan.Zero;
+
             if (song != null)
             {
                 // "Now playing" report (submission=false): keeps the server's
@@ -384,7 +503,49 @@ namespace BoxSubMusic.App.Services
                     _ = ScrobbleQuietlyAsync(client, song.Id, submission: false);
                 }
 
-                _ = RunOnUiAsync(() => Queue.NotifyAdvanced(song));
+                _ = RunOnUiAsync(() =>
+                {
+                    Queue.NotifyAdvanced(song);
+                    if (!Queue.IsEmpty)
+                    {
+                        ResumeStore.UpdatePosition(Queue.CurrentIndex, 0);
+                    }
+                });
+            }
+        }
+
+        private void OnMediaOpened(MediaPlayer sender, object args)
+        {
+            // One-shot §6.1 resume seek: the position can only be set once
+            // the item's media is open. A non-seekable stream leaves the
+            // position at zero — the track starts over, accepted degradation.
+            TimeSpan? seek = _pendingSeek;
+            if (seek == null)
+            {
+                return;
+            }
+
+            _pendingSeek = null;
+            Song intended = _pendingSeekSong;
+            _pendingSeekSong = null;
+
+            MediaPlaybackItem currentItem = _list?.CurrentItem;
+            Song currentSong = null;
+            if (currentItem != null)
+            {
+                _itemToSong.TryGetValue(currentItem, out currentSong);
+            }
+
+            if (intended != null && !ReferenceEquals(currentSong, intended))
+            {
+                return; // the resumed track was skipped; don't seek its successor
+            }
+
+            MediaPlaybackSession session = sender.PlaybackSession;
+            TimeSpan duration = session.NaturalDuration;
+            if (duration > TimeSpan.Zero && seek.Value < duration)
+            {
+                session.Position = seek.Value;
             }
         }
 
@@ -407,17 +568,39 @@ namespace BoxSubMusic.App.Services
                 // if any, is over.
                 _consecutiveFailures = 0;
             }
+            else if (sender.PlaybackState == MediaPlaybackState.Paused && _scrobbleSong != null)
+            {
+                // Pausing is the classic prelude to leaving: flush the exact
+                // position (Queue.CurrentIndex is an atomic int read; a
+                // mid-transition stale value self-heals on the next write).
+                ResumeStore.UpdatePosition(Queue.CurrentIndex, sender.Position.TotalSeconds);
+            }
 
             _ = RunOnUiAsync(() => Changed?.Invoke());
         }
 
         private void OnPositionChanged(MediaPlaybackSession sender, object args)
         {
+            Song song = _scrobbleSong;
+            if (song == null)
+            {
+                return;
+            }
+
+            // §6.1: keep the resume position fresh (~10 s granularity) so a
+            // crash/power loss still resumes near where the listener was.
+            // Media thread; LocalSettings writes are agile and cheap.
+            TimeSpan position = sender.Position;
+            if ((position - _lastSavedPosition).Duration() >= PositionSaveInterval)
+            {
+                _lastSavedPosition = position;
+                ResumeStore.UpdatePosition(Queue.CurrentIndex, position.TotalSeconds);
+            }
+
             // Cheap threshold check on the media thread so scrobbling also
             // works while the app is backgrounded (§11); the UI's elapsed
             // display uses its own DispatcherTimer instead of this event.
-            Song song = _scrobbleSong;
-            if (song == null || _scrobbleSent)
+            if (_scrobbleSent)
             {
                 return;
             }

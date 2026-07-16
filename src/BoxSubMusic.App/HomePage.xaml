@@ -51,9 +51,72 @@
                     FontSize="48"
                     FontWeight="SemiBold" />
 
-                <!-- TODO (Slice 05b, after Slices 10/11): "Pick up where you
-                     left off" card — artwork, context name, Play that resumes
-                     the persisted queue paused at the saved position (§6.1). -->
+                <!-- Slice 05b (§6.1): resume card. Shown only when a valid
+                     persisted queue exists for this server AND nothing is
+                     playing this session (an active queue means the bar
+                     already shows the same truth). The whole card is the
+                     Play action: pressing it restores the queue at the saved
+                     track + position and starts playing (decision
+                     2026-07-16 — launch itself never restores anything, so
+                     §6.1's "no auto-play on launch" holds by construction). -->
+                <StackPanel
+                    x:Name="ResumeSection"
+                    Visibility="Collapsed"
+                    Spacing="16">
+                    <TextBlock
+                        Text="Pick up where you left off"
+                        FontSize="28"
+                        FontWeight="SemiBold" />
+                    <Button
+                        x:Name="ResumeCard"
+                        Padding="0"
+                        CornerRadius="8"
+                        Click="ResumeCard_Click">
+                        <Grid Height="160" MinWidth="560">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="160" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid Width="160" Height="160">
+                                <!-- Same placeholder treatment as the album
+                                     cards: music-note glyph until artwork
+                                     loads (or when there is none). -->
+                                <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
+                                    <FontIcon
+                                        FontFamily="{StaticResource FluentIconFont}"
+                                        Glyph="&#xE855;"
+                                        FontSize="48"
+                                        Opacity="0.4" />
+                                </Border>
+                                <Image x:Name="ResumeArtImage" Stretch="UniformToFill" />
+                            </Grid>
+                            <StackPanel
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Margin="24,0"
+                                Spacing="6">
+                                <TextBlock
+                                    x:Name="ResumeName"
+                                    FontSize="24"
+                                    FontWeight="SemiBold"
+                                    TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    x:Name="ResumeTrack"
+                                    FontSize="18"
+                                    Opacity="0.7"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <FontIcon
+                                Grid.Column="2"
+                                FontFamily="{StaticResource FluentIconFont}"
+                                Glyph="&#xF606;"
+                                FontSize="32"
+                                Margin="0,0,32,0"
+                                VerticalAlignment="Center" />
+                        </Grid>
+                    </Button>
+                </StackPanel>
 
                 <controls:AlbumCarousel
                     x:Name="MostPlayedCarousel"

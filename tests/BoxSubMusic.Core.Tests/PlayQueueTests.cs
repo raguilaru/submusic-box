@@ -229,4 +229,65 @@ public class PlayQueueTests
 
         Assert.Equal(5, changes);
     }
+
+    [Fact]
+    public void Restore_Shuffled_RebuildsExactPlayOrderAndState()
+    {
+        var songs = MakeSongs(4);
+        var state = new ResumeState(
+            "https://s", "u", songs, new[] { 2, 0, 3, 1 },
+            currentIndex: 1, positionSeconds: 30, shuffleEnabled: true,
+            repeatMode: RepeatMode.One, context: new QueueContext("Mix", "cov"));
+        var queue = MakeQueue();
+        int changes = 0;
+        queue.Changed += () => changes++;
+
+        queue.Restore(state);
+
+        Assert.Equal(songs, queue.Tracks);
+        Assert.Equal(new[] { songs[2], songs[0], songs[3], songs[1] }, queue.PlayOrder);
+        Assert.Equal(1, queue.CurrentIndex);
+        Assert.Same(songs[0], queue.CurrentTrack);
+        Assert.True(queue.ShuffleEnabled);
+        Assert.Equal(RepeatMode.One, queue.RepeatMode);
+        Assert.Equal("Mix", queue.Context?.DisplayName);
+        Assert.Equal(1, changes);
+    }
+
+    [Fact]
+    public void Restore_Unshuffled_PlayOrderIsOriginal()
+    {
+        var songs = MakeSongs(3);
+        var state = new ResumeState(
+            "https://s", "u", songs, null,
+            currentIndex: 2, positionSeconds: 0, shuffleEnabled: false,
+            repeatMode: RepeatMode.Off, context: null);
+        var queue = MakeQueue();
+
+        queue.Restore(state);
+
+        Assert.Equal(songs, queue.PlayOrder);
+        Assert.Equal(2, queue.CurrentIndex);
+        Assert.False(queue.ShuffleEnabled);
+        Assert.Null(queue.Context);
+    }
+
+    [Fact]
+    public void Restore_ThenShuffleOff_ReturnsToOriginalOrderAtCurrentTrack()
+    {
+        // The restored shuffled queue must behave like a live one afterwards.
+        var songs = MakeSongs(4);
+        var state = new ResumeState(
+            "https://s", "u", songs, new[] { 3, 1, 0, 2 },
+            currentIndex: 0, positionSeconds: 0, shuffleEnabled: true,
+            repeatMode: RepeatMode.Off, context: null);
+        var queue = MakeQueue();
+        queue.Restore(state);
+
+        queue.SetShuffle(false);
+
+        Assert.Equal(songs, queue.PlayOrder);
+        Assert.Same(songs[3], queue.CurrentTrack);
+        Assert.Equal(3, queue.CurrentIndex);
+    }
 }

@@ -42,6 +42,24 @@ namespace BoxSubMusic.App.Services
             settings[UsernameKey] = username;
         }
 
+        /// <summary>
+        /// The stored server URL + username WITHOUT touching the vault —
+        /// for callers that only need to identify the active server (e.g.
+        /// tagging/validating the §6.1 resume state), not authenticate.
+        /// Returns false when no login is stored.
+        /// </summary>
+        public static bool TryGetActiveIdentity(out string serverUrl, out string username)
+        {
+            var settings = ApplicationData.Current.LocalSettings.Values;
+            object urlValue;
+            object usernameValue;
+            settings.TryGetValue(ServerUrlKey, out urlValue);
+            settings.TryGetValue(UsernameKey, out usernameValue);
+            serverUrl = urlValue as string;
+            username = usernameValue as string;
+            return !string.IsNullOrEmpty(serverUrl) && !string.IsNullOrEmpty(username);
+        }
+
         /// <summary>Returns the stored login, or null when none/incomplete.</summary>
         public static StoredServerLogin TryLoadActive()
         {

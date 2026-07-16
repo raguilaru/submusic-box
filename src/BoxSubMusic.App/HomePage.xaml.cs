@@ -6,10 +6,12 @@ using System.Threading.Tasks;
 using BoxSubMusic.App.Controls;
 using BoxSubMusic.App.Models;
 using BoxSubMusic.App.Services;
+using BoxSubMusic.Core.Playback;
 using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 
 namespace BoxSubMusic.App
@@ -32,6 +34,9 @@ namespace BoxSubMusic.App
 
         private CancellationTokenSource _cts;
 
+        // §6.1: the loaded-but-not-yet-resumed state backing the card.
+        private ResumeState _resumeState;
+
         public HomePage()
         {
             InitializeComponent();
@@ -41,14 +46,33 @@ namespace BoxSubMusic.App
         {
             base.OnNavigatedTo(e);
             _cts = new CancellationTokenSource();
+            // If playback starts while Home is on screen (e.g. resumed from
+            // this very card), the card is stale — the bar shows the truth.
+            PlaybackService.Instance.Changed += OnPlaybackChanged;
             _ = LoadAsync(_cts.Token);
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             base.OnNavigatedFrom(e);
+            PlaybackService.Instance.Changed -= OnPlaybackChanged;
             _cts?.Cancel();
             _cts = null;
+        }
+
+        private void OnPlaybackChanged()
+        {
+            if (!PlaybackService.Instance.Queue.IsEmpty
+                && ResumeSection.Visibility == Visibility.Visible)
+            {
+                HideResumeCard();
+            }
+        }
+
+        private void HideResumeCard()
+        {
+            _resumeState = null;
+            ResumeSection.Visibility = Visibility.Collapsed;
         }
 
         private async Task LoadAsync(CancellationToken cancellationToken)
@@ -94,6 +118,7 @@ namespace BoxSubMusic.App
             }
 
             await Task.WhenAll(
+                LoadResumeCardAsync(cancellationToken),
                 LoadCarouselAsync(MostPlayedCarousel, AlbumListType.Frequent, cancellationToken),
                 LoadCarouselAsync(RecentlyAddedCarousel, AlbumListType.Newest, cancellationToken),
                 LoadCarouselAsync(RandomPicksCarousel, AlbumListType.Random, cancellationToken));
@@ -131,6 +156,61 @@ namespace BoxSubMusic.App
                     carousel.ShowError(ex.Message);
                 }
             }
+        }
+
+        private async Task LoadResumeCardAsync(CancellationToken cancellationToken)
+        {
+            HideResumeCard();
+
+            // An active queue means the bar already shows this session's
+            // truth; the card would just duplicate (or contradict) it.
+            if (!PlaybackService.Instance.Queue.IsEmpty)
+            {
+                return;
+            }
+
+            ResumeState state = await ResumeStore.LoadForActiveServerAsync();
+            if (state == null
+                || cancellationToken.IsCancellationRequested
+                || !PlaybackService.Instance.Queue.IsEmpty)
+            {
+                return;
+            }
+
+            _resumeState = state;
+
+            Song current = state.PlayOrderIndices == null
+                ? state.Tracks[state.CurrentIndex]
+                : state.Tracks[state.PlayOrderIndices[state.CurrentIndex]];
+            ResumeName.Text = state.Context?.DisplayName ?? current.Title;
+            ResumeTrack.Text = string.IsNullOrEmpty(current.Artist)
+                ? current.Title
+                : current.Title + " · " + current.Artist;
+
+            string coverArtId = state.Context?.CoverArtId ?? current.CoverArtId;
+            ResumeArtImage.Source = coverArtId == null
+                ? null
+                : new BitmapImage
+                {
+                    UriSource = AppSession.Client.GetCoverArtUri(coverArtId, 320),
+                    DecodePixelWidth = 320,
+                };
+
+            ResumeSection.Visibility = Visibility.Visible;
+        }
+
+        private void ResumeCard_Click(object sender, RoutedEventArgs e)
+        {
+            ResumeState state = _resumeState;
+            if (state == null)
+            {
+                return;
+            }
+
+            // Resume raises Changed → OnPlaybackChanged hides the card; the
+            // collapse would strand focus, so move it into the carousels.
+            PlaybackService.Instance.Resume(state);
+            ContentFocus.MoveInto(this);
         }
 
         private static AlbumCard ToCard(Album album)

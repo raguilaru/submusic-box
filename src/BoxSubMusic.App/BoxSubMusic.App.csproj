@@ -182,6 +182,7 @@
     <Compile Include="Services\PlaybackService.cs" />
     <Compile Include="Services\ThemeService.cs" />
     <Compile Include="Services\RecentServersStore.cs" />
+    <Compile Include="Services\ResumeStore.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

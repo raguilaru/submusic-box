@@ -1,13 +1,16 @@
 # Current Status
 
-Last updated: 2026-07-16 (**Slice 12 implemented** — theme selector
-(Automatic/Dark/Light, §12) on the Settings page, applied via the root
-frame's `RequestedTheme`, Automatic follows the system theme live via
-`UISettings.ColorValuesChanged`. Build + all 110 tests green. **The Xbox
-is still unavailable**, so its console checks are queued in the backlog
-(items 2–7) together with the Slice 11 focus-trap test (item 1); a VM F5
-smoke pass can cover most of the theme behavior meanwhile. **Next console
-pass: run backlog items 1–7. Next slice: 05b or playlist detail.**)
+Last updated: 2026-07-16 (**Slices 12 AND 05b implemented** the same
+session. Slice 12: theme selector (Automatic/Dark/Light, §12) via the root
+frame's `RequestedTheme`, Automatic follows the system theme live
+(committed `df15b3f`). Slice 05b: §6.1 queue persistence + the Home
+"Pick up where you left off" card — resume state as LocalFolder XML +
+LocalSettings scalars, `PlaybackService.Resume` with in-track seek. Build
++ all 123 tests green. **The Xbox is still unavailable**, so console
+checks are queued in the backlog (theme: items 2–7; resume: items 8–12)
+together with the Slice 11 focus-trap test (item 1); a VM F5 pass can
+cover most of both meanwhile. **Next console pass: run backlog items
+1–12. Next slice: playlist detail/playback view, or 13 (Search).**)
 
 ## Where we are
 
@@ -501,6 +504,47 @@ pass: run backlog items 1–7. Next slice: 05b or playlist detail.**)
     is the FavoriteHeart's black rim, which is intentional cross-theme
     design (verify legibility in light theme on console).
 
+- **2.12 Slice 05b — queue persistence + Home resume card (implemented
+  2026-07-16):**
+  - **Design recorded before coding** (30-playback-architecture.md, Slice
+    05b section) and the one §6.1 ambiguity confirmed with Rafael: **the
+    card's Play starts playback immediately** at the saved track + position;
+    launch itself restores nothing, so "MUST NOT auto-play on launch" holds
+    by construction (the literal restore-paused reading was rejected).
+  - Core: `Playback/ResumeState` — the §6.1 contract + its reflection-free
+    XML shape (RecentServers pattern: logic/serialization in Core, file I/O
+    in the app). All-or-nothing parse: a malformed song, out-of-range index
+    or non-permutation play order rejects the whole state. Song ids +
+    display metadata only — **stream URLs never persist** (they embed the
+    auth token; §4). `PlayQueue.Restore(state)` rehydrates tracks / exact
+    play order / index / shuffle / repeat / context atomically. 13 new
+    tests → **57 Core tests green** (was 44).
+  - App `Services/ResumeStore`: structure in `resume-state.xml`
+    (LocalFolder, rewritten only on structural changes — replace, shuffle
+    toggle, repeat change); fast-moving index/position as LocalSettings
+    scalars (written on track change, pause, suspend, and ~10 s throttled
+    from `PositionChanged` on the media thread), overriding the file's
+    snapshot at load. The file carries the owning server URL + username
+    (via new `CredentialStore.TryGetActiveIdentity`, no vault hit) and is
+    validated against the active login at load — mismatch or corruption
+    reads as absent and deletes the file.
+  - `PlaybackService`: persistence hooks in Play/SetShuffle/CycleRepeat,
+    advancement writes index+0, `NotifySuspending` (App.OnSuspending)
+    flushes the exact position; `Stop()` clears all persisted state
+    (sign-out correctness; the consecutive-failure stop clears too —
+    consistent with the queue vanishing from the UI). New
+    `Resume(ResumeState)`: `Queue.Restore` → the normal `RebuildList`
+    mirror → **one-shot pending seek** consumed on `MediaPlayer.MediaOpened`
+    (position is only settable once media opens), pinned to the intended
+    track so a failed-and-skipped first item can't start its successor
+    mid-song; non-seekable streams degrade to track start.
+  - `HomePage`: the §6.1 card (160-epx artwork with the standard music-note
+    placeholder, context display name, "Title · Artist" of the saved
+    current track, play glyph; the whole card is the button). Shown only
+    when the state loads for this server AND no queue is active this
+    session; hides live via `PlaybackService.Changed` if playback starts
+    while Home is visible, with focus moved into the carousels.
+
 **Verification state (checkpoint #5, 2026-07-16):** the context-menu
 favorite toggle, the row starred markers, and the expanded queue view
 (open/close paths, jump-to-track, live updates) are **verified by Rafael**.
@@ -510,13 +554,15 @@ is temporarily unavailable, so it carries to the next console pass. Build
 green (x64 Debug over SSH; APPX0703 packaging is the known
 command-line-only failure), **44 Core + 66 SubsonicClient** tests green.
 
-**Slice 12 (2026-07-16) is code-complete but entirely unverified on
-device** (Xbox still unavailable): its console checks are backlog items
-2–7. Build + both test suites re-verified green after the slice. Most of
-the theme behavior (radios, instant re-theme, persistence, Automatic
-following the *Windows* theme live) is VM-F5-testable before the console
-pass; the console adds the Xbox-theme integration and the 10-ft light-theme
-readability check.
+**Slices 12 and 05b (2026-07-16) are code-complete but entirely unverified
+on device** (Xbox still unavailable): their console checks are backlog
+items 2–7 (theme) and 8–12 (resume). Build green after both slices
+(x64 Debug over SSH; APPX0703 stays the known command-line-only packaging
+failure), **57 Core + 66 SubsonicClient** tests green. Most checks
+(theme radios/persistence/Automatic-via-Windows-theme; the whole resume
+loop) are VM-F5-testable before the console pass; the console adds the
+Xbox-theme integration, 10-ft light-theme readability, and the real
+suspend/terminate lifecycle.
 
 **Git state:** `main` holds Slice 10 (`f571bb4`), the checkpoint-#4 fix
 commits, and Slice 11 on top (see log).
@@ -546,14 +592,14 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-1. **When the Xbox is back: backlog items 1–7** — the Slice 11 focus-trap
-   test plus all Slice 12 theme checks. A VM F5 pass on the theme items
-   (2–5, 7 minus the Xbox-specific parts) is worthwhile earlier.
-2. Then: **05b** (queue persistence + Home resume card — the model is
-   ready, `QueueContext` is already carried), **playlist detail/playback
-   view** (deferred out of 09, unblocked now), **13** (Search; §17 paging
-   decision), **14** (resilience/polish incl. the deferred nav-icon-size
-   refinement and a possible queue-row context menu).
+1. **When the Xbox is back: backlog items 1–12** — the Slice 11 focus-trap
+   test, the Slice 12 theme checks, and the Slice 05b resume checks. A VM
+   F5 pass on the theme items (2–5, 7) and the whole resume loop (8–12)
+   is worthwhile earlier.
+2. Then: **playlist detail/playback view** (deferred out of 09, unblocked
+   since 10), **13** (Search; §17 paging decision), **14**
+   (resilience/polish incl. the deferred nav-icon-size refinement and a
+   possible queue-row context menu).
 
 ## On-device test backlog (next console pass)
 
@@ -643,15 +689,45 @@ theme setting for the Xbox one):**
 7. **Setup page in light theme:** sign out while in Light — the setup
    page renders themed (the root-frame mechanism covers it; confirm).
 
+**Slice 05b (2026-07-16, queue persistence + resume card — NOT yet run
+anywhere on device; the whole loop is also VM-F5-testable):**
+
+8. **The resume loop:** play something (an album, mid-queue), quit the app
+   fully, relaunch → Home shows "Pick up where you left off" with the
+   context artwork + name and the saved track's "Title · Artist"; the card
+   is reachable by D-pad; A starts playback at that track, within ~10 s of
+   the saved position (exact when the app was paused/suspended before the
+   quit); the bar reveals and the card hides.
+9. **No auto-play at launch:** with persisted state present, launch is
+   silent until the card is pressed — nothing restores by itself.
+10. **Fidelity:** resume a shuffled queue with repeat set — the expanded
+    queue (Y) shows the same play order with the marker on the right
+    track, and the bar's shuffle/repeat toggles show the saved states.
+11. **Sign-out clears:** sign out, set up again → no resume card (also
+    covers the different-server/user validation).
+12. **Card suppression:** while something is playing, navigating to Home
+    shows NO card (the bar is the truth); after the consecutive-failure
+    stop the card must not reappear on Home either (state was cleared).
+
 *(Future slices: append your console items here.)*
 
 ## Known gaps / notes from this session
 
-- **Playback is in (Slices 10–11) — remaining playback gaps:** no queue
-  persistence/resume (05b), no seek from either playback surface (not a §10
-  requirement; the progress lines are display-only; SMTC/system seek still
-  works where the system offers it), and playlists still have no
-  detail/playback view.
+- **Playback is in (Slices 10–11 + 05b) — remaining playback gaps:** no
+  seek from either playback surface (not a §10 requirement; the progress
+  lines are display-only; SMTC/system seek still works where the system
+  offers it), and playlists still have no detail/playback view.
+- **Resume notes (Slice 05b):** the persisted position is ~10 s coarse
+  during playback (exact on pause/suspend/track change) — a crash loses at
+  most that window. The resume card's starred/metadata snapshot is as old
+  as the last structural save; the queue refetches nothing at resume, so a
+  song deleted server-side since then fails at stream time and is skipped
+  by the normal ItemFailed path. `savePlayQueue`/`getPlayQueue` server
+  sync stays out of scope (§6.1), but `ResumeState` carries everything it
+  would need. The card intentionally shows only when nothing is playing
+  this session. Suspend-position flush relies on OnSuspending actually
+  firing — true for normal Xbox app lifecycle; a hard kill from the OS UI
+  without suspension falls back to the 10 s scalars.
 - **Theme notes (Slice 12):** Automatic's live-follow depends on
   `UISettings.ColorValuesChanged` firing on the console for an Xbox theme
   change — undocumented, console-check item 6; the launch-time resolve is
@@ -719,10 +795,6 @@ theme setting for the Xbox one):**
   the shipped Fluent Regular font has no filled heart, and both hand-painting
   attempts made the heart invisible on console (Foreground=null when
   unstarred; accent-on-accent when starred). The glyph always inherits.
-- **Resume card (§6.1) intentionally absent** until Slice 05b (after queue
-  persistence exists); acceptance criterion "shows resume card when
-  persisted context exists" is vacuously satisfied — nothing can persist
-  context yet.
 - Carousel focus is plain XY navigation (no focus engagement); crossing a
   long carousel vertically means stepping through whichever card is below.
   Same applies to the new browse grids. Revisit after the console feel-test.
@@ -802,6 +874,12 @@ theme setting for the Xbox one):**
   root-frame `RequestedTheme` + `UISettings`-resolved Automatic with
   `ColorValuesChanged` live-follow. Completes §12 (nav toggles existed
   since Slice 04). Unverified on device — backlog items 2–7.
+- 2026-07-16: **Slice 05b** — §6.1 resume: Core `ResumeState` (XML, no
+  stream URLs) + `PlayQueue.Restore`; app `ResumeStore` (LocalFolder file +
+  LocalSettings scalars, server-identity-validated);
+  `PlaybackService.Resume` with pinned one-shot seek; Home resume card
+  (Play = restore + play immediately, confirmed with Rafael). Unverified
+  on device — backlog items 8–12.
 
 ## How to deploy (quick reference)
 
