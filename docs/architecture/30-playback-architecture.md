@@ -1,7 +1,9 @@
-# Playback & Queue Architecture (Slice 10)
+# Playback & Queue Architecture (Slices 10–11)
 
 Written 2026-07-15, before implementation. Scope and the four decisions below
-were confirmed with Rafael at the start of the Slice 10 session.
+were confirmed with Rafael at the start of the Slice 10 session. The Slice 11
+expanded-queue section at the end was added 2026-07-16, its four decisions
+likewise confirmed up front.
 
 ## Scope of this slice
 
@@ -182,9 +184,66 @@ Layout (1920-epx canvas, ~112 epx tall + 16 epx margins):
 
 ## Known follow-ups created by this slice
 
-- Slice 11: expanded queue enables the bar's queue button + Y mapping.
+- ~~Slice 11: expanded queue enables the bar's queue button + Y mapping.~~
+  Done 2026-07-16 — see the Slice 11 section below.
 - Slice 05b: persistence writer + resume card on top of `PlayQueue`.
 - Transcoding-aware format/bitrate labels (needs the OpenSubsonic
   `transcoding` extension) — refinement-phase candidate, not v1.
 - Artist Play fan-out: one `getAlbum` per album in parallel; fine for typical
   artists, revisit throttling if a 100-album artist stalls on device.
+
+## Slice 11: expanded queue (added 2026-07-16)
+
+§10's expanded state. Four decisions confirmed with Rafael up front:
+
+1. **Presentation: full-screen overlay.** `Controls/ExpandedQueueView` slides
+   up over the whole shell (nav pane and bar included) — the TV-app
+   convention, and the simplest honest focus story: while open, `MainPage`
+   disables the `NavigationView` underneath, so XY focus physically cannot
+   leave the overlay (the PaneFooter lesson: never assume the engine skips
+   what merely looks unreachable). On `Closed` the shell re-enables and
+   focus returns to the bar's queue button (or into the content frame if the
+   queue died while open). The shell root became a Grid
+   (NavigationView + overlay) to give the overlay its layer.
+2. **Queue scope: the whole queue in current play order** (`PlayQueue
+   .PlayOrder`), not just up-next — the acceptance criterion is "jump
+   directly to ANY queued track", which includes backwards. The current
+   track carries the same accent now-playing marker as the album track list
+   and is scrolled into view + focused on open.
+3. **Row action: jump-only.** A/Enter jumps playback (`PlaybackService
+   .JumpTo`); no context menu on queue rows in this slice (refinement-phase
+   candidate — the Songs/album-row menu pattern drops in unchanged).
+4. **Y mapping: global toggle.** Y anywhere in the shell opens the overlay
+   when a queue exists; Y or B inside closes it. Escape is the keyboard
+   fallback; a visible chevron button (F2A4, verified against the Regular
+   TTF cmap) covers mouse users (§13.1).
+
+Layout (1920×1080 canvas): left pane 520 epx — 400 epx artwork, title,
+artist · album, format · bitrate, elapsed/progress/total, and the full
+transport cluster (shuffle · previous · play/pause · next · repeat ·
+favorite, XYFocus-pinned neighbors like the bar); right pane — "Queue"
+header with context name + song count, then the row list (position/marker,
+title, starred heart, artist, duration — the album-track visual language).
+
+Mechanics worth remembering:
+
+- **`PlaybackService.JumpTo(Song)`** moves the existing `MediaPlaybackList`
+  (no rebuild — shuffle order, repeat state and prefetch survive). The
+  platform docs leave `MoveTo`'s index space unstated when `ShuffleEnabled`
+  (Items vs ShuffledItems), so JumpTo indexes the shuffled order first and
+  verifies against `MoveTo`'s returned item; a mismatch is corrected with
+  the `Items` index. Without shuffle the orders coincide, so the first call
+  always lands. Jumping to the current track restarts it. **Console-verify
+  the shuffle-on jump explicitly.**
+- The overlay is a pure view over `PlaybackService.Changed`, like the bar.
+  Rows rebuild only when the play-order *sequence* changed (replace/shuffle
+  toggle — detected by reference-comparing a snapshot); plain advancement
+  just repaints the `IsCurrent`/`IsStarred` markers, so scroll position and
+  focus survive track changes.
+- `Models/QueueRow` follows the `TrackRow` observable pattern; it holds its
+  `Song` reference, which is also the jump target (identity-based — safe
+  with duplicate titles).
+- Open/close are storyboards (translate + fade, 300/250 ms); `Closed` fires
+  after the close animation so the host restores focus exactly once. The
+  favorite toggle mirrors the bar's silent-snap-back failure mode and
+  repaints the matching row heart in place.

@@ -1,12 +1,12 @@
 # Current Status
 
-Last updated: 2026-07-15 night (**Slice 10 session CLOSED.** Slice 10 +
-three feedback rounds all landed; console-verified: playback end to end
-incl. Release|x64, first fix round (bar focus, bar heart, scrobbling, nav
-re-click), heart visual redesign, browse Up-to-toggle, guide media card.
-Last increment NOT yet console-verified: the context-menu favorite toggle
-on song rows (+ the row starred markers were never explicitly confirmed) —
-first items of the next console pass. **Next session: Slice 11.**)
+Last updated: 2026-07-16 (**Slice 11 implemented** — expanded two-pane
+queue overlay, jump-to-track, global Y toggle, bar queue button enabled.
+Compiles green (x64 Debug over SSH; APPX0703 = known command-line-only
+packaging failure), 44 Core + 66 SubsonicClient tests green. NOT yet
+console-verified — nor are the two leftovers from the Slice 10 session
+(context-menu favorite toggle, row starred markers). **Next: console
+checkpoint #5 covering backlog items 3–8.**)
 
 ## Where we are
 
@@ -425,15 +425,55 @@ first items of the next console pass. **Next session: Slice 11.**)
   menu is closed by then, so there is no status line; nothing shown ever
   lies).
 
-**Verification state:** Slice 10, fix round one, the heart redesign,
-Up-to-toggle, and the guide card are console-verified. The context-menu
-favorite toggle (and, in passing, the row starred markers) compile green
-(x64 Debug over SSH; APPX0703 packaging is the known command-line-only
-failure) with **44 Core + 66 SubsonicClient** tests green, but await the
-next console pass.
+- **2.10 Slice 11 — expanded queue (implemented 2026-07-16):**
+  - **Design decisions confirmed with Rafael up front** (recorded in §16 and
+    the design doc's new Slice 11 section): full-screen overlay over the
+    whole shell; queue list = the whole queue in current play order (jump
+    backwards allowed); rows are jump-only (no context menu this slice);
+    Y toggles the overlay globally whenever a queue exists.
+  - `Controls/ExpandedQueueView` (§10 expanded state): slide-up/down
+    storyboards (300/250 ms, translate + fade); left pane = 400-epx artwork,
+    title, artist · album, format · bitrate, elapsed/progress/total, and the
+    full transport cluster (shuffle · previous · play/pause · next · repeat ·
+    favorite — same handlers and XYFocus-pinned neighbors as the bar; the
+    favorite keeps the silent snap-back failure mode and repaints the
+    matching queue row in place); right pane = "Queue" header (context name +
+    song count from `QueueContext`) over the row list in the album-track
+    visual language (position column ↔ accent now-playing marker, starred
+    heart, artist, duration). New `Models/QueueRow` (observable, TrackRow
+    pattern, holds its `Song` as the identity-based jump target). Rows
+    rebuild only when the play-order sequence actually changed
+    (replace/shuffle toggle, detected by reference-comparing a snapshot);
+    plain advancement repaints markers so scroll + focus survive track
+    changes. On open the current row is scrolled into view and focused
+    (deferred low-priority passes, ContentFocus-style retries).
+  - `PlaybackService.JumpTo(Song)`: `MoveTo` on the live MediaPlaybackList —
+    no rebuild, so shuffle order/repeat/prefetch survive; jumping to the
+    current track restarts it. MoveTo's index space is **undocumented under
+    shuffle** (Items vs ShuffledItems), so JumpTo indexes the shuffled order
+    first, verifies MoveTo's returned item, and corrects once via the Items
+    index on mismatch — deterministic either way, but the shuffle-on jump is
+    an explicit console-verify item.
+  - Shell wiring (`MainPage`): root became a Grid (NavigationView + overlay
+    layer). **Focus trap = NavView.IsEnabled=false while open** (PaneFooter
+    lesson: don't trust the XY engine to skip what merely looks covered);
+    on `Closed` the shell re-enables and focus returns to the bar's queue
+    button (or into the content if the queue died while open, e.g. the
+    consecutive-failure stop — the overlay closes itself then). **Y toggles
+    anywhere in the shell** (bubbling KeyDown on the root Grid); B closes
+    (BackRequested, before frame history); Escape is the keyboard fallback;
+    a chevron button (F2A4, cmap-verified) covers mouse users (§13.1).
+  - Bar: queue button now enabled → raises `QueueExpandRequested`; tooltip
+    "Queue (Y)".
 
-**Git state:** `main` holds Slice 10 (`f571bb4`) and the checkpoint-#4 fix
-commits on top (see log).
+**Verification state:** Slice 10 + its three feedback rounds are
+console-verified. **Slice 11, the context-menu favorite toggle, and the row
+starred markers are NOT** — they compile green (x64 Debug over SSH;
+APPX0703 packaging is the known command-line-only failure) with **44 Core +
+66 SubsonicClient** tests green, and await console checkpoint #5.
+
+**Git state:** `main` holds Slice 10 (`f571bb4`), the checkpoint-#4 fix
+commits, and Slice 11 on top (see log).
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -460,16 +500,15 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-1. **Console check of the last increment** (backlog items 3–4): context-menu
-   favorite toggle + row starred markers. Small enough to fold into the
-   Slice 11 checkpoint.
-2. **Slice 11 (expanded queue)** — enables the bar's queue button + the Y
-   mapping and jump-to-track from the queue.
-3. Then: **05b** (queue persistence + Home resume card — the model is
+1. **Console checkpoint #5** (backlog items 3–8): the Slice 10 leftovers
+   (context-menu favorite toggle, row starred markers) + all Slice 11
+   items. Rafael drives F5.
+2. Then: **05b** (queue persistence + Home resume card — the model is
    ready, `QueueContext` is already carried), **playlist detail/playback
    view** (deferred out of 09, unblocked now), **12** (theme selector still
    missing — check §12), **13** (Search; §17 paging decision), **14**
-   (resilience/polish incl. the deferred nav-icon-size refinement).
+   (resilience/polish incl. the deferred nav-icon-size refinement and a
+   possible queue-row context menu).
 
 ## On-device test backlog (next console pass)
 
@@ -524,16 +563,53 @@ media card (A on the media tile shows the full OS control set). Still open:
    filled accent heart next to starred songs (column after the title);
    unstarred rows show nothing. Legible at 10 ft, not distracting.
 
+**Slice 11 (2026-07-16) — expanded queue:**
+
+5. **Open/close paths:** the bar's queue button (now enabled) opens the
+   overlay; **Y from anywhere** (a browse page, a detail page, the bar)
+   opens it while a queue exists; Y with no queue does nothing. Inside:
+   **Y, B, and the chevron button** each close it; the slide-up/down
+   animates both ways. After closing, focus sits on the bar's queue button.
+6. **Focus while open:** focus lands on the current track's queue row on
+   open (visible ring); XY can reach every transport control and the queue
+   list, and **cannot escape into the nav pane or the page behind** —
+   especially Left from the leftmost transport buttons and Up from the top
+   row (the trap is NavView.IsEnabled=false, a new mechanism on console).
+7. **Jump-to-track (§10):** A on any queue row — earlier AND later than the
+   current track — jumps playback there immediately; the now-playing marker
+   moves; the queue order does not change. **Critical sub-case: with
+   shuffle ON**, A on a row must play exactly that song (MoveTo's index
+   space under shuffle is undocumented; the code self-corrects via the
+   returned item, so a wrong first landing would surface as a brief blip of
+   the wrong track — report if audible). A on the current row restarts it.
+8. **Live updates while open:** track advancement moves the marker without
+   resetting the list's scroll position or stealing focus; toggling shuffle
+   from the overlay reorders the list (current track pinned first) and
+   scrolls back to the current row; elapsed/progress tick; play/pause,
+   repeat, and the favorite heart behave like the bar (heart also repaints
+   the row's starred marker in place). 10-ft legibility of both panes.
+
 *(Future slices: append your console items here.)*
 
 ## Known gaps / notes from this session
 
-- **Playback is in (Slice 10) — remaining playback gaps:** no expanded queue
-  view yet (Slice 11; the bar's queue button is visibly disabled, no Y
-  mapping), no queue persistence/resume (05b), no seek from the compact bar
-  (not a §10 requirement; the progress line is display-only; SMTC/system
-  seek still works where the system offers it), and playlists still have no
+- **Playback is in (Slices 10–11) — remaining playback gaps:** no queue
+  persistence/resume (05b), no seek from either playback surface (not a §10
+  requirement; the progress lines are display-only; SMTC/system seek still
+  works where the system offers it), and playlists still have no
   detail/playback view.
+- **Expanded-queue scope notes (Slice 11):** queue rows are jump-only — no
+  context menu (favorite/go-to from a queue row are refinement-phase
+  candidates; the established row-menu pattern drops in unchanged). The
+  overlay shows the whole queue; with very large queues (a big artist Play)
+  the ListView virtualizes, but rebuild-on-shuffle re-creates all row
+  models — revisit only if the console feel-test stalls. While the overlay
+  is open the disabled shell underneath briefly shows its disabled visuals
+  during the 300 ms slide; accepted.
+- **JumpTo under shuffle self-corrects:** MoveTo's index space with
+  ShuffleEnabled is undocumented, so a platform mismatch would produce one
+  imperceptible wrong-item MoveTo before the corrective one. Verify on
+  console (backlog item 7).
 - **Stream format/bitrate labels describe the file's tags, not the delivered
   stream:** v1 sends no transcoding overrides, so a server configured to
   transcode will play a different bitrate than the bar shows. Revisit with
@@ -650,6 +726,11 @@ media card (A on the media tile shows the full OS control set). Still open:
   MediaPlaybackList (gapless + native SMTC), stream/scrobble client
   endpoints, `NowPlayingBar` in the shell, 06b/07b/Songs-row playback wired.
   Design doc: docs/architecture/30-playback-architecture.md.
+- 2026-07-16: **Slice 11** — `ExpandedQueueView` full-screen two-pane
+  overlay (whole queue in play order, jump-to-track via
+  `PlaybackService.JumpTo`, global Y toggle, B/Esc/chevron close, focus
+  trapped by disabling the shell); bar queue button enabled. Decisions in
+  §16 + the design doc's Slice 11 section.
 
 ## How to deploy (quick reference)
 

@@ -196,9 +196,9 @@
         <!-- Utility cluster: favorite heart for the current track (console
              checkpoint #4 request; same star/unstar + checked-visuals
              pattern as the detail pages — the glyph is never painted) and
-             the queue expand (§10): present, but the expanded two-pane view
-             is Slice 11 — disabled until then, per the project's
-             visible-deferral pattern. -->
+             the queue expand (§10): live since Slice 11 — raises
+             QueueExpandRequested; the shell opens the overlay (also mapped
+             to Y there). -->
         <StackPanel
             Grid.Column="4"
             Orientation="Horizontal"
@@ -220,10 +220,10 @@
             <Button
                 x:Name="QueueButton"
                 Style="{StaticResource TransportButton}"
-                IsEnabled="False"
+                Click="QueueButton_Click"
                 XYFocusLeft="{x:Bind FavoriteToggle}"
-                ToolTipService.ToolTip="Queue (arrives in a later update)"
-                AutomationProperties.Name="Show queue (arrives in a later update)">
+                ToolTipService.ToolTip="Queue (Y)"
+                AutomationProperties.Name="Show queue">
                 <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" FontSize="20" />
             </Button>
         </StackPanel>

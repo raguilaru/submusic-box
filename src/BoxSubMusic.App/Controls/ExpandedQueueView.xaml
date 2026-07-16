@@ -1,0 +1,324 @@
+<UserControl
+    x:Class="BoxSubMusic.App.Controls.ExpandedQueueView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:BoxSubMusic.App.Controls"
+    xmlns:models="using:BoxSubMusic.App.Models"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!-- Expanded queue (Slice 11, requirements §10): a full-screen overlay
+         that slides up over the whole shell — two panes, playback controls +
+         rich metadata on the left, the full queue in play order on the
+         right. A/Enter on a queue row jumps playback directly to that entry;
+         B / Y / the chevron button collapse it. The host (MainPage) traps
+         focus by disabling the shell underneath while this is open. -->
+    <UserControl.Resources>
+        <Style x:Key="OverlayTransportButton" TargetType="Button">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Width" Value="56" />
+            <Setter Property="Height" Value="56" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="28" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid
+        x:Name="Root"
+        Visibility="Collapsed"
+        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="RootTransform" />
+        </Grid.RenderTransform>
+        <Grid.Resources>
+            <!-- §10: the expanded/collapsed state animates with a slide.
+                 The vertical From/To are set in code from the actual view
+                 height before each Begin. -->
+            <Storyboard x:Name="OpenStoryboard">
+                <DoubleAnimation
+                    x:Name="OpenTranslate"
+                    Storyboard.TargetName="RootTransform"
+                    Storyboard.TargetProperty="Y"
+                    From="1080"
+                    To="0"
+                    Duration="0:0:0.3">
+                    <DoubleAnimation.EasingFunction>
+                        <CubicEase EasingMode="EaseOut" />
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+                <DoubleAnimation
+                    Storyboard.TargetName="Root"
+                    Storyboard.TargetProperty="Opacity"
+                    From="0"
+                    To="1"
+                    Duration="0:0:0.3" />
+            </Storyboard>
+            <Storyboard x:Name="CloseStoryboard">
+                <DoubleAnimation
+                    x:Name="CloseTranslate"
+                    Storyboard.TargetName="RootTransform"
+                    Storyboard.TargetProperty="Y"
+                    From="0"
+                    To="1080"
+                    Duration="0:0:0.25">
+                    <DoubleAnimation.EasingFunction>
+                        <CubicEase EasingMode="EaseIn" />
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+                <DoubleAnimation
+                    Storyboard.TargetName="Root"
+                    Storyboard.TargetProperty="Opacity"
+                    From="1"
+                    To="0"
+                    Duration="0:0:0.25" />
+            </Storyboard>
+        </Grid.Resources>
+
+        <Grid Padding="64,40,64,44" ColumnSpacing="56">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="520" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left pane (§10): rich metadata + the full transport cluster.
+                 Same control set as the compact bar, larger. -->
+            <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="24">
+                <Grid Width="400" Height="400" CornerRadius="12" HorizontalAlignment="Left">
+                    <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
+                        <FontIcon
+                            FontFamily="{StaticResource FluentIconFont}"
+                            Glyph="&#xE855;"
+                            FontSize="112"
+                            Opacity="0.4" />
+                    </Border>
+                    <Image x:Name="ArtworkImage" Stretch="UniformToFill" />
+                </Grid>
+
+                <StackPanel Spacing="8">
+                    <TextBlock
+                        x:Name="TitleText"
+                        FontSize="34"
+                        FontWeight="SemiBold"
+                        TextWrapping="Wrap"
+                        MaxLines="2"
+                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock
+                        x:Name="ArtistAlbumText"
+                        FontSize="22"
+                        Opacity="0.75"
+                        TextWrapping="Wrap"
+                        MaxLines="2"
+                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock
+                        x:Name="StreamInfoText"
+                        FontSize="17"
+                        Opacity="0.55" />
+                </StackPanel>
+
+                <!-- Elapsed — progress — total (display only, like the bar). -->
+                <Grid ColumnSpacing="14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="ElapsedText" Grid.Column="0" FontSize="18" Opacity="0.8" Text="0:00" />
+                    <ProgressBar
+                        x:Name="TrackProgress"
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Maximum="1"
+                        Value="0" />
+                    <TextBlock x:Name="TotalText" Grid.Column="2" FontSize="18" Opacity="0.8" Text="0:00" />
+                </Grid>
+
+                <!-- Transport: shuffle · previous · play/pause · next ·
+                     repeat · favorite. Neighbors pinned with XYFocus hints —
+                     the console-verified pattern from the compact bar. -->
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <ToggleButton
+                        x:Name="ShuffleToggle"
+                        MinWidth="0"
+                        Width="56"
+                        Height="56"
+                        Padding="0"
+                        CornerRadius="28"
+                        Background="Transparent"
+                        Checked="ShuffleToggle_Changed"
+                        Unchecked="ShuffleToggle_Changed"
+                        XYFocusRight="{x:Bind PreviousButton}"
+                        ToolTipService.ToolTip="Shuffle"
+                        AutomationProperties.Name="Shuffle">
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xEF37;" FontSize="22" />
+                    </ToggleButton>
+                    <Button
+                        x:Name="PreviousButton"
+                        Style="{StaticResource OverlayTransportButton}"
+                        Click="PreviousButton_Click"
+                        XYFocusLeft="{x:Bind ShuffleToggle}"
+                        XYFocusRight="{x:Bind PlayPauseButton}"
+                        ToolTipService.ToolTip="Previous"
+                        AutomationProperties.Name="Previous">
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF629;" FontSize="22" />
+                    </Button>
+                    <Button
+                        x:Name="PlayPauseButton"
+                        MinWidth="0"
+                        Width="72"
+                        Height="72"
+                        Padding="0"
+                        CornerRadius="36"
+                        Background="{ThemeResource SystemControlBackgroundBaseLowBrush}"
+                        Click="PlayPauseButton_Click"
+                        XYFocusLeft="{x:Bind PreviousButton}"
+                        XYFocusRight="{x:Bind NextButton}"
+                        ToolTipService.ToolTip="Play/Pause"
+                        AutomationProperties.Name="Play or pause">
+                        <FontIcon x:Name="PlayPauseIcon" FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" FontSize="30" />
+                    </Button>
+                    <Button
+                        x:Name="NextButton"
+                        Style="{StaticResource OverlayTransportButton}"
+                        Click="NextButton_Click"
+                        XYFocusLeft="{x:Bind PlayPauseButton}"
+                        XYFocusRight="{x:Bind RepeatButton}"
+                        ToolTipService.ToolTip="Next"
+                        AutomationProperties.Name="Next">
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" FontSize="22" />
+                    </Button>
+                    <Button
+                        x:Name="RepeatButton"
+                        Style="{StaticResource OverlayTransportButton}"
+                        Click="RepeatButton_Click"
+                        XYFocusLeft="{x:Bind NextButton}"
+                        XYFocusRight="{x:Bind FavoriteToggle}"
+                        ToolTipService.ToolTip="Repeat"
+                        AutomationProperties.Name="Repeat">
+                        <FontIcon x:Name="RepeatIcon" FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF172;" FontSize="22" Opacity="0.45" />
+                    </Button>
+                    <local:FavoriteHeart
+                        x:Name="FavoriteToggle"
+                        Width="56"
+                        Height="56"
+                        Padding="0"
+                        CornerRadius="28"
+                        GlyphSize="22"
+                        Checked="FavoriteToggle_Changed"
+                        Unchecked="FavoriteToggle_Changed"
+                        XYFocusLeft="{x:Bind RepeatButton}"
+                        ToolTipService.ToolTip="Favorite"
+                        AutomationProperties.Name="Favorite" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Right pane (§10): the full queue in current play order. -->
+            <Grid Grid.Column="1" RowSpacing="16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="Queue" FontSize="32" FontWeight="SemiBold" />
+                        <TextBlock
+                            x:Name="QueueContextText"
+                            FontSize="18"
+                            Opacity="0.7"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <!-- Collapse affordance: gamepad users have B/Y, but
+                         keyboard/mouse need a visible exit (§13.1). Chevron
+                         F2A4 verified against the shipped Regular TTF cmap. -->
+                    <Button
+                        x:Name="CollapseButton"
+                        Grid.Column="1"
+                        Style="{StaticResource OverlayTransportButton}"
+                        VerticalAlignment="Top"
+                        Click="CollapseButton_Click"
+                        ToolTipService.ToolTip="Collapse queue"
+                        AutomationProperties.Name="Collapse queue">
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF2A4;" FontSize="22" />
+                    </Button>
+                </Grid>
+
+                <!-- Rows mirror the album track list's visual language:
+                     position column swaps to the accent now-playing marker,
+                     starred songs carry the small filled heart. -->
+                <ListView
+                    x:Name="QueueList"
+                    Grid.Row="1"
+                    SelectionMode="None"
+                    IsItemClickEnabled="True"
+                    ItemClick="QueueList_ItemClick">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="Padding" Value="12,10" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="models:QueueRow">
+                            <Grid ColumnSpacing="16" Background="Transparent">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="56" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="28" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="72" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="{x:Bind Position}"
+                                    Visibility="{x:Bind PositionVisibility, Mode=OneWay}"
+                                    FontSize="20"
+                                    Opacity="0.6"
+                                    TextAlignment="Right" />
+                                <FontIcon
+                                    Grid.Column="0"
+                                    FontFamily="{StaticResource FluentIconFont}"
+                                    Glyph="&#xE855;"
+                                    FontSize="20"
+                                    Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                    Visibility="{x:Bind NowPlayingVisibility, Mode=OneWay}"
+                                    HorizontalAlignment="Right" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{x:Bind Title}"
+                                    FontSize="20"
+                                    TextTrimming="CharacterEllipsis" />
+                                <FontIcon
+                                    Grid.Column="2"
+                                    FontFamily="{StaticResource FluentIconFilledFont}"
+                                    Glyph="&#xF47E;"
+                                    FontSize="16"
+                                    Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                    Visibility="{x:Bind StarredVisibility, Mode=OneWay}"
+                                    VerticalAlignment="Center" />
+                                <TextBlock
+                                    Grid.Column="3"
+                                    Text="{x:Bind Artist}"
+                                    FontSize="18"
+                                    Opacity="0.7"
+                                    TextTrimming="CharacterEllipsis"
+                                    MaxWidth="360" />
+                                <TextBlock
+                                    Grid.Column="4"
+                                    Text="{x:Bind DurationLabel}"
+                                    FontSize="20"
+                                    Opacity="0.6"
+                                    TextAlignment="Right" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

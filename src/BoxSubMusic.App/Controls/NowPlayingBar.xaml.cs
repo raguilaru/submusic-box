@@ -39,6 +39,21 @@ namespace BoxSubMusic.App.Controls
         private bool _suppressFavoriteEvents;
         private string _artworkSongId;
 
+        /// <summary>
+        /// The queue-expand button was invoked (§10). The shell owns the
+        /// expanded view (Slice 11), so the bar only reports the request.
+        /// </summary>
+        public event Action QueueExpandRequested;
+
+        /// <summary>
+        /// Focus target for the shell when the expanded queue closes: the
+        /// control the user used to open it.
+        /// </summary>
+        public void FocusQueueButton()
+        {
+            QueueButton.Focus(FocusState.Keyboard);
+        }
+
         public NowPlayingBar()
         {
             InitializeComponent();
@@ -222,6 +237,11 @@ namespace BoxSubMusic.App.Controls
         private void RepeatButton_Click(object sender, RoutedEventArgs e)
         {
             _playback.CycleRepeat();
+        }
+
+        private void QueueButton_Click(object sender, RoutedEventArgs e)
+        {
+            QueueExpandRequested?.Invoke();
         }
 
         private async void FavoriteToggle_Changed(object sender, RoutedEventArgs e)

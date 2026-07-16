@@ -373,6 +373,12 @@ Implement the expanded playback and queue inspection experience.
 ### Requirements linked
 - Now-Playing Bar and Expanded Queue
 
+### Open design note
+Resolved 2026-07-16 (§16 / design doc Slice 11 section): full-screen overlay
+over the whole shell; whole queue shown in current play order; queue rows
+jump-only (context menu deferred to refinement); Y is a global toggle, B and
+Escape close, chevron button for mouse. Implemented 2026-07-16.
+
 ### Deliverables
 - slide expand/collapse
 - rich left pane

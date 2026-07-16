@@ -154,6 +154,67 @@ namespace BoxSubMusic.App.Services
             ApplyShuffleToList();
         }
 
+        /// <summary>
+        /// Jumps playback to an arbitrary queued track (§10: the expanded
+        /// queue supports direct jumping) without rebuilding the list —
+        /// shuffle order, repeat state and prefetch all survive. Jumping to
+        /// the track that is already current restarts it.
+        /// </summary>
+        public void JumpTo(Song song)
+        {
+            if (_list == null || song == null || !_songToItem.TryGetValue(song, out MediaPlaybackItem item))
+            {
+                return;
+            }
+
+            if (ReferenceEquals(song, Queue.CurrentTrack))
+            {
+                Session.Position = TimeSpan.Zero;
+                Player.Play();
+                return;
+            }
+
+            // MoveTo's docs leave the index space unstated when shuffle is
+            // on (Items vs ShuffledItems). Try the shuffled-order index
+            // first (we set ShuffledItems = PlayOrder ourselves) and verify
+            // against MoveTo's returned item; if the platform indexed the
+            // other list, correct with the Items index. Without shuffle the
+            // two orders are the same list, so the first call always lands.
+            int index = Queue.ShuffleEnabled
+                ? IndexOfInPlayOrder(song)
+                : _list.Items.IndexOf(item);
+            if (index < 0)
+            {
+                return;
+            }
+
+            MediaPlaybackItem landed = _list.MoveTo((uint)index);
+            if (landed != item)
+            {
+                int itemsIndex = _list.Items.IndexOf(item);
+                if (itemsIndex >= 0)
+                {
+                    _list.MoveTo((uint)itemsIndex);
+                }
+            }
+
+            Player.Play();
+        }
+
+        private int IndexOfInPlayOrder(Song song)
+        {
+            IReadOnlyList<Song> order = Queue.PlayOrder;
+            for (int i = 0; i < order.Count; i++)
+            {
+                if (ReferenceEquals(order[i], song))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
         public void CycleRepeat()
         {
             Queue.CycleRepeat();

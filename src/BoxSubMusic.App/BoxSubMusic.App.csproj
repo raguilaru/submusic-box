@@ -134,6 +134,9 @@
     <Compile Include="Controls\AlbumCarousel.xaml.cs">
       <DependentUpon>AlbumCarousel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\ExpandedQueueView.xaml.cs">
+      <DependentUpon>ExpandedQueueView.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Controls\FavoriteHeart.cs" />
     <Compile Include="Controls\NowPlayingBar.xaml.cs">
       <DependentUpon>NowPlayingBar.xaml</DependentUpon>
@@ -145,6 +148,7 @@
     <Compile Include="Models\ArtistCard.cs" />
     <Compile Include="Models\IncrementalSource.cs" />
     <Compile Include="Models\PlaylistCard.cs" />
+    <Compile Include="Models\QueueRow.cs" />
     <Compile Include="Models\SongRow.cs" />
     <Compile Include="Models\TrackRow.cs" />
     <Compile Include="ArtistsPage.xaml.cs">
@@ -219,6 +223,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\AlbumCarousel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\ExpandedQueueView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

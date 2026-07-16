@@ -38,6 +38,11 @@ namespace BoxSubMusic.App
             SystemNavigationManager.GetForCurrentView().BackRequested += OnBackRequested;
             ContentFrame.Navigated += ContentFrame_Navigated;
 
+            // Slice 11 (§10): the bar's queue button and the global Y both
+            // open the expanded queue overlay.
+            NowPlaying.QueueExpandRequested += OpenQueueOverlay;
+            QueueOverlay.Closed += OnQueueOverlayClosed;
+
             // Controller-first rule: something must own focus from the first
             // frame, or directional input has no starting point.
             HomeNavItem.Focus(FocusState.Keyboard);
@@ -52,14 +57,89 @@ namespace BoxSubMusic.App
             NavigationPreferences.Changed -= ApplyNavVisibility;
             SystemNavigationManager.GetForCurrentView().BackRequested -= OnBackRequested;
             ContentFrame.Navigated -= ContentFrame_Navigated;
+            NowPlaying.QueueExpandRequested -= OpenQueueOverlay;
+            QueueOverlay.Closed -= OnQueueOverlayClosed;
         }
 
         private void OnBackRequested(object sender, BackRequestedEventArgs e)
         {
+            // B closes the expanded queue before anything else (§10): while
+            // the overlay is open it owns the screen.
+            if (!e.Handled && QueueOverlay.IsOpen)
+            {
+                e.Handled = true;
+                QueueOverlay.Close();
+                return;
+            }
+
             if (!e.Handled && ContentFrame.CanGoBack)
             {
                 e.Handled = true;
                 ContentFrame.GoBack();
+            }
+        }
+
+        private void OpenQueueOverlay()
+        {
+            if (QueueOverlay.IsOpen || PlaybackService.Instance.Queue.IsEmpty)
+            {
+                return;
+            }
+
+            QueueOverlay.Open();
+
+            // Focus trap: with the whole shell disabled underneath, XY focus
+            // cannot leave the overlay (the PaneFooter lesson: never rely on
+            // the engine skipping what merely *looks* unreachable).
+            NavView.IsEnabled = false;
+        }
+
+        private void OnQueueOverlayClosed()
+        {
+            NavView.IsEnabled = true;
+
+            // Return focus where the user came from: the bar's queue button
+            // (also right for a Y-press — the bar is always visible while a
+            // queue exists). If the queue died while the overlay was open
+            // (playback failure stop), the bar is hidden — content instead.
+            if (PlaybackService.Instance.Queue.IsEmpty)
+            {
+                ContentFocus.MoveInto(ContentFrame);
+            }
+            else
+            {
+                NowPlaying.FocusQueueButton();
+            }
+        }
+
+        private void ShellRoot_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (e.Handled)
+            {
+                return;
+            }
+
+            // §10: Y is the queue expand/collapse toggle, app-wide while a
+            // queue exists (decision 2026-07-16). Escape is the keyboard
+            // fallback for closing (B has no keyboard equivalent wired).
+            // Key-repeat is ignored — a held Y must not flap the overlay.
+            if (e.Key == VirtualKey.GamepadY && !e.KeyStatus.WasKeyDown)
+            {
+                if (QueueOverlay.IsOpen)
+                {
+                    QueueOverlay.Close();
+                }
+                else
+                {
+                    OpenQueueOverlay();
+                }
+
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.Escape && QueueOverlay.IsOpen)
+            {
+                QueueOverlay.Close();
+                e.Handled = true;
             }
         }
 

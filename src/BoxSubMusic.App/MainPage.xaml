@@ -28,6 +28,14 @@
         </Style>
     </Page.Resources>
 
+    <!-- Slice 11 (§10): the expanded queue is a full-screen overlay layered
+         over the whole shell — nav pane and bar included — so the shell root
+         is a Grid. While the overlay is open the NavigationView is disabled,
+         which keeps XY focus trapped inside the overlay (nothing behind it
+         is focusable). Y toggles the overlay from anywhere in the shell
+         (ShellRoot_KeyDown); B closes it (OnBackRequested). -->
+    <Grid x:Name="ShellRoot" KeyDown="ShellRoot_KeyDown">
+
     <NavigationView
         x:Name="NavView"
         KeyDown="NavView_KeyDown"
@@ -110,4 +118,8 @@
                 KeyDown="NowPlaying_KeyDown" />
         </Grid>
     </NavigationView>
+
+    <controls:ExpandedQueueView x:Name="QueueOverlay" />
+
+    </Grid>
 </Page>
