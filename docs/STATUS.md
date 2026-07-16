@@ -1,16 +1,18 @@
 # Current Status
 
-Last updated: 2026-07-16 (**Slices 12 AND 05b implemented** the same
-session. Slice 12: theme selector (Automatic/Dark/Light, §12) via the root
-frame's `RequestedTheme`, Automatic follows the system theme live
-(committed `df15b3f`). Slice 05b: §6.1 queue persistence + the Home
-"Pick up where you left off" card — resume state as LocalFolder XML +
-LocalSettings scalars, `PlaybackService.Resume` with in-track seek. Build
-+ all 123 tests green. **The Xbox is still unavailable**, so console
-checks are queued in the backlog (theme: items 2–7; resume: items 8–12)
-together with the Slice 11 focus-trap test (item 1); a VM F5 pass can
-cover most of both meanwhile. **Next console pass: run backlog items
-1–12. Next slice: playlist detail/playback view, or 13 (Search).**)
+Last updated: 2026-07-16 (**Slice 12 + Slice 05b session CLOSED.** Both
+implemented and committed the same day: theme selector (`df15b3f`, §12 —
+root-frame `RequestedTheme`, Automatic live-follows the system theme) and
+queue persistence + Home resume card (`edc5fde`, §6.1 — LocalFolder XML +
+LocalSettings scalars, `PlaybackService.Resume` with in-track seek; card
+Play restores and plays immediately, decision confirmed with Rafael).
+Build + all 123 tests green. **NOTHING from this session has run on any
+device yet — the Xbox is unavailable AND no VM F5 smoke pass has happened
+either.** All checks are queued in the backlog: item 1 (Slice 11 focus
+trap, carried), items 2–7 (theme), items 8–12 (resume); most of 2–12 are
+VM-F5-testable now. **Next session: FIRST prompt Rafael for the VM F5
+smoke pass (or the full console checkpoint if the Xbox is back), THEN
+start the playlist detail/playback view or Slice 13 (Search).**)
 
 ## Where we are
 
@@ -565,7 +567,8 @@ Xbox-theme integration, 10-ft light-theme readability, and the real
 suspend/terminate lifecycle.
 
 **Git state:** `main` holds Slice 10 (`f571bb4`), the checkpoint-#4 fix
-commits, and Slice 11 on top (see log).
+commits, Slice 11 (`87c5f28`), Slice 12 (`df15b3f`), and Slice 05b
+(`edc5fde`) on top (see log).
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -592,10 +595,12 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-1. **When the Xbox is back: backlog items 1–12** — the Slice 11 focus-trap
-   test, the Slice 12 theme checks, and the Slice 05b resume checks. A VM
-   F5 pass on the theme items (2–5, 7) and the whole resume loop (8–12)
-   is worthwhile earlier.
+1. **Prompt Rafael for a VM F5 smoke pass first** — Slices 12 and 05b have
+   not run on ANY device yet. VM-coverable now: theme items 2–5 and 7
+   (substituting the Windows theme setting) and the whole resume loop
+   (items 8–12). **When the Xbox is back: the full backlog 1–12** — adds
+   the Slice 11 focus trap, the Xbox-theme integration (5–6), 10-ft
+   light-theme readability (3), and the real suspend/terminate lifecycle.
 2. Then: **playlist detail/playback view** (deferred out of 09, unblocked
    since 10), **13** (Search; §17 paging decision), **14**
    (resilience/polish incl. the deferred nav-icon-size refinement and a

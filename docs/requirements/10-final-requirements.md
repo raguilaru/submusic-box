@@ -75,7 +75,7 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   - the in-track playback position
   - shuffle and repeat state
   - lightweight originating-context metadata (display name + artwork reference) for the resume card
-- Resume MUST restore the queue paused at the saved track and position; the app MUST NOT auto-play on launch.
+- Resume MUST restore the queue at the saved track and position; the app MUST NOT auto-play on launch. (Clarified 2026-07-16, §16: launch itself restores nothing — the saved state renders only as the Home card, and pressing the card's Play restores the queue and starts playing immediately. "Restore paused" earlier in this contract meant "never audible without a user action", not "Play lands in a paused state".)
 - The Home view MUST show artwork, name, and a Play action that resumes the saved queue/context.
 - Server-side play-queue sync (savePlayQueue/getPlayQueue) is out of scope for v1, but the local persistence contract MUST NOT preclude adding it later.
 
