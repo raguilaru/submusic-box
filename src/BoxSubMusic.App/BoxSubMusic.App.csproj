@@ -180,6 +180,7 @@
     <Compile Include="Services\CredentialStore.cs" />
     <Compile Include="Services\NavigationPreferences.cs" />
     <Compile Include="Services\PlaybackService.cs" />
+    <Compile Include="Services\ThemeService.cs" />
     <Compile Include="Services\RecentServersStore.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

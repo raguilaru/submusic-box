@@ -7,8 +7,7 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <!-- Slice 04: nav-visibility plumbing (§5). The full settings experience
-         (theme selector etc.) is Slice 12. -->
+    <!-- Slice 04: nav-visibility plumbing (§5). Slice 12: theme selector (§12). -->
     <StackPanel Padding="48" Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
         <TextBlock
             Text="Settings"
@@ -49,13 +48,49 @@
             Header="Show Playlists"
             FontSize="20"
             XYFocusUp="{x:Bind AlbumsToggle}"
-            XYFocusDown="{x:Bind PlaylistsToggle}"
+            XYFocusDown="{x:Bind ThemeAutomatic}"
             Toggled="Toggle_Toggled" />
 
+        <!-- Slice 12 (§12): theme selector. Radio buttons over a ComboBox by
+             design — a ComboBox popup is an extra focus scope and A-press on
+             the controller; radios keep every option visible and one press
+             away, and the selection is glanceable from the couch. Selecting
+             applies instantly (the console convention — the Xbox's own theme
+             setting behaves the same). The XYFocus chain continues from the
+             nav toggles; the bottom edge pins to itself. -->
         <TextBlock
-            Text="Theme options (Automatic, Dark, Light) arrive in a later slice."
-            FontSize="20"
-            Opacity="0.7"
+            Text="Theme"
+            FontSize="28"
+            FontWeight="SemiBold"
             Margin="0,24,0,0" />
+        <TextBlock
+            Text="Automatic follows the Xbox system theme."
+            FontSize="20"
+            Opacity="0.7" />
+
+        <RadioButton
+            x:Name="ThemeAutomatic"
+            Content="Automatic"
+            GroupName="Theme"
+            FontSize="20"
+            XYFocusUp="{x:Bind PlaylistsToggle}"
+            XYFocusDown="{x:Bind ThemeDark}"
+            Checked="Theme_Checked" />
+        <RadioButton
+            x:Name="ThemeDark"
+            Content="Dark"
+            GroupName="Theme"
+            FontSize="20"
+            XYFocusUp="{x:Bind ThemeAutomatic}"
+            XYFocusDown="{x:Bind ThemeLight}"
+            Checked="Theme_Checked" />
+        <RadioButton
+            x:Name="ThemeLight"
+            Content="Light"
+            GroupName="Theme"
+            FontSize="20"
+            XYFocusUp="{x:Bind ThemeDark}"
+            XYFocusDown="{x:Bind ThemeLight}"
+            Checked="Theme_Checked" />
     </StackPanel>
 </Page>

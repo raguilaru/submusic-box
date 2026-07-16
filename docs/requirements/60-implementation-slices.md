@@ -406,6 +406,13 @@ Implement theming and nav-visibility preferences.
 - Settings
 - Cross-Cutting Theming
 
+### Open design note
+Implemented 2026-07-16 (§16): the nav-visibility half had existed since
+Slice 04; this slice added the theme selector — RadioButtons on Settings,
+instant apply, root-frame `RequestedTheme`, Automatic resolved from
+`UISettings` with `ColorValuesChanged` live-follow. Console verification
+pending (STATUS backlog items 2–7).
+
 ### Deliverables
 - Automatic/Dark/Light theme selector
 - persistence of theme selection

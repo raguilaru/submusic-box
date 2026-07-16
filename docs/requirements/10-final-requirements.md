@@ -297,6 +297,23 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   shuffle, so the jump verifies MoveTo's returned item and corrects once if
   the platform indexed the other collection. Focus is trapped by disabling
   the NavigationView beneath the overlay while it is open.
+- 2026-07-16: **Slice 12 theme selector** (Section 12): the preference
+  (Automatic/Dark/Light, default Automatic, LocalSettings `theme.mode`) is
+  applied as `RequestedTheme` on the **root Frame** — `Application.RequestedTheme`
+  cannot change at runtime, and the root-frame value reaches every page
+  (setup included) plus flyouts/tooltips through their placement targets.
+  **Automatic resolves the system theme explicitly** via
+  `UISettings.GetColorValue(UIColorType.Background)` (black = dark) and
+  re-resolves on `UISettings.ColorValuesChanged` (dispatched to the UI
+  thread; the `UISettings` instance is held statically so the event
+  survives GC), giving live follow of a system theme change instead of the
+  launch-time snapshot `ElementTheme.Default` would give. Whether the event
+  fires on the console when the Xbox theme changes mid-session is
+  undocumented and console-unverified; the launch-time resolve is the
+  guaranteed floor. UI: three RadioButtons on Settings (chosen over a
+  ComboBox for 10-ft/controller use — no popup focus scope, all options
+  visible, one A-press), applying instantly like the console's own theme
+  setting; the page's XYFocus chain extends through them.
 - 2026-07-15: **Queue persistence (Section 6.1) stays with Slice 05b.** `PlayQueue` already carries everything the resume contract needs (track references + `QueueContext` display name/artwork), so persistence bolts on without model changes. The now-playing bar's **queue-expand control ships disabled until Slice 11** (visible-deferral pattern, Section 15 spirit); the Y-button mapping lands with Slice 11 (§10's "documented as pending" clause).
 
 ## 17. Open Decisions / TODO

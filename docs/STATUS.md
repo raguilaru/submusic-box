@@ -1,12 +1,13 @@
 # Current Status
 
-Last updated: 2026-07-16 (**Slice 11 session CLOSED.** Expanded queue
-implemented and committed (`87c5f28`); checkpoint #5 run the same day:
-context-menu favorite toggle, row starred markers, and the expanded queue
-view all verified by Rafael. **One test remains open: the overlay's focus
-trap (backlog item 6)** — the Xbox is temporarily unavailable, so it waits
-for the next console pass. **Next session: Slice 05b or playlist detail —
-run the focus-trap test first.**)
+Last updated: 2026-07-16 (**Slice 12 implemented** — theme selector
+(Automatic/Dark/Light, §12) on the Settings page, applied via the root
+frame's `RequestedTheme`, Automatic follows the system theme live via
+`UISettings.ColorValuesChanged`. Build + all 110 tests green. **The Xbox
+is still unavailable**, so its console checks are queued in the backlog
+(items 2–7) together with the Slice 11 focus-trap test (item 1); a VM F5
+smoke pass can cover most of the theme behavior meanwhile. **Next console
+pass: run backlog items 1–7. Next slice: 05b or playlist detail.**)
 
 ## Where we are
 
@@ -466,6 +467,40 @@ run the focus-trap test first.**)
   - Bar: queue button now enabled → raises `QueueExpandRequested`; tooltip
     "Queue (Y)".
 
+- **2.11 Slice 12 — Settings: theme selector (implemented 2026-07-16):**
+  - The other half of §12 (nav-visibility toggles + Search/Home protection)
+    has existed since Slice 04 — this slice adds the theme selector and
+    closes the section.
+  - `Services/ThemeService` (+`ThemeMode` enum): preference persisted in
+    LocalSettings (`theme.mode`, same pattern as `NavigationPreferences`,
+    default Automatic). The theme is applied as **`RequestedTheme` on the
+    root Frame** — `Application.RequestedTheme` cannot change at runtime
+    (throws), and the root-frame value cascades to every page (setup
+    included) and to flyouts/tooltips via their placement targets.
+    Initialized in `App.OnLaunched` right after the frame is created, so
+    the first rendered frame already has the chosen theme.
+  - **Automatic resolves the system theme explicitly** (never
+    `ElementTheme.Default`, which snapshots at launch): via
+    `UISettings.GetColorValue(UIColorType.Background)` (black = dark) and
+    re-resolves on `UISettings.ColorValuesChanged`, so a system theme
+    change re-themes the running app. Two documented platform gotchas
+    handled: the event fires **off the UI thread** (dispatched via the
+    root's dispatcher) and the `UISettings` instance is held in a static
+    field (a local one is GC'd and the event silently stops firing).
+    Whether the event fires on the console when the Xbox theme changes
+    mid-session is **not documented anywhere — explicit console-check
+    item**; the launch-time snapshot is the guaranteed floor.
+  - `SettingsPage`: "Theme" section with three **RadioButtons** (deliberate
+    over a ComboBox: no popup focus scope, every option visible and one
+    A-press away at 10 ft), instant apply on selection (the console's own
+    theme setting behaves the same), hint line "Automatic follows the Xbox
+    system theme." The existing XYFocus chain extends through the radios
+    (PlaylistsToggle ↔ Automatic ↔ Dark ↔ Light, bottom edge pinned).
+  - **No theming code-fix pass was needed:** an audit found every surface
+    already on `ThemeResource` brushes; the only hardcoded color in the app
+    is the FavoriteHeart's black rim, which is intentional cross-theme
+    design (verify legibility in light theme on console).
+
 **Verification state (checkpoint #5, 2026-07-16):** the context-menu
 favorite toggle, the row starred markers, and the expanded queue view
 (open/close paths, jump-to-track, live updates) are **verified by Rafael**.
@@ -474,6 +509,14 @@ NavView.IsEnabled=false is a new trapping mechanism on console): the Xbox
 is temporarily unavailable, so it carries to the next console pass. Build
 green (x64 Debug over SSH; APPX0703 packaging is the known
 command-line-only failure), **44 Core + 66 SubsonicClient** tests green.
+
+**Slice 12 (2026-07-16) is code-complete but entirely unverified on
+device** (Xbox still unavailable): its console checks are backlog items
+2–7. Build + both test suites re-verified green after the slice. Most of
+the theme behavior (radios, instant re-theme, persistence, Automatic
+following the *Windows* theme live) is VM-F5-testable before the console
+pass; the console adds the Xbox-theme integration and the 10-ft light-theme
+readability check.
 
 **Git state:** `main` holds Slice 10 (`f571bb4`), the checkpoint-#4 fix
 commits, and Slice 11 on top (see log).
@@ -503,15 +546,14 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-1. **When the Xbox is back: the focus-trap test** (backlog item 1) — the
-   one checkpoint-#5 item that couldn't run. Small; fold into the next
-   checkpoint.
+1. **When the Xbox is back: backlog items 1–7** — the Slice 11 focus-trap
+   test plus all Slice 12 theme checks. A VM F5 pass on the theme items
+   (2–5, 7 minus the Xbox-specific parts) is worthwhile earlier.
 2. Then: **05b** (queue persistence + Home resume card — the model is
    ready, `QueueContext` is already carried), **playlist detail/playback
-   view** (deferred out of 09, unblocked now), **12** (theme selector still
-   missing — check §12), **13** (Search; §17 paging decision), **14**
-   (resilience/polish incl. the deferred nav-icon-size refinement and a
-   possible queue-row context menu).
+   view** (deferred out of 09, unblocked now), **13** (Search; §17 paging
+   decision), **14** (resilience/polish incl. the deferred nav-icon-size
+   refinement and a possible queue-row context menu).
 
 ## On-device test backlog (next console pass)
 
@@ -570,6 +612,37 @@ One item could not be run (Xbox temporarily unavailable) and stays open:
    this deserves an explicit check). Also confirm that after closing, focus
    returns to the bar's queue button.
 
+**Slice 12 (2026-07-16, theme selector — NOT yet run anywhere on device;
+items 2–5 and 7 are also VM-F5 smoke-testable, substituting the Windows
+theme setting for the Xbox one):**
+
+2. **Theme radios by controller:** on Settings, D-pad Down from the
+   Playlists switch reaches Automatic → Dark → Light (bottom edge pinned,
+   no straying into the nav pane); Up walks back through the toggles; Left
+   exits to the nav; A checks a radio and the check state is readable at
+   10 ft.
+3. **Instant re-theme, all surfaces:** selecting Dark/Light re-themes
+   immediately with no restart and no artifacts — nav pane, all browse
+   pages (grid + list), both detail pages, Songs, Playlists tiles,
+   now-playing bar, expanded queue overlay, context flyouts, tooltips.
+   In **light theme** specifically check: focus ring visibility at 10 ft,
+   the FavoriteHeart (starred: accent fill + black rim; unstarred: dark
+   outline) on all three surfaces, row starred markers, and the
+   now-playing bar's chrome-brush background contrast.
+4. **Persistence:** pick Dark (then Light), quit the app fully, relaunch —
+   the choice survives, and the very first rendered frame is already the
+   chosen theme (no flash of the other theme).
+5. **Automatic at launch:** with the mode on Automatic, the app matches
+   the console's Settings → General → Personalization → "My color &
+   theme" at launch, for both console values.
+6. **Automatic live-follow (the open platform question):** with the app
+   running in Automatic, change the Xbox theme — does the app re-theme
+   without a restart? `UISettings.ColorValuesChanged` on Xbox is
+   undocumented; if it never fires, the launch snapshot is the accepted
+   fallback and the §16 entry + this doc must be updated to say so.
+7. **Setup page in light theme:** sign out while in Light — the setup
+   page renders themed (the root-frame mechanism covers it; confirm).
+
 *(Future slices: append your console items here.)*
 
 ## Known gaps / notes from this session
@@ -579,6 +652,18 @@ One item could not be run (Xbox temporarily unavailable) and stays open:
   requirement; the progress lines are display-only; SMTC/system seek still
   works where the system offers it), and playlists still have no
   detail/playback view.
+- **Theme notes (Slice 12):** Automatic's live-follow depends on
+  `UISettings.ColorValuesChanged` firing on the console for an Xbox theme
+  change — undocumented, console-check item 6; the launch-time resolve is
+  the guaranteed floor either way. The event also fires for accent-color
+  changes (harmless: the handler just re-applies the same resolved theme).
+  `FavoriteHeart` reads `SystemAccentColor` once at construction, so an
+  accent change mid-session repaints hearts only after their page/control
+  is rebuilt — pre-existing behavior, unchanged by this slice. Light theme
+  has never been seen on a real TV: every surface uses `ThemeResource`
+  brushes so it renders, but 10-ft contrast (focus rings, the black-rimmed
+  heart, the bar's chrome background) is exactly what checkpoint item 3
+  verifies.
 - **Expanded-queue scope notes (Slice 11):** queue rows are jump-only — no
   context menu (favorite/go-to from a queue row are refinement-phase
   candidates; the established row-menu pattern drops in unchanged). The
@@ -712,6 +797,11 @@ One item could not be run (Xbox temporarily unavailable) and stays open:
   `PlaybackService.JumpTo`, global Y toggle, B/Esc/chevron close, focus
   trapped by disabling the shell); bar queue button enabled. Decisions in
   §16 + the design doc's Slice 11 section.
+- 2026-07-16: **Slice 12** — theme selector (Automatic/Dark/Light radios on
+  Settings, instant apply, LocalSettings persistence) via `ThemeService`:
+  root-frame `RequestedTheme` + `UISettings`-resolved Automatic with
+  `ColorValuesChanged` live-follow. Completes §12 (nav toggles existed
+  since Slice 04). Unverified on device — backlog items 2–7.
 
 ## How to deploy (quick reference)
 

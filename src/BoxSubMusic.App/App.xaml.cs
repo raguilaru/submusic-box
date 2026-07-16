@@ -83,6 +83,12 @@ namespace BoxSubMusic.App
 
                 // Place the frame in the current Window
                 Window.Current.Content = rootFrame;
+
+                // Requirement §12: apply the persisted theme preference to
+                // the root frame before the first page renders (covers the
+                // setup page too) and start following the system theme when
+                // the mode is Automatic.
+                Services.ThemeService.Initialize(rootFrame);
             }
 
             if (e.PrelaunchActivated == false)
