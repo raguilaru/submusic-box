@@ -1,23 +1,21 @@
 # Current Status
 
-Last updated: 2026-07-19 (**Console checkpoint #8 verified ALL seven
-checkpoint-#7 items** — TV-safe inset, container queue edits from cards
-and detail pages incl. edge semantics, controller badges, LB/RB region
-cycling, pane footer hints — with one note: badge letters sat low in
-their outlines. This round, all code-complete and NOT yet
-device-verified: the **badge-letter centering fix**
-(TextLineBounds=Tight), the **rounded floating nav pane** (transparent
-pane brushes + a radius-12 backdrop matching the bar), the **modern pane
-toggle** (Fluent panel-contract/expand as a first menu item, replacing
-the Segoe MDL2 hamburger), and **bigger nav icons at last** — root cause
-found: the item template scales icons inside a Viewbox whose margin
-resource lives at generic.xaml's GLOBAL scope, unreachable by app
-overrides on any device; fixed by sizing the named `IconBox` Viewbox
-from code (16 → 28 epx). Build green (compile; APPX0703 stays the known
-command-line-only packaging failure), **70 Core + 66 SubsonicClient
-tests green**. **Next session: prompt Rafael for a VM F5 smoke pass or
-console re-test of the new backlog items 1–5; THEN start Slice 13
-(Search — §17 paging decision first) or Slice 14.**)
+Last updated: 2026-07-19 (**Console checkpoint #9: Rafael verified the
+WHOLE checkpoint-#8 round on console — all five items passed** (badge
+centering, rounded floating pane, 28-epx nav icons — the long-deferred
+icon-size item is CLOSED — pane toggle, regression sweep). Same day:
+**app renamed to "SubMusic Box" + basic branding** (2.17): manifest
+display name/description, all tile/splash/store assets regenerated from
+`logos/SubMusic Box - logo.png` (square tiles = the "S"-card crop; wide
+tile + splash = the full logo padded on the logo's #1E1E1C background),
+setup-page logo + new title, Subsonic client name `c=SubMusicBox`.
+Internal identifiers (solution/projects/namespaces, PasswordVault key,
+package identity GUID) intentionally unchanged — display-layer rename
+only. Build green (compile; APPX0703 stays the known command-line-only
+packaging failure), **70 Core + 66 SubsonicClient tests green**.
+Branding NOT yet device-verified (backlog items below). **Next session:
+start Slice 13 (Search — §17 paging decision first) or Slice 14; fold
+the branding check into the next console pass.**)
 
 ## Where we are
 
@@ -724,18 +722,43 @@ console re-test of the new backlog items 1–5; THEN start Slice 13
     ContentFocus, re-run from ApplyNavVisibility for late-shown items.
     The dead App.xaml override was removed with a tombstone comment.
 
-**Verification state (checkpoint #8, 2026-07-19):** all seven
-checkpoint-#7 items **verified by Rafael on console** (badges passed with
-the centering note fixed above). The 2.16 round is the new unverified set
-(backlog items 1–5 below). Build green (x64 Debug over SSH; APPX0703
-packaging is the known command-line-only failure), **70 Core + 66
-SubsonicClient** tests green.
+- **2.17 App rename + branding (2026-07-19 — code-complete, NOT yet
+  device-verified):**
+  - **Display name is now "SubMusic Box"** (§16 decision; supersedes the
+    2026-07-07 BoxSubMusic naming). The rename is deliberately
+    **display-layer only**: solution/project/namespace names, the
+    PasswordVault resource (`BoxSubMusic.Server` — renaming it would
+    orphan every stored credential), the package identity GUID, and the
+    LocalSettings/LocalFolder shapes are all unchanged, so nothing is
+    signed out or re-onboarded.
+  - Manifest: `Properties/DisplayName` + `VisualElements DisplayName`
+    (this is what the Xbox guide's media tile and My games & apps show),
+    a real `Description`, and `BackgroundColor #1E1E1C` (sampled from the
+    logo's background) on both the tiles and the splash screen.
+  - **Assets regenerated from `logos/SubMusic Box - logo.png`** (1800²;
+    Affinity source sits next to it): square tiles / store / lock-screen
+    icons use a 1190² "S"-card crop (offset 195,10 — card + vinyl sliver,
+    wordmark excluded: illegible below ~300 px); wide tile and splash use
+    the full logo scaled and padded to aspect on #1E1E1C (seamless — the
+    logo background IS that color). Generated with macOS `sips`
+    (crop/resize/pad); no new tooling.
+  - `SetupPage` header: 88-epx logo image (`Assets/BrandLogo.png`, new
+    csproj Content entry) beside the "SubMusic Box" title.
+  - Subsonic client name (`c=` param): `BoxSubMusic` → `SubMusicBox`
+    (server player lists will show a new player entry — cosmetic). The
+    three URL tests now assert against `SubsonicApiClient.ClientName`
+    instead of a literal, keeping tests name-agnostic.
 
-**Git state:** `main` holds Slice 10 (`f571bb4`), the checkpoint-#4 fix
-commits, Slice 11 (`87c5f28`), Slice 12 (`df15b3f`), Slice 05b
-(`edc5fde`), the playlist detail view (`5fdb5db`), and the checkpoint-#6
-round (`d22f038`) on top; the 2.15 checkpoint-#7 round is uncommitted as
-of this update (see log).
+**Verification state (checkpoint #9, 2026-07-19):** the whole
+checkpoint-#8 round (2.16, items 1–5) **verified by Rafael on console —
+all passed**; the nav-icon-size saga is closed. The 2.17 branding round
+is the new unverified set (backlog below). Build green (x64 Debug over
+SSH; APPX0703 packaging is the known command-line-only failure), **70
+Core + 66 SubsonicClient** tests green.
+
+**Git state:** `main` holds everything through the checkpoint-#8 round
+(`7b66067`, merged via PR #1 `6775f54`); the 2.17 rename/branding round
+is uncommitted as of this update.
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -762,18 +785,17 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-**2026-07-19: checkpoint #8 closed the whole checkpoint-#7 backlog**; the
-same-day 2.16 round (badge centering, rounded pane, new toggle, big nav
-icons) is the new unverified set.
+**2026-07-19: checkpoint #9 closed the whole checkpoint-#8 round** (nav
+pane refresh + icon size — all five items passed on console); the
+same-day 2.17 rename/branding round is the only unverified set, and it
+is low-risk visual-only (fold it into the next console pass rather than
+deploying just for it).
 
-1. **Prompt Rafael to verify the checkpoint-#8 round** — backlog items 1–5
-   below. The icon-size fix and the pane visuals are best judged on the
-   console (10 ft, real theme brushes); a VM F5 pass covers function
-   first (toggle invoke, backdrop width tracking, badge centering).
-2. Then: **Slice 13** (Search; lock the §17 endpoint/paging decision
-   first), **14** (resilience/polish; a possible queue-row context menu).
-   The long-standing nav-icon-size refinement item closes with this
-   round if item 3 passes on device.
+1. **Slice 13** (Search): lock the §17 endpoint/scopes/paging decision
+   with Rafael first, then implement.
+2. Or **Slice 14** (resilience/polish; possible queue-row context menu).
+3. Next console pass: verify the branding items below alongside whatever
+   the next slice adds.
 
 ## On-device test backlog (next console pass)
 
@@ -789,39 +811,26 @@ console; **Automatic theme live-follow WORKS on the Xbox** (the
 `UISettings.ColorValuesChanged` open platform question is resolved: it
 fires); the whole resume loop, playlist detail, and light theme passed.
 
-**Checkpoint #7 (2026-07-18) and checkpoint #8 (2026-07-19) are fully
-closed** — the TV-safe inset, all container queue edits (cards + detail
-pages + edge semantics), the controller badges, LB/RB region cycling, and
-the pane footer hints are console-verified; checkpoint #8's only note
-(badge letters low) is fixed in the round below. The long-deferred **nav
-pane icon size** is no longer deferred: its root cause is understood and
-fixed in code (see 2.16) — item 3 below is its device verification.
+**Checkpoints #7 (2026-07-18), #8 (2026-07-19), and #9 (2026-07-19) are
+fully closed** — the TV-safe inset, all container queue edits, controller
+badges, LB/RB region cycling, pane footer hints, badge-letter centering,
+the rounded floating pane, the panel-contract pane toggle, and the
+28-epx nav icons are all console-verified. The nav-icon-size item that
+had been deferred since 2026-07-15 is CLOSED.
 
-**Checkpoint-#8 fix/feature round (2026-07-19 — NOT yet run on any device;
-pane visuals and icon size are best judged on console at 10 ft):**
+**2.17 rename/branding round (2026-07-19 — NOT yet run on any device;
+all visual/cosmetic, low risk):**
 
-1. **Badge letter centering (re-test of the #8 note):** the A/B/Y/LB/RB
-   letters sit optically centered in their outlines everywhere badges
-   appear (Songs header, detail lists, expanded queue, pane footer).
-2. **Rounded floating pane:** the nav pane renders as a rounded card
-   (radius 12, same as the bar) in both themes; no square background
-   peeks out behind the rounding; collapsing the pane (toggle item)
-   shrinks the card to the 48-epx compact strip and back without
-   visual artifacts; the expanded-queue overlay still covers everything.
-3. **Nav icon size (the long-deferred item, root cause finally fixed):**
-   the pane item icons — including Settings, Account, and the new toggle
-   — render visibly larger (28 epx, ~75% bigger than before) in both
-   pane states; hiding and re-showing a section from Settings keeps its
-   icon large; nothing clips inside the item rows.
-4. **Pane toggle item:** the first pane row shows the panel-contract
-   glyph (no hamburger anywhere); A on it collapses the pane (glyph
-   flips to panel-expand, icons-only strip remains navigable), A again
-   expands; the item never shows as "selected"; focus stays sane through
-   toggling; mouse click works too.
-5. **Pane visual regression sweep:** selection highlight, focus ring,
-   and the separator lines still render correctly on items over the new
-   backdrop; the pane footer hints still show/hide with the pane; LB
-   still lands on the selected item.
+1. **App name:** "SubMusic Box" shows in My games & apps and on the
+   guide's media tile during playback (both read the manifest
+   DisplayName).
+2. **Tiles + splash:** the "S"-card tile renders cleanly at dashboard
+   size; the splash shows the full logo centered on the dark background
+   with no visible seam between image and background fill.
+3. **Setup page:** logo renders beside the "SubMusic Box" title (sign
+   out from Account to reach it).
+4. **Client name:** after playing a track, Navidrome's player list /
+   Now Playing shows the player as `SubMusicBox`.
 
 *(Future slices: append your console items here.)*
 

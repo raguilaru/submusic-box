@@ -21,10 +21,18 @@
             HorizontalAlignment="Center"
             Spacing="20">
 
-            <TextBlock
-                Text="BoxSubMusic"
-                FontSize="48"
-                FontWeight="SemiBold" />
+            <StackPanel Orientation="Horizontal" Spacing="20">
+                <Image
+                    Source="ms-appx:///Assets/BrandLogo.png"
+                    Width="88"
+                    Height="88"
+                    VerticalAlignment="Center" />
+                <TextBlock
+                    Text="SubMusic Box"
+                    FontSize="48"
+                    FontWeight="SemiBold"
+                    VerticalAlignment="Center" />
+            </StackPanel>
             <TextBlock
                 Text="Connect to your Subsonic or OpenSubsonic server."
                 FontSize="22"
