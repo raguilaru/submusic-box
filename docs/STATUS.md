@@ -1,17 +1,15 @@
 # Current Status
 
-Last updated: 2026-07-19 (**Console checkpoint #10 closed the 2.17
-branding round — all passed; branding merged to main (PR #4). Same day:
-Slice 13 (Search) implemented** (2.18): the §17 decisions were locked
-with Rafael first (search3, submit-triggered, "All" view + scope
-filters, incremental scoped paging, Songs-browse queue semantics for
-song results), then `SubsonicApiClient.SearchAsync` + `SearchPage`
-landed on branch `slice-13-search`. Build green (compile; APPX0703
-stays the known command-line-only packaging failure), **70 Core + 75
-SubsonicClient tests green** (9 new: 8 search unit-test cases + 1 live
-search test). NOT yet device-verified —
-backlog below. **Next: VM smoke test (F5), then the console pass; then
-Slice 14.**)
+Last updated: 2026-07-19 (**Console checkpoint #11: Rafael verified the
+whole Slice 13 Search round on console — all eight items passed** (OSK
+submit flow, inline gamepad editing vs LB/RB region cycling, All view,
+scope filters + incremental paging, result actions incl. context menus,
+navigation-cache B-back, focus flow, empty/short-query states). Slice 13
+is merged to main (PR #5 `a7fd283`); **the on-device backlog is empty
+again.** Build green (compile; APPX0703 stays the known
+command-line-only packaging failure), **70 Core + 75 SubsonicClient
+tests green**. **Next session: Slice 14 (resilience/polish) — the last
+planned slice.**)
 
 ## Where we are
 
@@ -800,20 +798,18 @@ Slice 14.**)
     B-back from a result's detail page returns to the same query and
     results — the one deliberate exception to refetch-on-navigation
     (staleness note below).
+  - **Console checkpoint #11 (2026-07-19): all eight Slice 13 items
+    verified by Rafael on device — the slice is closed.**
 
-**Verification state (checkpoint #10, 2026-07-19):** the whole 2.17
-rename/branding round **verified by Rafael on console — all four backlog
-items passed** (full logo everywhere, guide icon after the versioned
-redeploy, seamless splash, `SubMusicBox` client name). **Nothing is
-awaiting device verification.** Build green (x64 Debug over SSH;
-APPX0703 packaging is the known command-line-only failure), **70 Core +
-66 SubsonicClient** tests green.
+**Verification state (checkpoint #11, 2026-07-19):** the whole Slice 13
+Search round **verified by Rafael on console — all eight backlog items
+passed**. **Nothing is awaiting device verification.** Build green (x64
+Debug over SSH; APPX0703 packaging is the known command-line-only
+failure), **70 Core + 75 SubsonicClient** tests green.
 
-**Git state:** `main` holds everything through the initial 2.17
-rename/branding commit (merged via PR #2 `3bc2f4c`); the console-pass
-branding fixes (full logo + tile-cache version bump, `eb88231`) sit on
-`branding-full-logo-fixes` (pushed), console-verified and ready to
-merge.
+**Git state:** `main` holds everything through Slice 13 (merged via
+PR #5 `a7fd283`; branding via PR #4 before it). No open branches; the
+working tree is clean.
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -840,14 +836,17 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-**2026-07-19: Slice 13 (Search) is code-complete** on branch
-`slice-13-search` (branding is merged — main is clean beneath it).
+**2026-07-19: checkpoint #11 closed Slice 13 (Search)** — merged to
+main, device backlog empty. Every planned feature slice (00–13) is now
+implemented and console-verified.
 
-1. VM smoke test (arm64 Local Machine F5): pages render, mouse path,
-   filter switching, incremental scroll.
-2. Console pass: the Search backlog items below (checkpoint #11).
-3. Then **Slice 14** (resilience/polish; possible queue-row context
-   menu).
+1. **Slice 14** (resilience/polish — the last planned slice): loading/
+   empty/retry/unsupported-state audit, theming audit, focus audit,
+   performance/memory audit, docs. Known refinement candidates collected
+   in "Known gaps" below (e.g. queue-row context menu, queue-edit
+   feedback/toast, artist fan-out throttling, per-track error surfacing,
+   seek support, dynamic input glyphs).
+2. Next console pass: whatever Slice 14 changes.
 
 ## On-device test backlog (next console pass)
 
@@ -875,35 +874,13 @@ full logo on every asset, guide app-list icon (fixed by the 1.0.1.0
 versioned redeploy), seamless splash, and the `SubMusicBox` client name
 in Navidrome all verified on console.
 
-**Slice 13 — Search (2026-07-19, checkpoint #11 candidates):**
+**Checkpoint #11 (2026-07-19) closed the Slice 13 Search round** — all
+eight items verified on console (OSK submit flow, inline gamepad editing
+with LB/RB precedence, All view + D-pad flow, scope filters with
+incremental paging, result actions and context menus, navigation-cache
+B-back, focus flow, empty/short-query states).
 
-1. **OSK flow:** A on the query box opens the keyboard; typing + accept
-   (or the Menu-button accelerator) submits and results appear; the OSK
-   dismisses.
-2. **Inline gamepad editing on the box:** with the OSK dismissed, X
-   deletes backwards, LB/RB move the caret — and from anywhere OUTSIDE
-   the box, LB/RB still cycle nav → content → bar (the box takes
-   precedence only while focused).
-3. **All view:** three sections render (artists/albums/songs), D-pad
-   moves between the filter row, the strips, and the song rows; empty
-   sections are absent, not blank strips.
-4. **Scope filters:** each filter switches to its full list; scrolling a
-   scoped list keeps loading pages (incremental); switching back to All
-   keeps the original top results; the active filter stays visibly
-   checked.
-5. **Result actions:** artist/album cards open detail; A on a song plays
-   (queue = that list's loaded rows, positioned correctly — check the
-   expanded queue); Menu on a song row opens the full context menu incl.
-   Go to album AND Go to artist; Menu on a card offers Play next / Add
-   to queue.
-6. **B-back from a result's detail page returns to the same query +
-   results** (navigation cache), including scroll position feel.
-7. **Focus:** entering Search lands in the query box; after submit,
-   focus moves into the results; Up from results reaches the filter row
-   (not the nav pane); error states focus Retry.
-8. **Empty + short queries:** a nonsense query shows "No results for
-   …"; a single-letter query on Navidrome also shows it (server-side
-   token behavior — expected, not a bug).
+**The backlog is currently empty.**
 
 *(Future slices: append your console items here.)*
 
@@ -1173,6 +1150,16 @@ in Navidrome all verified on console.
   app overrides unreachable by design; fixed via named-Viewbox sizing in
   code). §16 decisions 2026-07-19. Unverified on device — backlog items
   1–5.
+- 2026-07-19: **Checkpoints #9/#10** closed the nav-pane refresh and the
+  2.17 rename/branding rounds (branding merged via PR #4). **Slice 13** —
+  Search: `SubsonicApiClient.SearchAsync` (search3, all three scopes +
+  offsets) and `SearchPage` (submit-triggered query with inline gamepad
+  editing, "All" view top 6/6/10 + Artists/Albums/Songs filters with
+  incremental scoped paging, Songs-browse queue semantics, navigation
+  cache for B-back, pre-1.8 unsupported state). §16/§17 decisions locked
+  with Rafael first; merged via PR #5. **Checkpoint #11 verified all
+  eight Search items on console — every planned feature slice (00–13) is
+  done; Slice 14 (resilience/polish) remains.**
 
 ## How to deploy (quick reference)
 
