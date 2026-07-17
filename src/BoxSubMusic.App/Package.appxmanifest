@@ -10,7 +10,7 @@
   <Identity
     Name="8dbb9bf8-bae5-4a6a-abd0-bf4522537929"
     Publisher="CN=Rafa"
-    Version="1.0.0.0" />
+    Version="1.0.1.0" />
 
   <mp:PhoneIdentity PhoneProductId="8dbb9bf8-bae5-4a6a-abd0-bf4522537929" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
