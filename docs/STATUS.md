@@ -6,8 +6,8 @@ centering, rounded floating pane, 28-epx nav icons — the long-deferred
 icon-size item is CLOSED — pane toggle, regression sweep). Same day:
 **app renamed to "SubMusic Box" + basic branding** (2.17): manifest
 display name/description, all tile/splash/store assets regenerated from
-`logos/SubMusic Box - logo.png` (square tiles = the "S"-card crop; wide
-tile + splash = the full logo padded on the logo's #1E1E1C background),
+`logos/SubMusic Box - logo.png` (every asset = the complete logo, only
+scaled; wide tile + splash padded on the logo's #1E1E1C background),
 setup-page logo + new title, Subsonic client name `c=SubMusicBox`.
 Internal identifiers (solution/projects/namespaces, PasswordVault key,
 package identity GUID) intentionally unchanged — display-layer rename
@@ -736,12 +736,21 @@ the branding check into the next console pass.**)
     a real `Description`, and `BackgroundColor #1E1E1C` (sampled from the
     logo's background) on both the tiles and the splash screen.
   - **Assets regenerated from `logos/SubMusic Box - logo.png`** (1800²;
-    Affinity source sits next to it): square tiles / store / lock-screen
-    icons use a 1190² "S"-card crop (offset 195,10 — card + vinyl sliver,
-    wordmark excluded: illegible below ~300 px); wide tile and splash use
-    the full logo scaled and padded to aspect on #1E1E1C (seamless — the
-    logo background IS that color). Generated with macOS `sips`
-    (crop/resize/pad); no new tooling.
+    Affinity source sits next to it): **every asset shows the complete
+    logo, only scaled** — the first cut used an "S"-card crop for the
+    square sizes, but the console pass showed it reading as a cut-off
+    image; Rafael's call: always the whole logo (2026-07-19 feedback
+    round). Wide tile and splash pad the square logo to aspect on
+    #1E1E1C (seamless — the logo background IS that color). Generated
+    with macOS `sips` (resize/pad); no new tooling.
+  - **Console feedback round (same day):** (a) the crop→full-logo switch
+    above; (b) the Xbox guide's app-list icon showed the OLD VS
+    placeholder (the grey box-with-an-X) — that is the shell's icon
+    cache serving the pre-branding asset, not a missing image; the
+    package Identity Version was bumped **1.0.0.0 → 1.0.1.0** to force
+    the shell to re-read the tiles on the next deploy. If the X
+    persists after a versioned redeploy, uninstall the app on the
+    console and F5 again (known Xbox shell tile-cache behavior).
   - `SetupPage` header: 88-epx logo image (`Assets/BrandLogo.png`, new
     csproj Content entry) beside the "SubMusic Box" title.
   - Subsonic client name (`c=` param): `BoxSubMusic` → `SubMusicBox`
@@ -818,17 +827,20 @@ the rounded floating pane, the panel-contract pane toggle, and the
 28-epx nav icons are all console-verified. The nav-icon-size item that
 had been deferred since 2026-07-15 is CLOSED.
 
-**2.17 rename/branding round (2026-07-19 — NOT yet run on any device;
-all visual/cosmetic, low risk):**
+**2.17 rename/branding round — first console pass done (2026-07-19):
+name + setup-page logo verified; two findings fixed the same day
+(re-verify below):**
 
-1. **App name:** "SubMusic Box" shows in My games & apps and on the
-   guide's media tile during playback (both read the manifest
-   DisplayName).
-2. **Tiles + splash:** the "S"-card tile renders cleanly at dashboard
-   size; the splash shows the full logo centered on the dark background
-   with no visible seam between image and background fill.
-3. **Setup page:** logo renders beside the "SubMusic Box" title (sign
-   out from Account to reach it).
+1. **Full logo everywhere (finding 1):** tiles, store/lock-screen
+   icons, and the setup-page image now show the complete logo (card +
+   vinyl + wordmark), not the cropped "S"-card — check the setup page
+   and the dashboard tile.
+2. **Guide app-list icon (finding 2):** after the versioned redeploy
+   (1.0.1.0) the guide's icon should show the logo instead of the old
+   grey X placeholder (shell icon cache). If the X survives the
+   redeploy, uninstall the app on the console and F5 once more.
+3. **Splash:** full logo centered on the dark background, no visible
+   seam between image and background fill.
 4. **Client name:** after playing a track, Navidrome's player list /
    Now Playing shows the player as `SubMusicBox`.
 

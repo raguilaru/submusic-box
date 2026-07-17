@@ -443,10 +443,11 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
 - 2026-07-19: **App display name is "SubMusic Box"** (supersedes the
   2026-07-07 BoxSubMusic naming) — a **display-layer rename only**:
   manifest DisplayName/Description, tile/splash/store assets generated
-  from `logos/SubMusic Box - logo.png` (square tiles use the "S"-card
-  crop — the wordmark is illegible below ~300 px; wide tile and splash
-  use the full logo padded on its own #1E1E1C background, which is also
-  the manifest tile/splash BackgroundColor), the setup-page header
+  from `logos/SubMusic Box - logo.png` (**every asset shows the complete
+  logo, only scaled** — Rafael's call after the first console pass
+  showed a cropped "S"-card variant; wide tile and splash pad the square
+  logo to aspect on its own #1E1E1C background, which is also the
+  manifest tile/splash BackgroundColor), the setup-page header
   (logo + title), and the Subsonic `c=` client name (`SubMusicBox`).
   Internal identifiers deliberately keep the BoxSubMusic code name:
   solution/project/namespace names, the PasswordVault resource
