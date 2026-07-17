@@ -1,21 +1,14 @@
 # Current Status
 
-Last updated: 2026-07-19 (**Console checkpoint #9: Rafael verified the
-WHOLE checkpoint-#8 round on console — all five items passed** (badge
-centering, rounded floating pane, 28-epx nav icons — the long-deferred
-icon-size item is CLOSED — pane toggle, regression sweep). Same day:
-**app renamed to "SubMusic Box" + basic branding** (2.17): manifest
-display name/description, all tile/splash/store assets regenerated from
-`logos/SubMusic Box - logo.png` (every asset = the complete logo, only
-scaled; wide tile + splash padded on the logo's #1E1E1C background),
-setup-page logo + new title, Subsonic client name `c=SubMusicBox`.
-Internal identifiers (solution/projects/namespaces, PasswordVault key,
-package identity GUID) intentionally unchanged — display-layer rename
-only. Build green (compile; APPX0703 stays the known command-line-only
-packaging failure), **70 Core + 66 SubsonicClient tests green**.
-Branding NOT yet device-verified (backlog items below). **Next session:
-start Slice 13 (Search — §17 paging decision first) or Slice 14; fold
-the branding check into the next console pass.**)
+Last updated: 2026-07-19 (**Console checkpoint #10: Rafael verified the
+whole 2.17 rename/branding round on console — everything passed** (full
+logo on tiles/setup page, guide app-list icon after the 1.0.1.0
+versioned redeploy, splash with no seam, `SubMusicBox` client name in
+Navidrome). **The on-device backlog is EMPTY for the first time since
+checkpoint #3.** The verified fixes sit on branch
+`branding-full-logo-fixes` (`eb88231`, pushed), ready to merge to main.
+**Next: Slice 13 (Search) — the §17 endpoint/scopes/paging decisions
+are being locked with Rafael, then implement.**)
 
 ## Where we are
 
@@ -758,16 +751,19 @@ the branding check into the next console pass.**)
     three URL tests now assert against `SubsonicApiClient.ClientName`
     instead of a literal, keeping tests name-agnostic.
 
-**Verification state (checkpoint #9, 2026-07-19):** the whole
-checkpoint-#8 round (2.16, items 1–5) **verified by Rafael on console —
-all passed**; the nav-icon-size saga is closed. The 2.17 branding round
-is the new unverified set (backlog below). Build green (x64 Debug over
-SSH; APPX0703 packaging is the known command-line-only failure), **70
-Core + 66 SubsonicClient** tests green.
+**Verification state (checkpoint #10, 2026-07-19):** the whole 2.17
+rename/branding round **verified by Rafael on console — all four backlog
+items passed** (full logo everywhere, guide icon after the versioned
+redeploy, seamless splash, `SubMusicBox` client name). **Nothing is
+awaiting device verification.** Build green (x64 Debug over SSH;
+APPX0703 packaging is the known command-line-only failure), **70 Core +
+66 SubsonicClient** tests green.
 
-**Git state:** `main` holds everything through the checkpoint-#8 round
-(`7b66067`, merged via PR #1 `6775f54`); the 2.17 rename/branding round
-is uncommitted as of this update.
+**Git state:** `main` holds everything through the initial 2.17
+rename/branding commit (merged via PR #2 `3bc2f4c`); the console-pass
+branding fixes (full logo + tile-cache version bump, `eb88231`) sit on
+`branding-full-logo-fixes` (pushed), console-verified and ready to
+merge.
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -794,17 +790,13 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-**2026-07-19: checkpoint #9 closed the whole checkpoint-#8 round** (nav
-pane refresh + icon size — all five items passed on console); the
-same-day 2.17 rename/branding round is the only unverified set, and it
-is low-risk visual-only (fold it into the next console pass rather than
-deploying just for it).
+**2026-07-19: checkpoint #10 closed the 2.17 branding round** — the
+device backlog is empty.
 
-1. **Slice 13** (Search): lock the §17 endpoint/scopes/paging decision
-   with Rafael first, then implement.
-2. Or **Slice 14** (resilience/polish; possible queue-row context menu).
-3. Next console pass: verify the branding items below alongside whatever
-   the next slice adds.
+1. Merge `branding-full-logo-fixes` into `main` (console-verified).
+2. **Slice 13** (Search): the §17 endpoint/scopes/paging decisions are
+   being locked with Rafael, then implement.
+3. Next console pass: whatever Slice 13 adds.
 
 ## On-device test backlog (next console pass)
 
@@ -827,22 +819,12 @@ the rounded floating pane, the panel-contract pane toggle, and the
 28-epx nav icons are all console-verified. The nav-icon-size item that
 had been deferred since 2026-07-15 is CLOSED.
 
-**2.17 rename/branding round — first console pass done (2026-07-19):
-name + setup-page logo verified; two findings fixed the same day
-(re-verify below):**
+**Checkpoint #10 (2026-07-19) closed the 2.17 rename/branding round** —
+full logo on every asset, guide app-list icon (fixed by the 1.0.1.0
+versioned redeploy), seamless splash, and the `SubMusicBox` client name
+in Navidrome all verified on console.
 
-1. **Full logo everywhere (finding 1):** tiles, store/lock-screen
-   icons, and the setup-page image now show the complete logo (card +
-   vinyl + wordmark), not the cropped "S"-card — check the setup page
-   and the dashboard tile.
-2. **Guide app-list icon (finding 2):** after the versioned redeploy
-   (1.0.1.0) the guide's icon should show the logo instead of the old
-   grey X placeholder (shell icon cache). If the X survives the
-   redeploy, uninstall the app on the console and F5 once more.
-3. **Splash:** full logo centered on the dark background, no visible
-   seam between image and background fill.
-4. **Client name:** after playing a track, Navidrome's player list /
-   Now Playing shows the player as `SubMusicBox`.
+**The backlog is currently empty.**
 
 *(Future slices: append your console items here.)*
 
