@@ -44,11 +44,25 @@
          still paints the full canvas, so overscan crops only background. -->
     <Grid x:Name="ShellRoot" KeyDown="ShellRoot_KeyDown" Padding="32,20,32,20">
 
+    <!-- Rounded pane backdrop (checkpoint #8 request, 2026-07-19): the OS
+         NavigationView paints its pane background as a hard-edged rectangle,
+         so its pane brushes are overridden to Transparent (App.xaml theme
+         dictionaries) and this Border supplies the visual instead — radius
+         12, matching the now-playing bar's floating look. Width follows the
+         pane state (280 open / 48 compact) from PaneOpening/PaneClosing. -->
+    <Border
+        x:Name="PaneBackdrop"
+        HorizontalAlignment="Left"
+        Width="280"
+        CornerRadius="12"
+        Background="{ThemeResource SystemControlChromeMediumLowAcrylicElementMediumBrush}" />
+
     <NavigationView
         x:Name="NavView"
         KeyDown="NavView_KeyDown"
         IsBackButtonVisible="Collapsed"
         IsSettingsVisible="False"
+        IsPaneToggleButtonVisible="False"
         PaneDisplayMode="Left"
         OpenPaneLength="280"
         SelectionChanged="NavView_SelectionChanged"
@@ -82,6 +96,25 @@
         </NavigationView.PaneFooter>
 
         <NavigationView.MenuItems>
+            <!-- Pane toggle as an ordinary first menu item (checkpoint #8
+                 request, 2026-07-19): replaces the built-in Segoe MDL2
+                 hamburger (hidden above — it was also a §13.3 icon-set
+                 violation) with the modern Fluent panel-contract/expand pair
+                 (E8B6/E8BA, cmap-verified; the glyph swaps with the pane
+                 state). A menu item — not a floated button and not
+                 PaneHeader — because ordinary items are the pattern the
+                 gamepad focus engine is proven to handle (the 2026-07-14
+                 PaneFooter lesson); SelectsOnInvoked=False keeps it out of
+                 the selection model, and ItemInvoked toggles the pane. -->
+            <NavigationViewItem
+                x:Name="PaneToggleItem"
+                SelectsOnInvoked="False"
+                AutomationProperties.Name="Expand or collapse the menu">
+                <NavigationViewItem.Icon>
+                    <FontIcon x:Name="PaneToggleIcon" FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xE8B6;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItemSeparator />
             <NavigationViewItem Content="Search" Tag="search">
                 <NavigationViewItem.Icon>
                     <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xF690;" />

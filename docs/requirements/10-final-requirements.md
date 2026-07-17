@@ -413,6 +413,34 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   overscan-free displays the inset reads as a uniform background border
   (accepted). The setup page already sat inside the safe area.
 
+- 2026-07-19 (console checkpoint #8 feedback): **Nav pane visual refresh**
+  (§5/§13.2/§13.3). (a) The pane renders as a **rounded floating card**
+  (radius 12, matching the now-playing bar): the OS NavigationView's own
+  pane brushes are overridden to Transparent — they live in generic.xaml's
+  theme dictionaries, the one resource class app-side overrides reliably
+  reach — and the shell draws a rounded backdrop behind the pane whose
+  width follows the open/compact state. (b) The built-in hamburger toggle
+  is retired (it was also the app's last Segoe MDL2 glyph — a standing
+  §13.3 violation) in favor of the Fluent **panel_left_contract /
+  panel_left_expand** pair (E8B6/E8BA, cmap-verified) on an ordinary
+  first menu item with `SelectsOnInvoked=False` — a menu item, not a
+  floated button or PaneHeader content, because ordinary items are the
+  pattern the gamepad focus engine is proven to handle (2026-07-14
+  PaneFooter lesson). (c) Badge letters in `ControllerGlyph` center via
+  `TextLineBounds=Tight` (checkpoint-#8 note: the default line box's
+  descender space seated capitals low).
+- 2026-07-19: **Nav icon size root cause + fix** (closes the item deferred
+  2026-07-15): the OS left-pane item template renders the icon inside a
+  Viewbox ("IconBox"), so `FontIcon.FontSize` never mattered, and the
+  box's margin resource (`NavigationViewItemIconBoxMargin`) is defined at
+  generic.xaml's **global scope** — resource references inside a system
+  template resolve at the template's own parse scope first, so an
+  App.xaml override is never consulted (on any device; both historical
+  on-device failures explained). Fix: the shell sizes each item's named
+  IconBox directly after template load (28 epx in the 48-epx icon
+  column). Accepted fragility: a future OS rename of "IconBox" would
+  silently restore small icons (fails soft).
+
 ## 17. Open Decisions / TODO
 
 - TODO: choose exact search endpoints/scopes and pagination/virtualization behavior for large libraries — resolve before Slice 13. (Browse views settled on incremental loading 2026-07-13; search may follow the same pattern.)

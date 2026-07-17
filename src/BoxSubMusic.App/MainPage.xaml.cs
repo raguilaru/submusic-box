@@ -17,6 +17,15 @@ namespace BoxSubMusic.App
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        // Pane toggle glyphs (Fluent panel_left_contract / _expand,
+        // cmap-verified 2026-07-19 — §13.3).
+        private const string PaneContractGlyph = "\uE8B6";
+        private const string PaneExpandGlyph = "\uE8BA";
+
+        // The template's icon Viewbox is enlarged from code (see
+        // EnlargeNavIcons); retries cover containers not yet templated.
+        private const int NavIconAttempts = 5;
+
         private string _currentSectionTag;
 
         public MainPage()
@@ -50,6 +59,78 @@ namespace BoxSubMusic.App
             {
                 NavView.SelectedItem = HomeNavItem;
             }
+
+            EnlargeNavIcons(NavIconAttempts);
+        }
+
+        /// <summary>
+        /// 10-ft nav icons (root cause found 2026-07-19 after two failed
+        /// attempts): the OS left-pane item template renders the icon inside
+        /// a Viewbox named "IconBox" — so FontIcon.FontSize is a no-op (the
+        /// Viewbox rescales) — whose box is 40 epx minus the margin resource
+        /// NavigationViewItemIconBoxMargin (10,12,16,12 → a ~16-epx icon).
+        /// That Thickness sits at generic.xaml's GLOBAL scope, and resource
+        /// references inside a system template resolve at the template's own
+        /// parse scope first, so an App.xaml override is never consulted (on
+        /// any device). The one reliable fix short of retemplating: size the
+        /// named Viewbox directly once the template has loaded — 28 epx in
+        /// the 48-epx icon column (10+28+10), pairing with the 20-epx text.
+        /// </summary>
+        private void EnlargeNavIcons(int attemptsLeft)
+        {
+            _ = Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+            {
+                bool anyMissing = false;
+                foreach (object entry in NavView.MenuItems)
+                {
+                    // Collapsed items (nav-visibility toggles) have no
+                    // template yet; ApplyNavVisibility re-runs this when
+                    // they appear.
+                    var item = entry as NavigationViewItem;
+                    if (item == null || item.Visibility == Visibility.Collapsed)
+                    {
+                        continue;
+                    }
+
+                    var iconBox = FindDescendant<Viewbox>(item, "IconBox");
+                    if (iconBox == null)
+                    {
+                        anyMissing = true;
+                        continue;
+                    }
+
+                    iconBox.Width = 28;
+                    iconBox.Height = 28;
+                    iconBox.Margin = new Thickness(10, 6, 10, 6);
+                }
+
+                if (anyMissing && attemptsLeft > 1)
+                {
+                    EnlargeNavIcons(attemptsLeft - 1);
+                }
+            });
+        }
+
+        private static T FindDescendant<T>(DependencyObject root, string name)
+            where T : FrameworkElement
+        {
+            int count = Windows.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root);
+            for (int i = 0; i < count; i++)
+            {
+                DependencyObject child = Windows.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i);
+                if (child is T match && match.Name == name)
+                {
+                    return match;
+                }
+
+                T nested = FindDescendant<T>(child, name);
+                if (nested != null)
+                {
+                    return nested;
+                }
+            }
+
+            return null;
         }
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -247,13 +328,18 @@ namespace BoxSubMusic.App
         private void NavView_PaneOpening(NavigationView sender, object args)
         {
             NavHintPanel.Visibility = Visibility.Visible;
+            PaneBackdrop.Width = NavView.OpenPaneLength;
+            PaneToggleIcon.Glyph = PaneContractGlyph;
         }
 
         private void NavView_PaneClosing(NavigationView sender, NavigationViewPaneClosingEventArgs args)
         {
             // The compact pane is 48 epx wide; the hint text would clip into
-            // an unreadable sliver, so it hides with the pane.
+            // an unreadable sliver, so it hides with the pane. The rounded
+            // backdrop and the toggle glyph follow the pane state too.
             NavHintPanel.Visibility = Visibility.Collapsed;
+            PaneBackdrop.Width = NavView.CompactPaneLength;
+            PaneToggleIcon.Glyph = PaneExpandGlyph;
         }
 
         private void ContentFrame_Navigated(object sender, NavigationEventArgs e)
@@ -302,6 +388,10 @@ namespace BoxSubMusic.App
             ArtistsNavItem.Visibility = ToVisibility(NavigationPreferences.ShowArtists);
             AlbumsNavItem.Visibility = ToVisibility(NavigationPreferences.ShowAlbums);
             PlaylistsNavItem.Visibility = ToVisibility(NavigationPreferences.ShowPlaylists);
+
+            // A just-revealed item realizes its template now — give its icon
+            // the same treatment (idempotent for the others).
+            EnlargeNavIcons(NavIconAttempts);
         }
 
         private static Visibility ToVisibility(bool visible)
@@ -322,6 +412,14 @@ namespace BoxSubMusic.App
 
         private void NavView_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
         {
+            // The pane toggle lives in the menu list (SelectsOnInvoked=False,
+            // 2026-07-19): invoking it flips the pane instead of navigating.
+            if (ReferenceEquals(args.InvokedItemContainer, PaneToggleItem))
+            {
+                NavView.IsPaneOpen = !NavView.IsPaneOpen;
+                return;
+            }
+
             // Invoking the already selected section while a detail page is
             // shown must return to the section's list (console checkpoint #4
             // feedback 2026-07-15). SelectionChanged never fires in that

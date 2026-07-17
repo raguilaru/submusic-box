@@ -23,10 +23,15 @@
         Padding="6,0"
         VerticalAlignment="Center">
         <Grid>
+            <!-- TextLineBounds=Tight: center the GLYPH bounds, not the full
+                 line box — the default box carries descender space below the
+                 caps, which sat the letters visibly low in the badge
+                 (console checkpoint #8 note). -->
             <TextBlock
                 x:Name="LabelText"
                 FontSize="13"
                 FontWeight="SemiBold"
+                TextLineBounds="Tight"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Center" />
             <!-- Menu button: the hamburger, same official Fluent codepoint as
