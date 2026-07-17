@@ -482,8 +482,42 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   gets the SetupPage **inline gamepad editing** (X backspace, LB/RB caret),
   which deliberately outranks LB/RB region cycling while the box has focus.
 
+- 2026-07-19: **Slice 14 resilience scope + toast feedback surface**
+  (§3/§10/§15; scope confirmed with Rafael — the audits, the
+  no-silent-failure fixes, and the queue-row context menu; seek support,
+  dynamic input glyphs, and the minor visual-polish items stay deferred
+  beyond v1). (a) **One app-wide transient toast** (non-focusable,
+  hit-test-invisible, topmost in the shell so it shows over the expanded
+  queue; auto-dismisses, newest message wins) carries exactly the feedback
+  that has no other visible effect: queue-edit confirmations ("will play
+  next" / "added to the queue"), container-fetch failures after the menu
+  closed (the contract now *reports* that nothing was added), per-track
+  stream-failure skips, and the consecutive-failure playback stop. Play
+  actions and the empty-queue play-immediately path show no toast —
+  audible playback and the bar reveal are their own feedback. (b) **The
+  expanded queue's rows gained the standard context menu** (the Slice 11
+  deferral): Play (jump), favorite toggle, Go to album / Go to artist;
+  the navigation items close the overlay first and the destination page's
+  content takes focus. (c) **Server-facing fan-outs are bounded to 4
+  concurrent requests** (the §8 artist song pool and the §7.4 playlist
+  tile artwork) via Core's order-preserving `BoundedParallel` helper —
+  a 100-album artist no longer fires 100 simultaneous getAlbum calls.
+- 2026-07-19: **Error-state copy guidelines** (closes the §17 TODO by
+  codifying the practice the app already follows): sentence case, plain
+  words, no error codes; each message says what happened, what state the
+  app is in now, and — when the user can act — what to do next. Surface
+  mapping: retryable page loads get the inline error state with a focused
+  Retry; auth failures point at Account → sign out; missing capabilities
+  get an explicit unsupported state without Retry (§3); failures whose
+  originating surface is already closed (context-menu fetches) and
+  background events (skipped tracks, the failure stop) use the toast;
+  successes toast only when nothing else visible would confirm them
+  (queue edits). Silent-by-design remains limited to telemetry-class
+  calls (scrobbling) and the favorite heart's snap-back, both recorded
+  decisions.
+
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.
 - RESOLVED 2026-07-13: playlist editing scope for v1 is **read-only browse** (see §16). Create/edit/delete deferred beyond v1 unless later requested.
-- TODO: define error-state copy guidelines and offline/unreachable-server retry UX in more detail.
+- RESOLVED 2026-07-19: error-state copy guidelines and unreachable-server retry UX — see §16 (Slice 14). Copy rules codified; retry UX stays the established pattern (inline error + focused Retry, reload from the top; toast for closed-surface and background failures).

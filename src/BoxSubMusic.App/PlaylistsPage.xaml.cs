@@ -108,9 +108,12 @@ namespace BoxSubMusic.App
 
                 // Compose each tile's artwork lazily and in parallel; the grid
                 // is already interactive, and each card fills in when ready.
+                // Bounded (Slice 14 performance audit): many playlists used to
+                // mean one simultaneous getPlaylist per tile.
+                var fetchGate = new SemaphoreSlim(QueueActions.MaxParallelFetches);
                 foreach (var card in cards)
                 {
-                    _ = LoadCompositeAsync(card, cancellationToken);
+                    _ = LoadCompositeAsync(card, fetchGate, cancellationToken);
                 }
             }
             catch (OperationCanceledException)
@@ -137,7 +140,8 @@ namespace BoxSubMusic.App
         /// per-tile failure degrades to the placeholder rather than failing the
         /// whole page — the artwork is decorative, and the grid already loaded.
         /// </summary>
-        private async Task LoadCompositeAsync(PlaylistCard card, CancellationToken cancellationToken)
+        private async Task LoadCompositeAsync(
+            PlaylistCard card, SemaphoreSlim fetchGate, CancellationToken cancellationToken)
         {
             var client = AppSession.Client;
             if (client == null)
@@ -147,7 +151,16 @@ namespace BoxSubMusic.App
 
             try
             {
-                PlaylistDetail detail = await client.GetPlaylistAsync(card.Id, cancellationToken);
+                await fetchGate.WaitAsync(cancellationToken);
+                PlaylistDetail detail;
+                try
+                {
+                    detail = await client.GetPlaylistAsync(card.Id, cancellationToken);
+                }
+                finally
+                {
+                    fetchGate.Release();
+                }
                 if (cancellationToken.IsCancellationRequested)
                 {
                     return;

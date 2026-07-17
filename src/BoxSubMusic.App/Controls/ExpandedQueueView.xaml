@@ -258,6 +258,7 @@
                     SelectionMode="None"
                     IsItemClickEnabled="True"
                     ItemClick="QueueList_ItemClick"
+                    ContextRequested="QueueList_ContextRequested"
                     ContainerContentChanging="QueueList_ContainerContentChanging">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
@@ -268,6 +269,54 @@
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:QueueRow">
                             <Grid ColumnSpacing="16" Background="Transparent">
+                                <Grid.ContextFlyout>
+                                    <!-- Queue-row secondary actions (Slice 14 —
+                                         the refinement deferred out of Slice
+                                         11). Same console-verified redirect
+                                         pattern and §13.3 cmap-verified icons
+                                         as every other song-row menu; no
+                                         queue-edit items here (the row is
+                                         already IN the queue). "Go to" closes
+                                         the overlay before navigating. -->
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem
+                                            Text="Play"
+                                            Tag="{x:Bind}"
+                                            Click="PlaySong_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutSeparator />
+                                        <MenuFlyoutItem
+                                            Text="{x:Bind FavoriteLabel, Mode=OneWay}"
+                                            Tag="{x:Bind}"
+                                            Click="ToggleFavorite_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF47A;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutSeparator />
+                                        <MenuFlyoutItem
+                                            Text="Go to album"
+                                            Tag="{x:Bind}"
+                                            IsEnabled="{x:Bind HasAlbumId}"
+                                            Click="GoToAlbum_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE010;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem
+                                            Text="Go to artist"
+                                            Tag="{x:Bind}"
+                                            IsEnabled="{x:Bind HasArtistId}"
+                                            Click="GoToArtist_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF5BE;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                    </MenuFlyout>
+                                </Grid.ContextFlyout>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="56" />
                                     <ColumnDefinition Width="*" />
@@ -326,6 +375,8 @@
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Opacity="0.7">
                     <local:ControllerGlyph Label="A" />
                     <TextBlock Text="Jump to song" FontSize="15" VerticalAlignment="Center" />
+                    <local:ControllerGlyph Label="Menu" Margin="16,0,0,0" />
+                    <TextBlock Text="More options" FontSize="15" VerticalAlignment="Center" />
                     <local:ControllerGlyph Label="Y" Margin="16,0,0,0" />
                     <local:ControllerGlyph Label="B" />
                     <TextBlock Text="Close queue" FontSize="15" VerticalAlignment="Center" />

@@ -205,6 +205,8 @@ namespace BoxSubMusic.App.Services
 
             if (_list == null || Queue.IsEmpty)
             {
+                // Plays immediately (the no-invisible-state rule) — the bar
+                // revealing itself and the audio ARE the feedback; no toast.
                 Play(songs, 0, shuffle: false, context: emptyQueueContext);
                 return;
             }
@@ -257,6 +259,17 @@ namespace BoxSubMusic.App.Services
             }
 
             PersistQueueStructure(Session.Position);
+
+            // Slice 14 (§15 spirit): a queue edit's only effect is invisible
+            // until the queue is opened — confirm it happened.
+            string what = added.Count == 1
+                ? "“" + added[0].Title + "”"
+                : (string.IsNullOrEmpty(emptyQueueContext?.DisplayName)
+                    ? added.Count + " songs"
+                    : emptyQueueContext.DisplayName + " (" + added.Count + " songs)");
+            Toast.Show(insertNext
+                ? what + " will play next"
+                : what + " added to the queue");
         }
 
         private int IndexOfInTracks(Song song)
@@ -698,11 +711,27 @@ namespace BoxSubMusic.App.Services
         {
             // The list skips a failed item on its own; only guard against a
             // whole queue of failures (server unreachable) looping forever.
+            // Slice 14 (§3/§15): neither the skip nor the stop may pass
+            // silently — a track vanishing mid-album reads as a bug. During
+            // a failure burst the newest toast replaces the previous one, so
+            // the surface never backs up.
             int failures = ++_consecutiveFailures;
             if (failures >= sender.Items.Count)
             {
+                Toast.Show("Playback stopped: no track in the queue could be played. Check the server connection.");
                 _ = RunOnUiAsync(Stop);
+                return;
             }
+
+            Song song = null;
+            if (args.Item != null)
+            {
+                _itemToSong.TryGetValue(args.Item, out song);
+            }
+
+            Toast.Show(song != null
+                ? "Skipped “" + song.Title + "” — the track could not be played."
+                : "Skipped a track that could not be played.");
         }
 
         private void OnPlaybackStateChanged(MediaPlaybackSession sender, object args)
