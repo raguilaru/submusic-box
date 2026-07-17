@@ -178,8 +178,12 @@
     <Compile Include="AccountPage.xaml.cs">
       <DependentUpon>AccountPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\ControllerGlyph.xaml.cs">
+      <DependentUpon>ControllerGlyph.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Services\AppSession.cs" />
     <Compile Include="Services\ContentFocus.cs" />
+    <Compile Include="Services\QueueActions.cs" />
     <Compile Include="Services\CredentialStore.cs" />
     <Compile Include="Services\NavigationPreferences.cs" />
     <Compile Include="Services\PlaybackService.cs" />
@@ -224,6 +228,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="SectionPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\ControllerGlyph.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

@@ -145,28 +145,102 @@ namespace BoxSubMusic.App
                 && !e.KeyStatus.WasKeyDown
                 && !QueueOverlay.IsOpen)
             {
-                // Quick nav (console checkpoint #6 request, decision
-                // 2026-07-17): LB jumps focus to the nav pane from anywhere
-                // in the shell — the mnemonic pair of RB below. Inert while
-                // the overlay traps focus. A hidden selected section
-                // (nav-visibility toggle) falls back to Home.
-                var target = NavView.SelectedItem as NavigationViewItem;
-                if (target == null || target.Visibility == Visibility.Collapsed)
-                {
-                    target = HomeNavItem;
-                }
-
-                e.Handled = target.Focus(FocusState.Keyboard);
+                // Region cycling (checkpoint #7 request, decision 2026-07-18,
+                // evolving the verified checkpoint-#6 quick nav): LB/RB move
+                // between the shell's three regions — nav pane, page content,
+                // now-playing bar (skipped while hidden). From content, LB is
+                // still "go to nav" and RB reaches the bar. Inert while the
+                // overlay traps focus.
+                CycleRegion(forward: false);
+                e.Handled = true;
             }
             else if (e.Key == VirtualKey.GamepadRightShoulder
                 && !e.KeyStatus.WasKeyDown
                 && !QueueOverlay.IsOpen)
             {
-                // RB: the other direction — into the page content. Reuses the
-                // deferred-focus helper; a page with nothing focusable (the
-                // Search placeholder) leaves focus where it was.
-                ContentFocus.MoveInto(ContentFrame);
+                CycleRegion(forward: true);
                 e.Handled = true;
+            }
+        }
+
+        // --- LB/RB region cycling (2026-07-18) --------------------------------
+
+        private enum ShellRegion
+        {
+            Nav = 0,
+            Content = 1,
+            Bar = 2,
+        }
+
+        private void CycleRegion(bool forward)
+        {
+            int current = (int)CurrentRegion();
+            for (int step = 1; step <= 2; step++)
+            {
+                int next = forward ? (current + step) % 3 : (current + 3 - step) % 3;
+                if (next == (int)ShellRegion.Bar && !NowPlaying.IsBarVisible)
+                {
+                    continue;
+                }
+
+                if (FocusRegion((ShellRegion)next))
+                {
+                    return;
+                }
+            }
+        }
+
+        private ShellRegion CurrentRegion()
+        {
+            // Walk the visual ancestry of the focused element: inside the
+            // bar / the content frame / anything else (the nav pane). A null
+            // chain (popup) reads as Nav — harmless, the cycle still lands
+            // somewhere sensible.
+            var node = FocusManager.GetFocusedElement() as DependencyObject;
+            while (node != null)
+            {
+                if (ReferenceEquals(node, NowPlaying))
+                {
+                    return ShellRegion.Bar;
+                }
+
+                if (ReferenceEquals(node, ContentFrame))
+                {
+                    return ShellRegion.Content;
+                }
+
+                node = Windows.UI.Xaml.Media.VisualTreeHelper.GetParent(node);
+            }
+
+            return ShellRegion.Nav;
+        }
+
+        private bool FocusRegion(ShellRegion region)
+        {
+            switch (region)
+            {
+                case ShellRegion.Nav:
+                    // A hidden selected section (nav-visibility toggle) falls
+                    // back to Home.
+                    var target = NavView.SelectedItem as NavigationViewItem;
+                    if (target == null || target.Visibility == Visibility.Collapsed)
+                    {
+                        target = HomeNavItem;
+                    }
+
+                    return target.Focus(FocusState.Keyboard);
+
+                case ShellRegion.Content:
+                    // Deferred-focus helper; a page with nothing focusable
+                    // (the Search placeholder) leaves focus where it was.
+                    ContentFocus.MoveInto(ContentFrame);
+                    return true;
+
+                case ShellRegion.Bar:
+                    return NowPlaying.FocusPrimary();
+
+                default:
+                    return false;
             }
         }
 

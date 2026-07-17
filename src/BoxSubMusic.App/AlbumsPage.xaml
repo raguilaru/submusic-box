@@ -84,6 +84,7 @@
                 SelectionMode="None"
                 IsItemClickEnabled="True"
                 ItemClick="Album_ItemClick"
+                ContextRequested="Albums_ContextRequested"
                 Padding="0,0,0,24">
                 <GridView.ItemContainerStyle>
                     <Style TargetType="GridViewItem">
@@ -94,6 +95,30 @@
                 <GridView.ItemTemplate>
                     <DataTemplate x:DataType="models:AlbumCard">
                         <StackPanel Width="200" Spacing="8">
+                            <StackPanel.ContextFlyout>
+                                <!-- Container queue edits (2026-07-18): the
+                                     album's songs are fetched on demand.
+                                     Gamepad Menu button routed via the
+                                     view-level redirect (console-verified). -->
+                                <MenuFlyout>
+                                    <MenuFlyoutItem
+                                        Text="Play next"
+                                        Tag="{x:Bind}"
+                                        Click="AlbumPlayNext_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
+                                        Text="Add to queue"
+                                        Tag="{x:Bind}"
+                                        Click="AlbumAddToQueue_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </StackPanel.ContextFlyout>
                             <Grid Width="200" Height="200" CornerRadius="8">
                                 <!-- Album placeholder uses the same official
                                      Fluent music-note codepoint as the Songs
@@ -125,7 +150,8 @@
                 Visibility="Collapsed"
                 SelectionMode="None"
                 IsItemClickEnabled="True"
-                ItemClick="Album_ItemClick">
+                ItemClick="Album_ItemClick"
+                ContextRequested="Albums_ContextRequested">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="Padding" Value="12,8" />
@@ -135,6 +161,26 @@
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:AlbumCard">
                         <StackPanel Orientation="Horizontal" Spacing="16">
+                            <StackPanel.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem
+                                        Text="Play next"
+                                        Tag="{x:Bind}"
+                                        Click="AlbumPlayNext_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
+                                        Text="Add to queue"
+                                        Tag="{x:Bind}"
+                                        Click="AlbumAddToQueue_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </StackPanel.ContextFlyout>
                             <Grid Width="56" Height="56" CornerRadius="6">
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
                                     <FontIcon

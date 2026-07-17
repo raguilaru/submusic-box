@@ -1,18 +1,21 @@
 # Current Status
 
-Last updated: 2026-07-17 evening (**Console checkpoint #6 ran the whole
-backlog 1–17 — the Xbox is BACK.** Items 2–17 all passed (2 with an
-alignment note); item 1's focus trap itself held (nothing escapes, all
-reachable — the NavView.IsEnabled=false mechanism is now
-console-verified), but Left from a queue row landed on inconsistent
-transport controls. Same-day work, all code-complete and NOT yet
-device-verified: the queue-row Left fix, the Settings radio alignment
-fix, **the new "Play next"/"Add to queue" context-menu queue edits with
-icons on every song menu**, per-surface controller hint lines, and
-**LB/RB quick nav** (LB → nav pane, RB → content). Build green (compile;
-APPX0703 stays the known command-line-only packaging failure), **65 Core
+Last updated: 2026-07-18 (**Console checkpoint #7 verified ALL six
+checkpoint-#6 fix items** — queue-row Left focus, radio alignment, song
+"Play next"/"Add to queue" incl. shuffle/empty-queue/persistence, menu
+icons, LB/RB quick nav, hint lines. Rafael's follow-up round, all
+code-complete and NOT yet device-verified: **container queue edits** —
+"Play next"/"Add to queue" for whole albums/artists/playlists on every
+card context menu AND as icon buttons on the three detail pages (Core
+block InsertNext/Append, service block mirror, shared `QueueActions`
+fetch helper); **monochrome controller-button badges**
+(`Controls/ControllerGlyph`) replacing every static hint sentence;
+**LB/RB now CYCLE nav → content → play bar** (bar skipped while hidden);
+and the **TV-safe shell inset** (ShellRoot padding 32/20 — checkpoint-#7
+finding: the nav pane was clipped by TV overscan). Build green (compile;
+APPX0703 stays the known command-line-only packaging failure), **70 Core
 + 66 SubsonicClient tests green**. **Next session: prompt Rafael for a VM
-F5 smoke pass or console re-test of the new backlog items 1–6; THEN start
+F5 smoke pass or console re-test of the new backlog items 1–7; THEN start
 Slice 13 (Search — §17 paging decision first) or Slice 14.**)
 
 ## Where we are
@@ -629,18 +632,71 @@ Slice 13 (Search — §17 paging decision first) or Slice 14.**)
     (`ContentFocus`). Both inert while the queue overlay traps focus;
     key-repeat guarded.
 
-**Verification state (checkpoint #6, 2026-07-17):** backlog items 2–17 all
-**verified by Rafael on console** (item 2 with the alignment note above) —
-that closes the Slice 12, Slice 05b, and playlist-detail device backlogs,
-including the Slice 11 focus trap mechanism. The 2.14 fixes/features above
-are the new unverified set (backlog items 1–6 below). Build green (x64
-Debug over SSH; APPX0703 packaging is the known command-line-only failure),
-**65 Core + 66 SubsonicClient** tests green.
+- **2.15 Console checkpoint #7 feedback round (2026-07-18 — fixes/features
+  code-complete, NOT yet device-verified):**
+  - **Container queue edits** ("Play next"/"Add to queue" for whole
+    albums, artists, and playlists — Rafael's request; detail-page
+    placement confirmed): Core `PlayQueue.InsertNext/Append` gained
+    **block overloads** (the block lands at current+1 in its internal
+    order / at the end; original-order placement follows the single-song
+    rules — same spot unshuffled, end under shuffle; empty queue → the
+    block becomes the queue at index 0). 5 new tests → **70 Core tests
+    green**. `PlaybackService.PlayNext/AddToQueue(IReadOnlyList<Song>,
+    QueueContext)` mirror the block into the live list (per-song
+    clone-on-collision incl. within-batch repeats; one SetShuffledItems +
+    persist at the end); **empty queue → the container plays immediately
+    from its first song** under its own context (no-invisible-state rule).
+    New `Services/QueueActions`: fetch-on-demand helpers for album
+    (getAlbum), playlist (getPlaylist, first-cover context), artist
+    (getArtist + the §8 oldest-album-first getAlbum fan-out, now shared
+    with ArtistDetailPage via `LoadArtistPoolAsync`); fetch failure =
+    nothing happens (menu-closed contract, same as the menu favorite).
+    **Surfaces:** card context menus (icons F56A/F7A8) on Albums browse
+    grid+list, artist-detail album grid, Home carousels, Playlists
+    grid+list, Artists grid+list — all via the console-verified
+    ContextRequested redirect — plus **icon-only Play next / Add to queue
+    buttons** next to Play/Shuffle on album, playlist, AND artist detail
+    (artist detail reuses the pool fetch with all four buttons disabling
+    during it).
+  - **Monochrome controller-button badges** (checkpoint-#7 request:
+    "Xbox-style icons, not colors"): new `Controls/ControllerGlyph` — an
+    outlined 26-epx circle with the button letter (A/B/X/Y), a pill for
+    LB/RB, the Fluent hamburger (F561, cmap-verified) in a circle for
+    Menu; theme-foreground monochrome, non-focusable, dims with the
+    parent hint's opacity. Not a second icon font (§13.3 intact). All
+    static hint sentences replaced: Songs header, album + playlist detail
+    lists, expanded queue, nav pane footer.
+  - **LB/RB region cycling** (checkpoint-#7 request "quick option to
+    reach the play bar"; decision 2026-07-18): RB cycles nav → content →
+    bar → nav, LB the reverse; the bar is skipped while hidden; the
+    focused region is detected by visual-tree ancestry; still inert while
+    the queue overlay is open. `NowPlayingBar` gained
+    `IsBarVisible`/`FocusPrimary()` (play/pause). From content, LB → nav
+    and RB-with-no-bar → nav, so the console-verified checkpoint-#6
+    behavior is a strict subset. Pane footer hint updated
+    ("LB/RB Menu · content · playback", "Y Queue").
+  - **TV-safe shell inset** (checkpoint-#7 finding: the nav pane was
+    clipped by TV overscan — the 2026-07-14 edge-to-edge decision
+    promised app-side padding "in Slice 14"; the bill arrived early):
+    `ShellRoot` Padding **32,20,32,20**, sized so the pane's leftmost
+    interactive pixel (item icons ~16 epx into the pane) lands at the
+    48-epx TV-safe line and top/bottom clear 27 epx. The page background
+    still paints the full canvas, so overscan crops only background;
+    SetupPage already sat at 48/64 margins and needed nothing.
+
+**Verification state (checkpoint #7, 2026-07-18):** the six checkpoint-#6
+fix items (queue-row Left→play/pause, radio centering, song-level queue
+edits incl. shuffle/empty-queue/resume interplay, menu icons, LB/RB quick
+nav, hint lines) are all **verified by Rafael on console**. The 2.15 round
+above is the new unverified set (backlog items 1–7 below). Build green
+(x64 Debug over SSH; APPX0703 packaging is the known command-line-only
+failure), **70 Core + 66 SubsonicClient** tests green.
 
 **Git state:** `main` holds Slice 10 (`f571bb4`), the checkpoint-#4 fix
 commits, Slice 11 (`87c5f28`), Slice 12 (`df15b3f`), Slice 05b
-(`edc5fde`), and the playlist detail view (`5fdb5db`) on top; the 2.14
-checkpoint-#6 round is uncommitted as of this update (see log).
+(`edc5fde`), the playlist detail view (`5fdb5db`), and the checkpoint-#6
+round (`d22f038`) on top; the 2.15 checkpoint-#7 round is uncommitted as
+of this update (see log).
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -667,14 +723,15 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-**2026-07-17 evening: the Xbox is BACK — checkpoint #6 ran the full 1–17
-backlog** (all passed except the two findings fixed the same day; see 2.14).
+**2026-07-18: checkpoint #7 closed the whole checkpoint-#6 fix backlog**;
+the same-day 2.15 round (container queue edits, glyph badges, region
+cycling, TV-safe inset) is the new unverified set.
 
-1. **Prompt Rafael to verify the checkpoint-#6 round** — backlog items 1–6
-   below. Everything is console-preferred (two items are focus/10-ft
-   checks), but a VM F5 pass covers most of it first if convenient
-   (right-click stands in for the gamepad Menu button; keyboard cannot
-   stand in for LB/RB/Y — use the shared gamepad).
+1. **Prompt Rafael to verify the checkpoint-#7 round** — backlog items 1–7
+   below. The TV-safe inset (item 1) and glyph readability (item 5) are
+   console-only checks (real overscan / 10 ft); the rest smoke-tests in
+   the VM first if convenient (right-click stands in for the Menu button;
+   LB/RB/Y need the shared gamepad).
 2. Then: **Slice 13** (Search; lock the §17 endpoint/paging decision
    first), **14** (resilience/polish incl. the deferred nav-icon-size
    refinement and a possible queue-row context menu).
@@ -702,42 +759,54 @@ App.xaml). Next candidates: check whether the override is consulted at all
 on the console's OS build, or bypass the template (retemplate
 NavigationViewItem / put the FontIcon in the item Content).
 
-**Checkpoint-#6 fix/feature round (2026-07-17 evening — NOT yet run on any
-device; VM F5 covers most with the shared gamepad — right-click stands in
-for the Menu button, but LB/RB/Y need the real controller):**
+**Checkpoint #7 (2026-07-18) verified the whole checkpoint-#6 fix round on
+console** — queue-row Left→play/pause, radio centering, song-level queue
+edits (incl. shuffle, empty-queue, duplicates, resume), menu icons, LB/RB
+quick nav, hint lines. All closed.
 
-1. **Expanded-queue Left-from-row (re-test of the #6 finding):** from ANY
-   queue row — first, third, fifth, scrolled far down — Left lands on the
-   play/pause button, consistently. The rest of the trap behavior should
-   stay as verified (nothing escapes; B/Y close; focus returns to the
-   bar's queue button).
-2. **Settings radio alignment (re-test of the #6 note):** the three theme
-   radios' bullet and label are vertically centered on each other at
-   10 ft.
-3. **Play next / Add to queue:** from a Songs row, an album track row, AND
-   a playlist row (Menu button → new items with icons): "Play next"
-   inserts the song directly after the current track — pressing it twice
-   queues the most recent first; "Add to queue" appends to the end. In
-   both cases playback is NOT interrupted, the expanded queue (Y) shows
-   the edit immediately, and the counts in its header update. With
-   shuffle ON the insert still lands right after the current track;
-   toggling shuffle off afterwards shows the added song at the END of the
-   restored order. With NOTHING playing, both actions start playing that
-   song immediately (bar reveals; queue = that one song). Quit fully and
-   relaunch → the resume card restores the edited queue faithfully.
-4. **Menu icons:** the new context-menu icons render in both themes on
-   all three menus (no missing-glyph boxes), and the separators group the
-   items sensibly at 10 ft.
-5. **LB/RB quick nav:** from deep in any page (a detail page, a scrolled
-   list, the Songs table), LB jumps focus to the nav pane's selected
-   item; RB jumps back into the page content. Both do nothing while the
-   queue overlay is open. LB with the current section hidden (nav
-   toggles) falls back to Home.
-6. **Hint lines:** the expanded queue's hint, both detail pages' list
-   hints, and the nav pane footer hints are visible and readable at
-   10 ft; the pane footer hint disappears (not clips) when the pane is
-   collapsed with the hamburger; light theme renders all of them
-   legibly.
+**Checkpoint-#7 fix/feature round (2026-07-18 — NOT yet run on any device;
+the TV-safe inset and 10-ft glyph readability are console-only checks, the
+rest smoke-tests in the VM with the shared gamepad):**
+
+1. **TV-safe inset (re-test of the #7 finding):** nothing is clipped by
+   the TV any more — the hamburger, the nav item icons, the pane's last
+   items, page titles, and the now-playing bar's bottom edge are all
+   fully visible; the app background still reaches the physical screen
+   edges (no black frame).
+2. **Container "Play next"/"Add to queue" from card menus:** Menu button
+   on an album card (Albums browse grid AND list, artist-detail album
+   grid, a Home carousel card), a playlist tile (grid + list), and an
+   artist card (grid + list) shows the two-item menu with icons; "Play
+   next" inserts the whole container directly after the current track in
+   its internal order, "Add to queue" appends it; playback is not
+   interrupted; the expanded queue (Y) shows the block and its header
+   count updates. An artist add fans out one getAlbum per album — expect
+   a beat of delay on large artists, but the edit must arrive complete
+   and ordered oldest-album-first.
+3. **Container edits, detail pages:** album, playlist, AND artist detail
+   show the two icon buttons after Play/Shuffle (tooltips "Play next" /
+   "Add to queue"); they queue this container without replacing; on
+   artist detail all four buttons disable during the pool fetch; with an
+   empty container they are disabled.
+4. **Container edits, edge semantics:** with NOTHING playing, a container
+   "Play next"/"Add to queue" starts playing that container from its
+   first song (bar reveals, context shows its name); with shuffle ON the
+   block lands right after the current track and un-shuffling shows it
+   at the END of the restored order; adding the currently playing album
+   from its own detail page duplicates it cleanly (clones); quit fully
+   and relaunch → the resume card restores the edited queue.
+5. **Controller-button badges:** every hint now renders as monochrome
+   outlined badges (A/B/Y circles, LB/RB pills, hamburger circle for
+   Menu) with short labels — Songs header, album + playlist detail
+   lists, expanded queue, nav pane footer. Readable at 10 ft in BOTH
+   themes; no colored buttons anywhere; badges never take focus.
+6. **LB/RB region cycling:** RB walks nav → content → play bar → nav
+   (bar skipped when nothing plays); LB walks the reverse; from a queue
+   row inside the overlay both do nothing; the bar stop (playback
+   failure/sign-out) drops the bar out of the cycle immediately.
+7. **Pane footer hint:** the two badge rows ("LB RB Menu · content ·
+   playback", "Y Queue") show while the pane is open, disappear (not
+   clip) when collapsed, and read at 10 ft in both themes.
 
 *(Future slices: append your console items here.)*
 
@@ -804,21 +873,39 @@ for the Menu button, but LB/RB/Y need the real controller):**
   its song is starred from a list row); every page refetches on navigation
   and the bar re-reads on track change, so staleness cannot outlive the
   current view.
-- **Queue-edit notes ("Play next"/"Add to queue", 2026-07-17):** a song
+- **Queue-edit notes ("Play next"/"Add to queue", 2026-07-17/18):** a song
   added twice (or added while already in the queue) is a **cloned** `Song`
   instance, so starring one copy repaints only that copy's rows until the
   next refetch — the same accepted staleness class as the cross-surface
   heart note above. Under shuffle the original order receives edits at the
   END, so un-shuffling shows them last regardless of where they sat in the
-  shuffled order (documented Core semantics, unit-tested). The edits are
-  structural resume writes — a resumed queue carries them. No "added to
-  queue" toast/confirmation exists; the expanded queue (Y) is the way to
-  see the result — a §15-style feedback refinement candidate if it feels
-  mute on device.
-- **Hint lines are static text** (the Songs-header pattern): they name
-  gamepad buttons even for keyboard/mouse users. Dynamic input-glyph
-  swapping stays the deferred §13.1 item. The nav pane's footer hint hides
-  while the pane is collapsed (it would clip in the 48-epx strip).
+  shuffled order (documented Core semantics, unit-tested; blocks keep
+  their internal order). The edits are structural resume writes — a
+  resumed queue carries them. No "added to queue" toast/confirmation
+  exists; the expanded queue (Y) is the way to see the result — a
+  §15-style feedback refinement candidate if it feels mute on device.
+- **Container queue edits (2026-07-18):** card-menu adds fetch on demand —
+  album/playlist = one call, **artist = getArtist + one getAlbum per album
+  in parallel** (the known §8 fan-out cost, now reachable from any artist
+  card; large artists mean a visible delay between menu click and the
+  queue growing). A fetch failure after the menu closed changes nothing
+  and shows nothing (menu-closed contract) — with the fan-out this is the
+  most failure-prone silent path in the app; refinement candidate
+  together with the toast note above. Detail-page buttons reuse the
+  already-loaded songs (album/playlist) or the shared pool fetch with
+  button-disable + status line (artist).
+- **Hints are static badges** (`ControllerGlyph`, 2026-07-18): monochrome
+  outlined button shapes + short labels, shown even for keyboard/mouse
+  users. Dynamic input-glyph swapping stays the deferred §13.1 item. The
+  nav pane's footer hint hides while the pane is collapsed (it would clip
+  in the 48-epx strip).
+- **TV-safe inset (2026-07-18):** the shell content sits inside
+  `ShellRoot` Padding 32,20 (pane icons land at the 48-epx safe line;
+  27-epx top/bottom cleared); backgrounds still paint edge-to-edge. On
+  displays WITHOUT overscan (VM, monitors) the app now shows a 32/20-epx
+  background border around the shell — intended trade-off of the §2
+  own-padding approach. The expanded queue overlay lives inside the same
+  inset (its background matches the page brush, so the band is seamless).
 - **The now-playing report (`submission=false`) fires on every track start**,
   fire-and-forget like the play-count submission; both are silent on
   failure.
@@ -946,7 +1033,16 @@ for the Menu button, but LB/RB/Y need the real controller):**
   with cmap-verified icons on all three song menus), expanded-queue
   Left-from-row pinned to play/pause, Settings radio label centering,
   per-surface controller hint lines, and **LB/RB quick nav** (§16
-  decisions 2026-07-17). Unverified on device — backlog items 1–6.
+  decisions 2026-07-17). Console-verified at checkpoint #7 (2026-07-18).
+- 2026-07-18: **Console checkpoint #7** verified the whole checkpoint-#6
+  fix round; the same-day answer to its feedback: **container queue
+  edits** (block `InsertNext`/`Append` in Core + service, `QueueActions`
+  fetch helpers, card menus on all album/playlist/artist surfaces +
+  detail-page icon buttons), **`ControllerGlyph` monochrome button
+  badges** replacing every hint sentence, **LB/RB region cycling** (nav →
+  content → play bar), and the **TV-safe shell inset** (32/20 —
+  checkpoint-#7 overscan finding; §16 decisions 2026-07-18). Unverified
+  on device — backlog items 1–7.
 
 ## How to deploy (quick reference)
 

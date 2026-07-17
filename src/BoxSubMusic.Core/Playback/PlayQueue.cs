@@ -159,20 +159,43 @@ namespace BoxSubMusic.Core.Playback
                 throw new ArgumentNullException(nameof(track));
             }
 
-            if (IsEmpty)
+            InsertNext(new[] { track });
+        }
+
+        /// <summary>
+        /// Block form of <see cref="InsertNext(Song)"/> for whole containers
+        /// (album / playlist / artist pool, 2026-07-18): the block lands at
+        /// current+1 in its given internal order — repeated block inserts put
+        /// the most recent block first. Original-order placement follows the
+        /// single-track rules (same spot unshuffled, end under shuffle). An
+        /// empty list is a no-op.
+        /// </summary>
+        public void InsertNext(IReadOnlyList<Song> tracks)
+        {
+            if (tracks == null)
             {
-                AddFirst(track);
+                throw new ArgumentNullException(nameof(tracks));
+            }
+
+            if (tracks.Count == 0)
+            {
                 return;
             }
 
-            _playOrder.Insert(CurrentIndex + 1, track);
+            if (IsEmpty)
+            {
+                AddFirst(tracks);
+                return;
+            }
+
+            _playOrder.InsertRange(CurrentIndex + 1, tracks);
             if (ShuffleEnabled)
             {
-                _tracks.Add(track);
+                _tracks.AddRange(tracks);
             }
             else
             {
-                _tracks.Insert(CurrentIndex + 1, track);
+                _tracks.InsertRange(CurrentIndex + 1, tracks);
             }
 
             Changed?.Invoke();
@@ -190,21 +213,41 @@ namespace BoxSubMusic.Core.Playback
                 throw new ArgumentNullException(nameof(track));
             }
 
-            if (IsEmpty)
+            Append(new[] { track });
+        }
+
+        /// <summary>
+        /// Block form of <see cref="Append(Song)"/> for whole containers:
+        /// the block goes to the end of both orders in its given internal
+        /// order. An empty list is a no-op.
+        /// </summary>
+        public void Append(IReadOnlyList<Song> tracks)
+        {
+            if (tracks == null)
             {
-                AddFirst(track);
+                throw new ArgumentNullException(nameof(tracks));
+            }
+
+            if (tracks.Count == 0)
+            {
                 return;
             }
 
-            _tracks.Add(track);
-            _playOrder.Add(track);
+            if (IsEmpty)
+            {
+                AddFirst(tracks);
+                return;
+            }
+
+            _tracks.AddRange(tracks);
+            _playOrder.AddRange(tracks);
             Changed?.Invoke();
         }
 
-        private void AddFirst(Song track)
+        private void AddFirst(IReadOnlyList<Song> tracks)
         {
-            _tracks.Add(track);
-            _playOrder.Add(track);
+            _tracks.AddRange(tracks);
+            _playOrder.AddRange(tracks);
             CurrentIndex = 0;
             Changed?.Invoke();
         }

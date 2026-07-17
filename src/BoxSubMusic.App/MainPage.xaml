@@ -34,7 +34,15 @@
          which keeps XY focus trapped inside the overlay (nothing behind it
          is focusable). Y toggles the overlay from anywhere in the shell
          (ShellRoot_KeyDown); B closes it (OnBackRequested). -->
-    <Grid x:Name="ShellRoot" KeyDown="ShellRoot_KeyDown">
+    <!-- TV-safe inset (checkpoint #7 finding 2026-07-18: the nav pane was
+         clipped by TV overscan). The app opted out of the system-reserved
+         safe border in 2026-07-14 (§2/§16: edge-to-edge canvas, app-side
+         padding) — this is that promised padding for the shell. 32/20 is
+         chosen so the pane's leftmost interactive pixel (item icons at
+         ~16 epx into the pane) lands at the 48-epx TV-safe line, and
+         top/bottom content clears the 27-epx line; the page background
+         still paints the full canvas, so overscan crops only background. -->
+    <Grid x:Name="ShellRoot" KeyDown="ShellRoot_KeyDown" Padding="32,20,32,20">
 
     <NavigationView
         x:Name="NavView"
@@ -48,24 +56,28 @@
         PaneOpening="NavView_PaneOpening"
         PaneClosing="NavView_PaneClosing">
 
-        <!-- Global-shortcut hint (console checkpoint #6 feedback: visible
-             controller labels). Plain non-focusable text, so the PaneFooter
+        <!-- Global-shortcut hints as monochrome button badges (checkpoint #7
+             request, 2026-07-18). Non-focusable decoration, so the PaneFooter
              focus dead zone (2026-07-14) is irrelevant here; hidden while
-             the pane is collapsed because the strip would clip. -->
+             the pane is collapsed because the strip would clip. LB/RB cycle
+             the three shell regions (decision 2026-07-18). -->
         <NavigationView.PaneFooter>
-            <StackPanel x:Name="NavHintPanel" Margin="16,0,8,12" Spacing="2">
-                <TextBlock
-                    Text="Press LB for this menu, RB for the content."
-                    FontSize="15"
-                    Opacity="0.6"
-                    FontStyle="Italic"
-                    TextWrapping="Wrap" />
-                <TextBlock
-                    Text="Press Y for the queue during playback."
-                    FontSize="15"
-                    Opacity="0.6"
-                    FontStyle="Italic"
-                    TextWrapping="Wrap" />
+            <StackPanel x:Name="NavHintPanel" Margin="16,0,8,12" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8" Opacity="0.7">
+                    <controls:ControllerGlyph Label="LB" />
+                    <controls:ControllerGlyph Label="RB" />
+                    <TextBlock
+                        Text="Menu · content · playback"
+                        FontSize="15"
+                        VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" Opacity="0.7">
+                    <controls:ControllerGlyph Label="Y" />
+                    <TextBlock
+                        Text="Queue"
+                        FontSize="15"
+                        VerticalAlignment="Center" />
+                </StackPanel>
             </StackPanel>
         </NavigationView.PaneFooter>
 

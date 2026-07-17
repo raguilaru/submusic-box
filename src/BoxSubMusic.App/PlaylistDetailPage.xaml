@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:models="using:BoxSubMusic.App.Models"
+    xmlns:controls="using:BoxSubMusic.App.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -140,6 +141,27 @@
                                     <TextBlock Text="Shuffle" FontSize="20" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
+                            <!-- Queue edits (2026-07-18): the container forms
+                                 of "Play next"/"Add to queue" — this
+                                 playlist's songs, without replacing the queue.
+                                 Icon-only to keep the row from crowding; same
+                                 cmap-verified glyphs as the song menus. -->
+                            <Button
+                                x:Name="PlayNextButton"
+                                Padding="16,12"
+                                Click="PlayNextButton_Click"
+                                ToolTipService.ToolTip="Play next"
+                                AutomationProperties.Name="Play next">
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" FontSize="20" />
+                            </Button>
+                            <Button
+                                x:Name="AddToQueueButton"
+                                Padding="16,12"
+                                Click="AddToQueueButton_Click"
+                                ToolTipService.ToolTip="Add to queue"
+                                AutomationProperties.Name="Add to queue">
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" FontSize="20" />
+                            </Button>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
@@ -148,13 +170,14 @@
                      playback to that song (queue = this playlist at that song). -->
                 <StackPanel Spacing="16">
                     <TextBlock Text="Songs" FontSize="32" FontWeight="SemiBold" />
-                    <!-- Controller hint (console checkpoint #6: visible
-                         shortcut labels; same pattern as the Songs page). -->
-                    <TextBlock
-                        Text="Press A to play from a song. Press Menu for more options."
-                        FontSize="15"
-                        Opacity="0.6"
-                        FontStyle="Italic" />
+                    <!-- Controller hints as monochrome button badges
+                         (checkpoint #7 request, 2026-07-18). -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Opacity="0.7">
+                        <controls:ControllerGlyph Label="A" />
+                        <TextBlock Text="Play from song" FontSize="15" VerticalAlignment="Center" />
+                        <controls:ControllerGlyph Label="Menu" Margin="16,0,0,0" />
+                        <TextBlock Text="More options" FontSize="15" VerticalAlignment="Center" />
+                    </StackPanel>
                     <TextBlock
                         x:Name="NoSongsText"
                         Text="This playlist has no songs."

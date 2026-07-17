@@ -154,6 +154,8 @@ namespace BoxSubMusic.App
             // beats a Play that silently does nothing).
             PlayButton.IsEnabled = rows.Count > 0;
             ShuffleButton.IsEnabled = rows.Count > 0;
+            PlayNextButton.IsEnabled = rows.Count > 0;
+            AddToQueueButton.IsEnabled = rows.Count > 0;
             UpdateNowPlayingHighlight();
         }
 
@@ -187,6 +189,36 @@ namespace BoxSubMusic.App
             {
                 StartPlayback(_rows.IndexOf(row), shuffle: false);
             }
+        }
+
+        private void PlayNextButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Container queue edits (2026-07-18): the whole playlist, inserted
+            // after the current track / appended — no replace, no refetch
+            // (the songs are already loaded).
+            PlaylistDetail detail = _detail;
+            if (detail != null && detail.Songs.Count > 0)
+            {
+                PlaybackService.Instance.PlayNext(detail.Songs, PlaylistContext(detail));
+            }
+        }
+
+        private void AddToQueueButton_Click(object sender, RoutedEventArgs e)
+        {
+            PlaylistDetail detail = _detail;
+            if (detail != null && detail.Songs.Count > 0)
+            {
+                PlaybackService.Instance.AddToQueue(detail.Songs, PlaylistContext(detail));
+            }
+        }
+
+        private static QueueContext PlaylistContext(PlaylistDetail detail)
+        {
+            // Same artwork rule as Play: the first constituent album cover
+            // (single-image cut of the §7.4 composition).
+            return new QueueContext(
+                detail.Playlist.Name,
+                PlaylistArtwork.SelectCoverArtIds(detail.Songs).FirstOrDefault());
         }
 
         private void PlayNext_Click(object sender, RoutedEventArgs e)

@@ -405,6 +405,89 @@ public class PlayQueueTests
     }
 
     [Fact]
+    public void InsertNext_Block_KeepsInternalOrderAfterCurrent()
+    {
+        var queue = MakeQueue();
+        var songs = MakeSongs(3);
+        queue.Replace(songs, startIndex: 1, shuffle: false, context: null);
+        var block = new[] { MakeSong("b1"), MakeSong("b2"), MakeSong("b3") };
+
+        queue.InsertNext(block);
+
+        Assert.Same(block[0], queue.PlayOrder[2]);
+        Assert.Same(block[1], queue.PlayOrder[3]);
+        Assert.Same(block[2], queue.PlayOrder[4]);
+        Assert.Same(songs[2], queue.PlayOrder[5]);
+        Assert.Equal(queue.PlayOrder, queue.Tracks);
+        Assert.Equal(1, queue.CurrentIndex);
+    }
+
+    [Fact]
+    public void InsertNext_Block_Shuffled_PlayOrderAfterCurrent_OriginalOrderAtEnd()
+    {
+        var queue = MakeQueue();
+        var songs = MakeSongs(4);
+        queue.Replace(songs, startIndex: 0, shuffle: true, context: null);
+        Song current = queue.CurrentTrack!;
+        var block = new[] { MakeSong("b1"), MakeSong("b2") };
+
+        queue.InsertNext(block);
+
+        Assert.Same(block[0], queue.PlayOrder[queue.CurrentIndex + 1]);
+        Assert.Same(block[1], queue.PlayOrder[queue.CurrentIndex + 2]);
+        Assert.Same(block[0], queue.Tracks[4]);
+        Assert.Same(block[1], queue.Tracks[5]);
+
+        queue.SetShuffle(false);
+        Assert.Equal(songs.Concat(block), queue.PlayOrder);
+        Assert.Same(current, queue.CurrentTrack);
+    }
+
+    [Fact]
+    public void Append_Block_AddsToEndOfBothOrders()
+    {
+        var queue = MakeQueue();
+        var songs = MakeSongs(2);
+        queue.Replace(songs, startIndex: 0, shuffle: false, context: null);
+        var block = new[] { MakeSong("b1"), MakeSong("b2") };
+
+        queue.Append(block);
+
+        Assert.Equal(songs.Concat(block), queue.PlayOrder);
+        Assert.Equal(songs.Concat(block), queue.Tracks);
+        Assert.Equal(0, queue.CurrentIndex);
+    }
+
+    [Fact]
+    public void Block_EmptyList_IsANoOp()
+    {
+        var queue = MakeQueue();
+        queue.Replace(MakeSongs(2), startIndex: 0, shuffle: false, context: null);
+        int fired = 0;
+        queue.Changed += () => fired++;
+
+        queue.InsertNext(Array.Empty<Song>());
+        queue.Append(Array.Empty<Song>());
+
+        Assert.Equal(0, fired);
+        Assert.Equal(2, queue.PlayOrder.Count);
+    }
+
+    [Fact]
+    public void Block_OnEmptyQueue_BecomesQueueAtIndexZero()
+    {
+        var queue = MakeQueue();
+        var block = new[] { MakeSong("b1"), MakeSong("b2") };
+
+        queue.InsertNext(block);
+
+        Assert.Equal(block, queue.PlayOrder);
+        Assert.Equal(block, queue.Tracks);
+        Assert.Equal(0, queue.CurrentIndex);
+        Assert.Same(block[0], queue.CurrentTrack);
+    }
+
+    [Fact]
     public void InsertNext_And_Append_RaiseChanged()
     {
         var queue = MakeQueue();

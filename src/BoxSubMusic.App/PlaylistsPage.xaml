@@ -87,6 +87,7 @@
                 SelectionMode="None"
                 IsItemClickEnabled="True"
                 ItemClick="Playlists_ItemClick"
+                ContextRequested="Playlists_ContextRequested"
                 Padding="0,0,0,24">
                 <GridView.ItemContainerStyle>
                     <Style TargetType="GridViewItem">
@@ -97,6 +98,30 @@
                 <GridView.ItemTemplate>
                     <DataTemplate x:DataType="models:PlaylistCard">
                         <StackPanel Width="200" Spacing="8">
+                            <StackPanel.ContextFlyout>
+                                <!-- Container queue edits (2026-07-18): the
+                                     playlist's songs are fetched on demand.
+                                     Gamepad Menu button routed via the
+                                     view-level redirect (console-verified). -->
+                                <MenuFlyout>
+                                    <MenuFlyoutItem
+                                        Text="Play next"
+                                        Tag="{x:Bind}"
+                                        Click="PlaylistPlayNext_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
+                                        Text="Add to queue"
+                                        Tag="{x:Bind}"
+                                        Click="PlaylistAddToQueue_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </StackPanel.ContextFlyout>
                             <Grid Width="200" Height="200" CornerRadius="8">
                                 <!-- Placeholder shows while the composite loads
                                      and when a playlist has no artwork. Same
@@ -194,7 +219,8 @@
                 Visibility="Collapsed"
                 SelectionMode="None"
                 IsItemClickEnabled="True"
-                ItemClick="Playlists_ItemClick">
+                ItemClick="Playlists_ItemClick"
+                ContextRequested="Playlists_ContextRequested">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="Padding" Value="12,8" />
@@ -204,6 +230,26 @@
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:PlaylistCard">
                         <StackPanel Orientation="Horizontal" Spacing="16">
+                            <StackPanel.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem
+                                        Text="Play next"
+                                        Tag="{x:Bind}"
+                                        Click="PlaylistPlayNext_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
+                                        Text="Add to queue"
+                                        Tag="{x:Bind}"
+                                        Click="PlaylistAddToQueue_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </StackPanel.ContextFlyout>
                             <Grid Width="56" Height="56" CornerRadius="6">
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
                                     <FontIcon
