@@ -189,5 +189,11 @@
 
     <controls:ExpandedQueueView x:Name="QueueOverlay" />
 
+    <!-- Transient feedback surface (Slice 14): last child = topmost, so
+         toasts stay visible over the expanded-queue overlay too. The control
+         is hit-test-invisible and never focusable, so it cannot disturb the
+         overlay's focus trap. -->
+    <controls:ToastHost x:Name="Toasts" />
+
     </Grid>
 </Page>

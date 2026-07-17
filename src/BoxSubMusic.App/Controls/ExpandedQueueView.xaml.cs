@@ -64,6 +64,14 @@ namespace BoxSubMusic.App.Controls
         /// is hidden; the host re-enables the shell and restores focus.</summary>
         public event Action Closed;
 
+        /// <summary>Raised by the row menu's "Go to album" (Slice 14): the
+        /// host closes the overlay and navigates the content frame — the
+        /// control has no frame of its own.</summary>
+        public event Action<string> AlbumRequested;
+
+        /// <summary>Raised by the row menu's "Go to artist" (Slice 14).</summary>
+        public event Action<string> ArtistRequested;
+
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             _playback = PlaybackService.Instance;
@@ -394,6 +402,103 @@ namespace BoxSubMusic.App.Controls
                 // §10: jump directly to any queued track. The view stays
                 // open; the marker repaint comes back through Changed.
                 _playback.JumpTo(row.Song);
+            }
+        }
+
+        // --- Row context menu (Slice 14 — the refinement deferred out of
+        // Slice 11) -------------------------------------------------------------
+
+        private void QueueList_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
+        {
+            // The gamepad Menu button raises ContextRequested on the focused
+            // ListViewItem, but the flyout sits on the item's child grid and
+            // routed events bubble up, never down — redirect to the row's own
+            // flyout (the console-verified pattern from the Songs rows).
+            var container = args.OriginalSource as Windows.UI.Xaml.Controls.Primitives.SelectorItem;
+            var root = container?.ContentTemplateRoot as FrameworkElement;
+            if (root?.ContextFlyout != null)
+            {
+                root.ContextFlyout.ShowAt(root);
+                args.Handled = true;
+            }
+        }
+
+        private void PlaySong_Click(object sender, RoutedEventArgs e)
+        {
+            // Mouse-facing twin of the row's A/Enter jump (the menu opens by
+            // right-click too, and every other song menu leads with Play).
+            var row = (sender as FrameworkElement)?.Tag as QueueRow;
+            if (row != null)
+            {
+                _playback.JumpTo(row.Song);
+            }
+        }
+
+        private async void ToggleFavorite_Click(object sender, RoutedEventArgs e)
+        {
+            // Same change-only-after-success contract as the other song-row
+            // menus: a failure changes nothing (the menu is closed by then).
+            var row = (sender as FrameworkElement)?.Tag as QueueRow;
+            var client = AppSession.Client;
+            if (row == null || client == null)
+            {
+                return;
+            }
+
+            Song song = row.Song;
+            bool wantStarred = !song.IsStarred;
+            try
+            {
+                if (wantStarred)
+                {
+                    await client.StarAsync(song.Id);
+                }
+                else
+                {
+                    await client.UnstarAsync(song.Id);
+                }
+
+                song.IsStarred = wantStarred;
+
+                // Repaint every row holding this instance, and keep the left
+                // pane's heart honest when the edited row is the current
+                // track (it reads the same Song).
+                foreach (QueueRow other in _rows)
+                {
+                    if (ReferenceEquals(other.Song, song))
+                    {
+                        other.IsStarred = wantStarred;
+                    }
+                }
+
+                if (ReferenceEquals(song, _playback.Queue.CurrentTrack))
+                {
+                    _suppressFavoriteEvents = true;
+                    FavoriteToggle.IsChecked = wantStarred;
+                    _suppressFavoriteEvents = false;
+                }
+            }
+            catch (SubsonicClientException)
+            {
+                // Nothing changed; the action simply didn't take.
+            }
+        }
+
+        private void GoToAlbum_Click(object sender, RoutedEventArgs e)
+        {
+            var row = (sender as FrameworkElement)?.Tag as QueueRow;
+            if (row != null && row.HasAlbumId)
+            {
+                AlbumRequested?.Invoke(row.Song.AlbumId);
+            }
+        }
+
+        private void GoToArtist_Click(object sender, RoutedEventArgs e)
+        {
+            var row = (sender as FrameworkElement)?.Tag as QueueRow;
+            if (row != null && row.HasArtistId)
+            {
+                ArtistRequested?.Invoke(row.Song.ArtistId);
             }
         }
 

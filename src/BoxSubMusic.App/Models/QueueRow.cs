@@ -11,7 +11,9 @@ namespace BoxSubMusic.App.Models
     /// <see cref="TrackRow"/>: <see cref="IsCurrent"/> swaps the position
     /// column to the now-playing marker, and <see cref="IsStarred"/> keeps
     /// the heart marker honest when the current track is starred from the
-    /// overlay's own favorite toggle.
+    /// overlay's own favorite toggle. Slice 14 added the row context menu,
+    /// so the row also exposes the menu's favorite label and whether the
+    /// server sent album/artist ids to navigate to.
     /// </summary>
     public sealed class QueueRow : INotifyPropertyChanged
     {
@@ -57,6 +59,7 @@ namespace BoxSubMusic.App.Models
                 {
                     handler(this, new PropertyChangedEventArgs(nameof(IsStarred)));
                     handler(this, new PropertyChangedEventArgs(nameof(StarredVisibility)));
+                    handler(this, new PropertyChangedEventArgs(nameof(FavoriteLabel)));
                 }
             }
         }
@@ -64,6 +67,25 @@ namespace BoxSubMusic.App.Models
         public Visibility StarredVisibility
         {
             get { return _isStarred ? Visibility.Visible : Visibility.Collapsed; }
+        }
+
+        /// <summary>Context-menu favorite label, tracking state like the
+        /// other song-row menus.</summary>
+        public string FavoriteLabel
+        {
+            get { return _isStarred ? "Remove from favorites" : "Add to favorites"; }
+        }
+
+        /// <summary>"Go to album" is disabled when the server sent no album id.</summary>
+        public bool HasAlbumId
+        {
+            get { return !string.IsNullOrEmpty(Song.AlbumId); }
+        }
+
+        /// <summary>"Go to artist" is disabled when the server sent no artist id.</summary>
+        public bool HasArtistId
+        {
+            get { return !string.IsNullOrEmpty(Song.ArtistId); }
         }
 
         /// <summary>True while this row is the queue's current track.</summary>

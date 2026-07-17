@@ -1,0 +1,59 @@
+<UserControl
+    x:Class="BoxSubMusic.App.Controls.ToastHost"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    IsHitTestVisible="False"
+    IsTabStop="False">
+
+    <!-- Transient feedback toast (Slice 14, requirements §15 spirit): the
+         one shared surface for actions whose result is otherwise invisible —
+         queue edits ("Play next"/"Add to queue"), container-fetch failures,
+         and skipped stream failures. Non-focusable and hit-test-invisible by
+         design: it must never disturb controller focus, including while the
+         expanded-queue overlay traps it (the host places this control above
+         the overlay layer). Auto-dismisses; a newer message replaces the
+         current one and restarts the clock. -->
+    <Grid>
+        <Border
+            x:Name="ToastBorder"
+            Opacity="0"
+            Visibility="Collapsed"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="64,0,64,140"
+            MaxWidth="880"
+            CornerRadius="12"
+            Padding="24,14,24,14"
+            Background="{ThemeResource SystemControlChromeMediumLowAcrylicElementMediumBrush}"
+            BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="1">
+            <Border.Resources>
+                <!-- No From on either animation: a replacing toast fades from
+                     the current opacity instead of blinking to zero first. -->
+                <Storyboard x:Name="FadeInStoryboard">
+                    <DoubleAnimation
+                        Storyboard.TargetName="ToastBorder"
+                        Storyboard.TargetProperty="Opacity"
+                        To="1"
+                        Duration="0:0:0.15" />
+                </Storyboard>
+                <Storyboard x:Name="FadeOutStoryboard">
+                    <DoubleAnimation
+                        Storyboard.TargetName="ToastBorder"
+                        Storyboard.TargetProperty="Opacity"
+                        To="0"
+                        Duration="0:0:0.3" />
+                </Storyboard>
+            </Border.Resources>
+            <TextBlock
+                x:Name="MessageText"
+                FontSize="18"
+                TextWrapping="Wrap"
+                TextAlignment="Center"
+                AutomationProperties.LiveSetting="Polite" />
+        </Border>
+    </Grid>
+</UserControl>

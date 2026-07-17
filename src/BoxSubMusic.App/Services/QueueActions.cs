@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using BoxSubMusic.Core.Concurrency;
 using BoxSubMusic.Core.Playback;
 using BoxSubMusic.Core.Playlists;
 using BoxSubMusic.SubsonicClient;
@@ -37,7 +38,9 @@ namespace BoxSubMusic.App.Services
             }
             catch (SubsonicClientException)
             {
-                // Nothing changed; the action simply didn't take.
+                // Nothing changed — but say so (Slice 14, §15): the menu
+                // closed long before the fetch failed.
+                Toast.Show("Couldn't load the album — nothing was added to the queue.");
             }
         }
 
@@ -60,7 +63,7 @@ namespace BoxSubMusic.App.Services
             }
             catch (SubsonicClientException)
             {
-                // Nothing changed; the action simply didn't take.
+                Toast.Show("Couldn't load the playlist — nothing was added to the queue.");
             }
         }
 
@@ -81,16 +84,24 @@ namespace BoxSubMusic.App.Services
             }
             catch (SubsonicClientException)
             {
-                // Nothing changed; the action simply didn't take.
+                Toast.Show("Couldn't load the artist's songs — nothing was added to the queue.");
             }
         }
 
         /// <summary>
+        /// One request per album/playlist tile or artist-pool album at a
+        /// time of this many (Slice 14 performance audit): parallel enough
+        /// to hide latency, bounded so a 100-album artist no longer fires
+        /// 100 simultaneous requests at a small self-hosted server.
+        /// </summary>
+        public const int MaxParallelFetches = 4;
+
+        /// <summary>
         /// The §8 artist song pool: every song oldest-album-first (year
         /// ascending, unknown years last, then name). getArtist carries
-        /// albums without songs, so this fans out one getAlbum per album in
-        /// parallel — shared by artist Play/Shuffle (ArtistDetailPage) and
-        /// the artist queue edits.
+        /// albums without songs, so this fans out one getAlbum per album —
+        /// bounded-parallel since Slice 14 — shared by artist Play/Shuffle
+        /// (ArtistDetailPage) and the artist queue edits.
         /// </summary>
         public static async Task<List<Song>> LoadArtistPoolAsync(
             SubsonicApiClient client, ArtistDetail detail, CancellationToken cancellationToken)
@@ -99,8 +110,10 @@ namespace BoxSubMusic.App.Services
                 .OrderBy(a => a.Year ?? int.MaxValue)
                 .ThenBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
-            AlbumDetail[] loaded = await Task.WhenAll(
-                albums.Select(a => client.GetAlbumAsync(a.Id, cancellationToken)));
+            AlbumDetail[] loaded = await BoundedParallel.MapAsync(
+                albums,
+                a => client.GetAlbumAsync(a.Id, cancellationToken),
+                MaxParallelFetches);
 
             var songs = new List<Song>();
             foreach (AlbumDetail album in loaded)

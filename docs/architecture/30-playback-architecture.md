@@ -369,3 +369,48 @@ the design deliberately reuses every rule above:
   `ContextRequested` redirect — plus icon-only buttons next to
   Play/Shuffle on the album, playlist, and artist detail pages (these use
   the already-loaded songs; no refetch).
+
+## Slice 14: feedback surface + queue-row menu + bounded fan-outs (added 2026-07-19)
+
+The resilience slice closes the silent paths this doc flagged (the missing
+"added to queue" toast, the silent container-fetch failure, the silent
+per-track skip) and pays down the two deferred queue refinements:
+
+- **Toast surface**: `Controls/ToastHost` (one transient bottom-centered
+  banner; fade in/out, 3.5 s dwell, a newer message replaces the current
+  one) + `Services/Toast` (static, any-thread — marshals to the UI
+  dispatcher; a no-op until the shell registers, so the setup flow keeps
+  its inline errors). Hosted as the shell root's LAST child: topmost, so
+  toasts stay visible over the expanded-queue overlay; hit-test-invisible
+  and never focusable, so the overlay's focus trap and XY navigation are
+  untouched. Emitters:
+  - `PlaybackService.AddSongs` — queue-edit confirmations ("“Title” will
+    play next" / "Name (12 songs) added to the queue"). The empty-queue
+    play-immediately path stays toast-free: the bar reveal + audio are
+    the feedback.
+  - `QueueActions` — container-fetch failures ("Couldn't load the album —
+    nothing was added to the queue."): the menu-closed contract now says
+    that nothing happened instead of implying success.
+  - `PlaybackService.OnItemFailed` — "Skipped “X” — the track could not
+    be played." per skip (media thread; Toast marshals), and the
+    consecutive-failure stop announces itself ("Playback stopped: no
+    track in the queue could be played. Check the server connection.").
+    A failure burst simply replaces the toast each time.
+- **Queue-row context menu** (deferred out of Slice 11): the standard
+  song menu on expanded-queue rows — Play (jump; the pointer twin of
+  A/Enter), favorite toggle (change-only-after-success; repaints every
+  row holding the instance and syncs the left pane's heart when the row
+  is the current track), Go to album / Go to artist (disabled without
+  ids). Same `ContextRequested` redirect and §13.3 icons as every other
+  row menu. Navigation hands off through the host: the overlay raises
+  `AlbumRequested`/`ArtistRequested`, MainPage stashes the target, closes
+  the overlay, and navigates once the shell is re-enabled — the `Closed`
+  handler skips its queue-button focus restore for that pass, so the
+  detail page's `ContentFocus` owns focus (a brief nothing-focused gap
+  during the 250 ms slide is accepted).
+- **Bounded fan-outs**: `Core/Concurrency/BoundedParallel.MapAsync`
+  (order-preserving results, at most N workers, `Task.WhenAll` failure
+  semantics; unit-tested) caps the §8 artist getAlbum fan-out, and a
+  `SemaphoreSlim` gate caps the Playlists page's per-tile getPlaylist
+  fetches — both at `QueueActions.MaxParallelFetches` = 4. Tiles still
+  fill in individually as their fetches complete.

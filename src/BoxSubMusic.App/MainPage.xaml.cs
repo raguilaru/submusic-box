@@ -28,6 +28,12 @@ namespace BoxSubMusic.App
 
         private string _currentSectionTag;
 
+        // Queue-row "Go to album/artist" (Slice 14): the navigation waits for
+        // the overlay's closing slide, so the page never loads under a
+        // disabled shell (ContentFocus would fail on a disabled tree).
+        private Type _pendingOverlayNavPage;
+        private object _pendingOverlayNavParameter;
+
         public MainPage()
         {
             InitializeComponent();
@@ -51,6 +57,11 @@ namespace BoxSubMusic.App
             // open the expanded queue overlay.
             NowPlaying.QueueExpandRequested += OpenQueueOverlay;
             QueueOverlay.Closed += OnQueueOverlayClosed;
+            QueueOverlay.AlbumRequested += OnOverlayAlbumRequested;
+            QueueOverlay.ArtistRequested += OnOverlayArtistRequested;
+
+            // Slice 14: the shell hosts the one app-wide toast surface.
+            Toast.Register(Dispatcher, Toasts.Show);
 
             // Controller-first rule: something must own focus from the first
             // frame, or directional input has no starting point.
@@ -140,6 +151,26 @@ namespace BoxSubMusic.App
             ContentFrame.Navigated -= ContentFrame_Navigated;
             NowPlaying.QueueExpandRequested -= OpenQueueOverlay;
             QueueOverlay.Closed -= OnQueueOverlayClosed;
+            QueueOverlay.AlbumRequested -= OnOverlayAlbumRequested;
+            QueueOverlay.ArtistRequested -= OnOverlayArtistRequested;
+            Toast.Unregister();
+        }
+
+        private void OnOverlayAlbumRequested(string albumId)
+        {
+            NavigateFromOverlay(typeof(AlbumDetailPage), albumId);
+        }
+
+        private void OnOverlayArtistRequested(string artistId)
+        {
+            NavigateFromOverlay(typeof(ArtistDetailPage), artistId);
+        }
+
+        private void NavigateFromOverlay(Type pageType, object parameter)
+        {
+            _pendingOverlayNavPage = pageType;
+            _pendingOverlayNavParameter = parameter;
+            QueueOverlay.Close();
         }
 
         private void OnBackRequested(object sender, BackRequestedEventArgs e)
@@ -178,6 +209,20 @@ namespace BoxSubMusic.App
         private void OnQueueOverlayClosed()
         {
             NavView.IsEnabled = true;
+
+            // Queue-row "Go to album/artist": navigate now that the shell is
+            // enabled again; the detail page's ContentFocus owns focus (the
+            // usual content-owns-focus convention), so the queue-button
+            // restore below must not fight it.
+            if (_pendingOverlayNavPage != null)
+            {
+                Type pageType = _pendingOverlayNavPage;
+                object parameter = _pendingOverlayNavParameter;
+                _pendingOverlayNavPage = null;
+                _pendingOverlayNavParameter = null;
+                ContentFrame.Navigate(pageType, parameter);
+                return;
+            }
 
             // Return focus where the user came from: the bar's queue button
             // (also right for a Y-press — the bar is always visible while a

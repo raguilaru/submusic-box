@@ -484,6 +484,17 @@ Harden the app for real-device use.
 - Background Playback
 - Home / Browse / Detail / Queue acceptance items
 
+### Open design note
+Scope confirmed with Rafael 2026-07-19 (§16): the audits + the
+no-silent-failure fixes + the expanded-queue row context menu; seek,
+dynamic input glyphs, and minor visual polish deferred beyond v1.
+Implemented 2026-07-19: app-wide toast surface (`ToastHost`/`Toast`)
+carrying queue-edit confirmations, container-fetch failures, per-track
+skip notices, and the failure stop; queue-row menu (Play/favorite/Go to
+album/Go to artist with overlay-close navigation handoff); server-facing
+fan-outs bounded to 4 concurrent via Core `BoundedParallel` (+6 tests);
+theming/states/focus audits clean; §17 error-copy TODO closed.
+
 ### Deliverables
 - loading states
 - empty states
