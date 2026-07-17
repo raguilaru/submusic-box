@@ -197,6 +197,59 @@ public sealed class SubsonicApiClient
     }
 
     /// <summary>
+    /// search3 with a real query — the Search view's data source (Slice 13,
+    /// §17 resolution). One request can fill any combination of the three
+    /// scopes; a scope with count 0 is suppressed server-side and comes back
+    /// as an empty list. search3 exists since API 1.8, so callers gate on
+    /// <see cref="ServerCapabilities.ApiVersion"/> and degrade explicitly on
+    /// older servers (§3). Result order within each scope is server-defined.
+    /// </summary>
+    public async Task<SearchResult> SearchAsync(
+        string query,
+        int artistCount,
+        int albumCount,
+        int songCount,
+        int artistOffset = 0,
+        int albumOffset = 0,
+        int songOffset = 0,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            throw new ArgumentException(
+                "A search query is required; the empty-query full-library listing is GetSongsAsync.",
+                nameof(query));
+        ValidateSearchScope(artistCount, artistOffset, nameof(artistCount), nameof(artistOffset));
+        ValidateSearchScope(albumCount, albumOffset, nameof(albumCount), nameof(albumOffset));
+        ValidateSearchScope(songCount, songOffset, nameof(songCount), nameof(songOffset));
+
+        var parameters = new List<KeyValuePair<string, string>>
+        {
+            Param("query", query),
+            Param("artistCount", artistCount.ToString(CultureInfo.InvariantCulture)),
+            Param("artistOffset", artistOffset.ToString(CultureInfo.InvariantCulture)),
+            Param("albumCount", albumCount.ToString(CultureInfo.InvariantCulture)),
+            Param("albumOffset", albumOffset.ToString(CultureInfo.InvariantCulture)),
+            Param("songCount", songCount.ToString(CultureInfo.InvariantCulture)),
+            Param("songOffset", songOffset.ToString(CultureInfo.InvariantCulture)),
+        };
+        var root = await ExecuteAsync("search3", parameters, cancellationToken).ConfigureAwait(false);
+        var result = SubsonicXml.Element(root, "searchResult3")
+            ?? throw new SubsonicConnectionException("The server response is missing the <searchResult3> element.");
+        return new SearchResult(
+            artists: SubsonicXml.Elements(result, "artist").Select(MapArtist).ToList(),
+            albums: SubsonicXml.Elements(result, "album").Select(MapAlbum).ToList(),
+            songs: SubsonicXml.Elements(result, "song").Select(MapSong).ToList());
+    }
+
+    private static void ValidateSearchScope(int count, int offset, string countName, string offsetName)
+    {
+        if (count < 0 || count > 500)
+            throw new ArgumentOutOfRangeException(countName, count, "Count must be 0..500 (Subsonic API limit).");
+        if (offset < 0)
+            throw new ArgumentOutOfRangeException(offsetName, offset, "Offset must not be negative.");
+    }
+
+    /// <summary>
     /// getPlaylists — the user's playlists (requirements §7.4). Returns
     /// summaries only; the track list (needed to compose tile artwork) comes
     /// from <see cref="GetPlaylistAsync"/> per playlist.

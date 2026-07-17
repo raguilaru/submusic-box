@@ -46,6 +46,35 @@ public class LiveServerTests
     }
 
     [SkippableFact]
+    public async Task Search_RealQuery_AnswersAllScopes()
+    {
+        var (client, _) = CreateClient();
+        await client.ConnectAsync();
+
+        // Search for a word taken from a real song title so the query is
+        // guaranteed to have a match. Navidrome matches whole-word prefixes
+        // and ignores single-character tokens (verified live 2026-07-17), so
+        // the probe word must be at least two characters.
+        var seed = await client.GetSongsAsync(size: 1);
+        Skip.If(seed.Count == 0, "The library has no songs.");
+        var word = seed[0].Title
+            .Split(' ')
+            .FirstOrDefault(w => w.Trim().Length >= 2)?.Trim();
+        Skip.If(word == null, "The seed song title has no searchable word.");
+
+        var result = await client.SearchAsync(word, artistCount: 6, albumCount: 6, songCount: 10);
+
+        Assert.True(
+            result.Artists.Count + result.Albums.Count + result.Songs.Count >= 1,
+            $"search3 with query '{word}' (taken from a real song title) matched nothing.");
+        foreach (var song in result.Songs)
+        {
+            Assert.False(string.IsNullOrEmpty(song.Id));
+            Assert.False(string.IsNullOrEmpty(song.Title));
+        }
+    }
+
+    [SkippableFact]
     public async Task AlphabeticalAlbums_PageAndParse()
     {
         var (client, _) = CreateClient();

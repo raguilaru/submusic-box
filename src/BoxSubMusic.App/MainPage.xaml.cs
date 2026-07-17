@@ -313,7 +313,7 @@ namespace BoxSubMusic.App
 
                 case ShellRegion.Content:
                     // Deferred-focus helper; a page with nothing focusable
-                    // (the Search placeholder) leaves focus where it was.
+                    // leaves focus where it was.
                     ContentFocus.MoveInto(ContentFrame);
                     return true;
 
@@ -359,6 +359,7 @@ namespace BoxSubMusic.App
 
         private static string SectionTagFor(NavigationEventArgs e)
         {
+            if (e.Content is SearchPage) return "search";
             if (e.Content is HomePage) return "home";
             if (e.Content is ArtistsPage) return "artists";
             if (e.Content is AlbumsPage) return "albums";
@@ -457,6 +458,7 @@ namespace BoxSubMusic.App
         {
             switch (tag)
             {
+                case "search": return typeof(SearchPage);
                 case "home": return typeof(HomePage);
                 case "artists": return typeof(ArtistsPage);
                 case "albums": return typeof(AlbumsPage);
