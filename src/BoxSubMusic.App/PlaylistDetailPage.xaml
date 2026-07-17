@@ -1,0 +1,293 @@
+<Page
+    x:Class="BoxSubMusic.App.PlaylistDetailPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:BoxSubMusic.App.Models"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <!-- Playlist detail (deferred out of Slice 09, requirements §7.4/§10):
+         mirrors the album detail layout (§9 template) — large client-side
+         composite artwork, playlist name, owner, song count + total duration,
+         Play/Shuffle replacing the queue with the playlist's songs in stored
+         order, and the song list with position numbers, starred markers,
+         current-track highlight, and jump-to-track. No favorite heart: the
+         Subsonic star/unstar endpoint covers songs, albums, and artists only.
+         Read-only for v1 — no editing actions anywhere. -->
+    <Grid>
+        <ScrollViewer x:Name="ContentScroller" Visibility="Collapsed" Padding="48,36,48,36">
+            <StackPanel Spacing="36">
+                <!-- Header: composite artwork + metadata, same shape as album
+                     detail. The artwork reuses the §7.4 tile composition at
+                     header size — the songs arrive with getPlaylist, so the
+                     covers resolve as part of the page load (no lazy fetch). -->
+                <Grid ColumnSpacing="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Grid.Column="0" Width="320" Height="320" CornerRadius="12">
+                        <!-- Placeholder: same official Fluent codepoint as the
+                             Playlists nav item (§13.3: never invent codepoints). -->
+                        <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
+                            <FontIcon
+                                FontFamily="{StaticResource FluentIconFont}"
+                                Glyph="&#xF4EE;"
+                                FontSize="96"
+                                Opacity="0.4" />
+                        </Border>
+
+                        <!-- Covers render as ImageBrush fills so partial cells
+                             center-crop (see PlaylistsPage template note). -->
+
+                        <!-- Single-album playlist: one full cover (§7.4). -->
+                        <Rectangle Visibility="{x:Bind HeaderArt.SingleVisibility, Mode=OneWay}">
+                            <Rectangle.Fill>
+                                <ImageBrush Stretch="UniformToFill">
+                                    <ImageBrush.ImageSource>
+                                        <BitmapImage UriSource="{x:Bind HeaderArt.SingleCover, Mode=OneWay}" DecodePixelWidth="640" />
+                                    </ImageBrush.ImageSource>
+                                </ImageBrush>
+                            </Rectangle.Fill>
+                        </Rectangle>
+
+                        <!-- Multi-album playlist: the adaptive composite (§7.4)
+                             — bound row spans keep every cell filled (2 covers
+                             = full-height halves, 3 = full-height + stacked,
+                             4 = 2×2). -->
+                        <Grid Visibility="{x:Bind HeaderArt.CompositeVisibility, Mode=OneWay}"
+                              Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Rectangle Grid.Row="0" Grid.Column="0" Grid.RowSpan="{x:Bind HeaderArt.Cover0RowSpan, Mode=OneWay}">
+                                <Rectangle.Fill>
+                                    <ImageBrush Stretch="UniformToFill">
+                                        <ImageBrush.ImageSource>
+                                            <BitmapImage UriSource="{x:Bind HeaderArt.Cover0, Mode=OneWay}" DecodePixelWidth="320" />
+                                        </ImageBrush.ImageSource>
+                                    </ImageBrush>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                            <Rectangle Grid.Row="0" Grid.Column="1" Grid.RowSpan="{x:Bind HeaderArt.Cover1RowSpan, Mode=OneWay}">
+                                <Rectangle.Fill>
+                                    <ImageBrush Stretch="UniformToFill">
+                                        <ImageBrush.ImageSource>
+                                            <BitmapImage UriSource="{x:Bind HeaderArt.Cover1, Mode=OneWay}" DecodePixelWidth="320" />
+                                        </ImageBrush.ImageSource>
+                                    </ImageBrush>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                            <Rectangle Grid.Row="1" Grid.Column="0">
+                                <Rectangle.Fill>
+                                    <ImageBrush Stretch="UniformToFill">
+                                        <ImageBrush.ImageSource>
+                                            <BitmapImage UriSource="{x:Bind HeaderArt.Cover2, Mode=OneWay}" DecodePixelWidth="320" />
+                                        </ImageBrush.ImageSource>
+                                    </ImageBrush>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                            <Rectangle Grid.Row="1" Grid.Column="1">
+                                <Rectangle.Fill>
+                                    <ImageBrush Stretch="UniformToFill">
+                                        <ImageBrush.ImageSource>
+                                            <BitmapImage UriSource="{x:Bind HeaderArt.Cover3, Mode=OneWay}" DecodePixelWidth="320" />
+                                        </ImageBrush.ImageSource>
+                                    </ImageBrush>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                        </Grid>
+                    </Grid>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="16">
+                        <TextBlock
+                            x:Name="PlaylistNameText"
+                            FontSize="48"
+                            FontWeight="Bold"
+                            TextWrapping="Wrap" />
+                        <TextBlock
+                            x:Name="OwnerText"
+                            FontSize="26"
+                            Opacity="0.8"
+                            Visibility="Collapsed" />
+
+                        <!-- Song count · total duration. -->
+                        <TextBlock
+                            x:Name="MetaText"
+                            FontSize="22"
+                            Opacity="0.8" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,8,0,0">
+                            <!-- §10: Play/Shuffle replace the queue with this
+                                 playlist's songs only. -->
+                            <Button x:Name="PlayButton" Padding="28,12" Click="PlayButton_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" FontSize="20" />
+                                    <TextBlock Text="Play" FontSize="20" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="ShuffleButton" Padding="28,12" Click="ShuffleButton_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xEF37;" FontSize="20" />
+                                    <TextBlock Text="Shuffle" FontSize="20" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Song list in stored playlist order. A/Enter on a row jumps
+                     playback to that song (queue = this playlist at that song). -->
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Songs" FontSize="32" FontWeight="SemiBold" />
+                    <TextBlock
+                        x:Name="NoSongsText"
+                        Text="This playlist has no songs."
+                        FontSize="20"
+                        Opacity="0.7"
+                        Visibility="Collapsed" />
+                    <ListView
+                        x:Name="SongsList"
+                        SelectionMode="None"
+                        IsItemClickEnabled="True"
+                        ItemClick="SongsList_ItemClick"
+                        ContextRequested="SongsList_ContextRequested">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Padding" Value="12,10" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:TrackRow">
+                                <Grid ColumnSpacing="16" Background="Transparent">
+                                    <Grid.ContextFlyout>
+                                        <!-- Same secondary-action menu as the
+                                             Songs/album-track rows; here both
+                                             "Go to album" and "Go to artist"
+                                             are non-circular, so both appear.
+                                             The gamepad Menu button raises
+                                             ContextRequested on the focused
+                                             ListViewItem, redirected here by
+                                             the ListView handler (the
+                                             console-verified pattern). -->
+                                        <MenuFlyout>
+                                            <MenuFlyoutItem
+                                                Text="Play"
+                                                Tag="{x:Bind}"
+                                                Click="PlaySong_Click" />
+                                            <MenuFlyoutItem
+                                                Text="{x:Bind FavoriteLabel, Mode=OneWay}"
+                                                Tag="{x:Bind}"
+                                                Click="ToggleFavorite_Click" />
+                                            <MenuFlyoutItem
+                                                Text="Go to album"
+                                                Tag="{x:Bind}"
+                                                IsEnabled="{x:Bind HasAlbumId}"
+                                                Click="GoToAlbum_Click" />
+                                            <MenuFlyoutItem
+                                                Text="Go to artist"
+                                                Tag="{x:Bind}"
+                                                IsEnabled="{x:Bind HasArtistId}"
+                                                Click="GoToArtist_Click" />
+                                        </MenuFlyout>
+                                    </Grid.ContextFlyout>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="*" />
+                                        <!-- Starred-heart marker column. -->
+                                        <ColumnDefinition Width="28" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="72" />
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Current-track highlight: the position
+                                         column swaps to the accent now-playing
+                                         marker, exactly as on album detail. -->
+                                    <TextBlock
+                                        Grid.Column="0"
+                                        Text="{x:Bind Number}"
+                                        Visibility="{x:Bind NumberVisibility, Mode=OneWay}"
+                                        FontSize="20"
+                                        Opacity="0.6"
+                                        TextAlignment="Right" />
+                                    <FontIcon
+                                        Grid.Column="0"
+                                        FontFamily="{StaticResource FluentIconFont}"
+                                        Glyph="&#xE855;"
+                                        FontSize="20"
+                                        Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                        Visibility="{x:Bind NowPlayingVisibility, Mode=OneWay}"
+                                        HorizontalAlignment="Right" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Text="{x:Bind Title}"
+                                        FontSize="20"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <FontIcon
+                                        Grid.Column="2"
+                                        FontFamily="{StaticResource FluentIconFilledFont}"
+                                        Glyph="&#xF47E;"
+                                        FontSize="16"
+                                        Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                        Visibility="{x:Bind StarredVisibility, Mode=OneWay}"
+                                        VerticalAlignment="Center" />
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        Text="{x:Bind Artist}"
+                                        FontSize="18"
+                                        Opacity="0.7"
+                                        TextTrimming="CharacterEllipsis"
+                                        MaxWidth="420" />
+                                    <TextBlock
+                                        Grid.Column="4"
+                                        Text="{x:Bind DurationLabel}"
+                                        FontSize="20"
+                                        Opacity="0.6"
+                                        TextAlignment="Right" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <ProgressRing
+            x:Name="LoadingRing"
+            IsActive="False"
+            Width="48"
+            Height="48"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center" />
+
+        <StackPanel
+            x:Name="ErrorPanel"
+            Visibility="Collapsed"
+            Spacing="16"
+            MaxWidth="820"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+            <TextBlock
+                x:Name="ErrorText"
+                FontSize="22"
+                TextWrapping="Wrap"
+                HorizontalAlignment="Center"
+                TextAlignment="Center" />
+            <Button
+                x:Name="RetryButton"
+                Content="Retry"
+                FontSize="20"
+                Padding="40,10"
+                HorizontalAlignment="Center"
+                Click="RetryButton_Click" />
+        </StackPanel>
+    </Grid>
+</Page>

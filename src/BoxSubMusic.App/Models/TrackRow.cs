@@ -16,7 +16,7 @@ namespace BoxSubMusic.App.Models
 
         private bool _isStarred;
 
-        public TrackRow(string id, string number, string title, string artist, string durationLabel, string artistId, bool isStarred)
+        public TrackRow(string id, string number, string title, string artist, string durationLabel, string artistId, string albumId, bool isStarred)
         {
             Id = id;
             Number = number;
@@ -24,6 +24,7 @@ namespace BoxSubMusic.App.Models
             Artist = artist;
             DurationLabel = durationLabel;
             ArtistId = artistId;
+            AlbumId = albumId;
             _isStarred = isStarred;
         }
 
@@ -72,6 +73,14 @@ namespace BoxSubMusic.App.Models
         public bool HasArtistId
         {
             get { return !string.IsNullOrEmpty(ArtistId); }
+        }
+
+        /// <summary>Id for the context menu's "Go to album"; may be null.</summary>
+        public string AlbumId { get; }
+
+        public bool HasAlbumId
+        {
+            get { return !string.IsNullOrEmpty(AlbumId); }
         }
 
         /// <summary>Track number as display text; empty when the server has none.</summary>

@@ -324,6 +324,14 @@ Implement playlist browsing and client-side playlist artwork composition.
 
 ### Open design note
 Resolve playlist editing scope for v1 (read-only vs create/edit/delete) before implementing.
+Resolved 2026-07-13: read-only for v1 (§16). Browse + composite artwork
+shipped with this slice; tiles stayed inert until the queue existed.
+**Detail/playback view implemented 2026-07-17** (§16): `PlaylistDetailPage`
+mirrors album detail — composite header artwork, Play/Shuffle queue
+replacement, jump-to-track + current-track highlight, starred markers, and
+the standard row context menu (Go to album AND Go to artist). Tiles now
+open it. No playlist favorite heart (star/unstar has no playlist form).
+Device verification pending (STATUS backlog items 13–17).
 
 ### Deliverables
 - playlists grid/list browse

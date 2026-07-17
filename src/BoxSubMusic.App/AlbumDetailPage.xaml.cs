@@ -243,6 +243,7 @@ namespace BoxSubMusic.App
                 artist,
                 FormatTrackDuration(song.Duration),
                 song.ArtistId,
+                song.AlbumId,
                 song.IsStarred);
         }
 

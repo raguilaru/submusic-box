@@ -330,6 +330,22 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   validated against the active server login at load and cleared on
   sign-out/stop; any malformed part rejects the whole state. The card
   shows only when no queue is active in the session. `PlayQueue` already carries everything the resume contract needs (track references + `QueueContext` display name/artwork), so persistence bolts on without model changes. The now-playing bar's **queue-expand control ships disabled until Slice 11** (visible-deferral pattern, Section 15 spirit); the Y-button mapping lands with Slice 11 (§10's "documented as pending" clause).
+- 2026-07-17: **Playlist detail/playback view** (the piece deferred out of
+  Slice 09; Sections 7.4/10): the layout mirrors album detail (Section 9 as
+  the template) — client-side composite header artwork at 320 epx (the same
+  §7.4 composition as the browse tile, resolved with the page load since
+  getPlaylist returns the songs), playlist name, owner, song count + total
+  duration. Play/Shuffle replace the queue with the playlist's songs in
+  stored order (Shuffle randomizes the first track too, §8 semantics);
+  song rows carry position numbers, starred markers, the current-track
+  highlight, A/Enter jump-to-track, and the standard context menu — Play,
+  favorite toggle, **Go to album AND Go to artist** (neither is circular on
+  this page). **The playlist itself has no favorite heart:** the Subsonic
+  star/unstar endpoint covers songs, albums, and artists only — no playlist
+  form exists, so the control is intentionally absent. The `QueueContext`
+  (resume-card) artwork is the first constituent album cover — the
+  single-image cut of the §7.4 composition. Playlists remain read-only in
+  v1; browse tiles now open the detail view.
 
 ## 17. Open Decisions / TODO
 

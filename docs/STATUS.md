@@ -1,18 +1,19 @@
 # Current Status
 
-Last updated: 2026-07-16 (**Slice 12 + Slice 05b session CLOSED.** Both
-implemented and committed the same day: theme selector (`df15b3f`, §12 —
-root-frame `RequestedTheme`, Automatic live-follows the system theme) and
-queue persistence + Home resume card (`edc5fde`, §6.1 — LocalFolder XML +
-LocalSettings scalars, `PlaybackService.Resume` with in-track seek; card
-Play restores and plays immediately, decision confirmed with Rafael).
-Build + all 123 tests green. **NOTHING from this session has run on any
-device yet — the Xbox is unavailable AND no VM F5 smoke pass has happened
-either.** All checks are queued in the backlog: item 1 (Slice 11 focus
-trap, carried), items 2–7 (theme), items 8–12 (resume); most of 2–12 are
-VM-F5-testable now. **Next session: FIRST prompt Rafael for the VM F5
-smoke pass (or the full console checkpoint if the Xbox is back), THEN
-start the playlist detail/playback view or Slice 13 (Search).**)
+Last updated: 2026-07-17 (**Playlist detail/playback view implemented.**
+The Xbox is STILL unavailable (Rafael confirmed); the console backlog is
+parked until he signals it is back. Rafael chose to defer the VM F5 smoke
+pass for Slices 12 + 05b and build first: the playlist detail/playback
+view (the piece deferred out of Slice 09, unblocked since Slice 10) is
+now code-complete — `PlaylistDetailPage` mirroring album detail with the
+§7.4 composite header artwork, Play/Shuffle queue replacement,
+jump-to-track + current-track highlight, starred markers, and the full
+row context menu; Playlists tiles are live. Build + all 123 tests green.
+**Nothing from Slices 12, 05b, or this view has run on any device** —
+backlog items 2–17 (item 1 carried too). **Next session: FIRST prompt
+Rafael for the VM F5 smoke pass (now also covering playlist detail, items
+13–17), or the full console checkpoint 1–17 if the Xbox is back; THEN
+start Slice 13 (Search — §17 paging decision first) or Slice 14.**)
 
 ## Where we are
 
@@ -547,6 +548,41 @@ start the playlist detail/playback view or Slice 13 (Search).**)
     session; hides live via `PlaybackService.Changed` if playback starts
     while Home is visible, with focus moved into the carousels.
 
+- **2.13 Playlist detail/playback view (implemented 2026-07-17 — the piece
+  deferred out of Slice 09, unblocked since Slice 10):**
+  - `PlaylistDetailPage` mirrors `AlbumDetailPage` (§9 as the layout
+    template): header with 320-epx **client-side composite artwork** —
+    reuses `Models/PlaylistCard` + `Core/Playlists/PlaylistArtwork` at
+    header size; the songs arrive with getPlaylist, so the covers resolve
+    with the page load (no lazy fetch, unlike the browse tiles) — playlist
+    name, "By {owner}" when the server sends one, song count + total
+    duration computed from the returned songs (summary attributes as the
+    empty-list fallback). **No favorite heart by design:** the Subsonic
+    star/unstar endpoint covers songs, albums, and artists only — there is
+    no playlist form, so the control is absent (nothing silently degrades;
+    it never existed for playlists).
+  - **Play/Shuffle replace the queue** with the playlist's songs in stored
+    order (§10 replace-not-append; Shuffle randomizes the first track too,
+    §8 semantics). `QueueContext` = playlist name + the **first
+    constituent album cover** (the single-image cut of the §7.4
+    composition) so the resume card and expanded-queue header render
+    meaningfully.
+  - Song list in stored playlist order: position numbers, starred-heart
+    markers, the accent current-track marker, A/Enter = jump-to-track
+    (queue = this playlist positioned at that song), and the
+    console-verified ListView `ContextRequested` redirect with the
+    standard menu — Play, favorite toggle (change-only-after-success,
+    repaints the row and mutates the loaded `Song` so the queue/bar stay
+    honest), **Go to album** AND **Go to artist** (both non-circular here;
+    disabled when the server omits the id). `TrackRow` gained
+    `AlbumId`/`HasAlbumId` for this (album detail now passes its ids too,
+    though its menu still omits the circular "Go to album").
+  - `PlaylistsPage` tiles are **live** (grid + list ItemClick → detail with
+    the playlist id); the "opening a playlist … later update" note is
+    gone. Editing stays out of v1 (read-only decision unchanged).
+  - Loading / empty ("This playlist has no songs." + visibly disabled
+    Play/Shuffle, §15) / retryable error states; `ContentFocus` on reveal.
+
 **Verification state (checkpoint #5, 2026-07-16):** the context-menu
 favorite toggle, the row starred markers, and the expanded queue view
 (open/close paths, jump-to-track, live updates) are **verified by Rafael**.
@@ -595,16 +631,23 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-1. **Prompt Rafael for a VM F5 smoke pass first** — Slices 12 and 05b have
-   not run on ANY device yet. VM-coverable now: theme items 2–5 and 7
-   (substituting the Windows theme setting) and the whole resume loop
-   (items 8–12). **When the Xbox is back: the full backlog 1–12** — adds
-   the Slice 11 focus trap, the Xbox-theme integration (5–6), 10-ft
-   light-theme readability (3), and the real suspend/terminate lifecycle.
-2. Then: **playlist detail/playback view** (deferred out of 09, unblocked
-   since 10), **13** (Search; §17 paging decision), **14**
-   (resilience/polish incl. the deferred nav-icon-size refinement and a
-   possible queue-row context menu).
+**2026-07-17: Rafael confirmed the Xbox is STILL unavailable.** The console
+backlog (items 1–12 below) stays parked until Rafael explicitly signals the
+Xbox is back — do not re-prompt for the console checkpoint before then; the
+VM F5 smoke pass is the only device coverage available meanwhile.
+
+1. **Prompt Rafael for a VM F5 smoke pass first** — Slices 12, 05b, AND
+   the playlist detail view have not run on ANY device yet. VM-coverable
+   now: theme items 2–5 and 7 (substituting the Windows theme setting),
+   the whole resume loop (items 8–12), and playlist detail items 13–17
+   (right-click standing in for the gamepad Menu button). **When the Xbox
+   is back: the full backlog 1–17** — adds the Slice 11 focus trap, the
+   Xbox-theme integration (5–6), 10-ft light-theme readability (3), the
+   real suspend/terminate lifecycle, and the gamepad Menu-button menu on
+   playlist rows.
+2. Then: **Slice 13** (Search; lock the §17 endpoint/paging decision
+   first), **14** (resilience/polish incl. the deferred nav-icon-size
+   refinement and a possible queue-row context menu).
 
 ## On-device test backlog (next console pass)
 
@@ -714,14 +757,40 @@ anywhere on device; the whole loop is also VM-F5-testable):**
     shows NO card (the bar is the truth); after the consecutive-failure
     stop the card must not reappear on Home either (state was cleared).
 
+**Playlist detail view (2026-07-17 — NOT yet run on any device; items
+13–17 are VM-F5-testable, with right-click standing in for the gamepad
+Menu button in item 15; the console pass adds the real Menu-button path
+and 10-ft readability):**
+
+13. **Tiles open detail:** from Playlists (grid AND list view), A opens
+    the playlist detail; the header shows the composite artwork (a
+    single-album playlist renders one full cover; 2/3/4-album playlists
+    render the adaptive composite with no empty cells), name, owner,
+    song count + total duration; B returns to the browse page.
+14. **Playback entry points:** Play starts at the first song in stored
+    order; Shuffle randomizes (the first track too); the bar reveals; the
+    expanded queue (Y) header shows the playlist name + song count; row
+    A/Enter jumps to that song and the accent current-track marker
+    follows track changes.
+15. **Row context menu:** Menu button (console) / right-click (VM) opens
+    Play, Add/Remove favorite (label tracks state, the row's heart marker
+    repaints, and the row changes only after the server accepts), Go to
+    album, and Go to artist — the latter two disabled when the server
+    omits the id; both navigate correctly when enabled.
+16. **Resume interplay:** play a playlist, quit fully, relaunch → the
+    Home resume card shows the playlist name + first constituent album
+    cover; its Play resumes at the saved song/position.
+17. **Empty playlist** (if one exists on the server): detail shows "This
+    playlist has no songs." with Play/Shuffle visibly disabled.
+
 *(Future slices: append your console items here.)*
 
 ## Known gaps / notes from this session
 
-- **Playback is in (Slices 10–11 + 05b) — remaining playback gaps:** no
-  seek from either playback surface (not a §10 requirement; the progress
-  lines are display-only; SMTC/system seek still works where the system
-  offers it), and playlists still have no detail/playback view.
+- **Playback is in (Slices 10–11 + 05b + playlist detail) — remaining
+  playback gap:** no seek from either playback surface (not a §10
+  requirement; the progress lines are display-only; SMTC/system seek
+  still works where the system offers it).
 - **Resume notes (Slice 05b):** the persisted position is ~10 s coarse
   during playback (exact on pause/suspend/track change) — a crash loses at
   most that window. The resume card's starred/metadata snapshot is as old
@@ -813,14 +882,24 @@ anywhere on device; the whole loop is also VM-F5-testable):**
   fast and the alternative (guards) adds complexity.
 - The remaining placeholder section page (Search) has no focusable content,
   so Right-into-content has no target there. Fine until that slice lands.
-- **Playlists are read-only (Slice 09):** tiles are focusable but inert — the
-  detail/playback view is now UNBLOCKED (Slice 10 queue exists) but not yet
-  built; its note still reads "arrive in a later update", which stays true.
-  Composite tile artwork loads lazily per tile (one getPlaylist
-  per playlist, run in parallel after the grid paints); a per-tile fetch
-  failure silently degrades to the placeholder. With a large number of
-  playlists this fans out to many parallel getPlaylist requests on page open —
-  acceptable for v1, revisit if it stalls the shell on device.
+- **Playlists are read-only but fully browsable (Slice 09 + the 2026-07-17
+  detail view):** tiles open the detail/playback view; create/edit/delete
+  stay out of v1. Composite tile artwork still loads lazily per tile (one
+  getPlaylist per playlist, run in parallel after the grid paints); a
+  per-tile fetch failure silently degrades to the placeholder. With a
+  large number of playlists this fans out to many parallel getPlaylist
+  requests on page open — acceptable for v1, revisit if it stalls the
+  shell on device. Opening a tile issues its own getPlaylist (no cache
+  handoff from the tile fetch) — refetch-on-navigation is the app-wide
+  freshness pattern.
+- **Playlist detail notes (2026-07-17):** a playlist can contain the same
+  song twice — the current-track highlight matches by song id, so BOTH
+  rows show the marker while that song plays (jump itself is index-based
+  and lands on the pressed row); accepted for v1. The playlist itself has
+  no favorite heart because the Subsonic star/unstar endpoint has no
+  playlist form — the control is absent by design, not a degradation.
+  The `QueueContext`/resume-card artwork is the first constituent album
+  cover, not the 2–4-cover composite (the card renders one image).
 - **Composite artwork is a live XAML layout, not a rendered bitmap:** the tile
   is a 2-column grid of ImageBrush-filled Rectangles whose row spans adapt to
   the cover count (2 = side-by-side halves, 3 = full-height + stacked,
@@ -885,6 +964,12 @@ anywhere on device; the whole loop is also VM-F5-testable):**
   `PlaybackService.Resume` with pinned one-shot seek; Home resume card
   (Play = restore + play immediately, confirmed with Rafael). Unverified
   on device — backlog items 8–12.
+- 2026-07-17: **Playlist detail/playback view** (deferred out of Slice 09)
+  — `PlaylistDetailPage` mirroring album detail with composite header
+  artwork, Play/Shuffle queue replacement, jump-to-track + highlight,
+  starred markers, full row context menu (Go to album AND artist); tiles
+  live; no playlist favorite heart (no star/unstar form for playlists).
+  Unverified on device — backlog items 13–17.
 
 ## How to deploy (quick reference)
 

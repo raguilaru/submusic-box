@@ -20,8 +20,9 @@ namespace BoxSubMusic.App
     /// only summaries, so each tile's composite artwork (up to four distinct
     /// album covers, single cover when one album) is composed client-side and
     /// fetched lazily per card after the grid is shown — the grid stays
-    /// responsive even with many playlists. Read-only for v1: cards are inert.
-    /// A connection/auth failure is a page-level error with Retry (§3).
+    /// responsive even with many playlists. Cards open the playlist detail
+    /// view; editing stays out of v1 (decision 2026-07-13). A connection/auth
+    /// failure is a page-level error with Retry (§3).
     /// </summary>
     public sealed partial class PlaylistsPage : Page
     {
@@ -238,6 +239,15 @@ namespace BoxSubMusic.App
         }
 
         // --- Navigation ------------------------------------------------------
+
+        private void Playlists_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            var card = e.ClickedItem as PlaylistCard;
+            if (card != null)
+            {
+                Frame.Navigate(typeof(PlaylistDetailPage), card.Id);
+            }
+        }
 
         private void ConnectRetryButton_Click(object sender, RoutedEventArgs e)
         {

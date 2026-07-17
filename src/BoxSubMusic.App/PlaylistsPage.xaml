@@ -13,19 +13,18 @@
          list alternate and the shared always-visible view-mode toggle (§13.5).
          Each tile's artwork is composed client-side from the playlist's
          constituent album covers (up to four distinct, single cover when one
-         album), loaded lazily per card after the grid is on screen. Read-only
-         for v1 (decision 2026-07-13): cards are focusable but do not open a
-         detail/playback view yet; a connection/auth failure is a page-level
-         error with Retry (§3). -->
+         album), loaded lazily per card after the grid is on screen. Tiles open
+         the playlist detail/playback view; editing stays out of v1 (decision
+         2026-07-13). A connection/auth failure is a page-level error with
+         Retry (§3). -->
     <Grid Padding="48,36,48,24">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <!-- Header: title + always-visible grid/list toggle (§13.5). -->
-        <Grid Grid.Row="0" Margin="0,0,0,4">
+        <Grid Grid.Row="0" Margin="0,0,0,24">
             <TextBlock
                 Text="Playlists"
                 FontSize="48"
@@ -38,17 +37,8 @@
                 ModeChanged="ViewModeToggle_Changed" />
         </Grid>
 
-        <!-- Read-only for v1: opening a playlist / playback arrives with a
-             later slice once the queue infrastructure exists. -->
-        <TextBlock
-            Grid.Row="1"
-            Text="Opening a playlist and playback arrive in a later update."
-            FontSize="16"
-            Opacity="0.6"
-            Margin="0,0,0,20" />
-
-        <!-- Content states share row 2; only one is visible at a time. -->
-        <Grid Grid.Row="2">
+        <!-- Content states share row 1; only one is visible at a time. -->
+        <Grid Grid.Row="1">
             <ProgressRing
                 x:Name="LoadingRing"
                 IsActive="False"
@@ -89,13 +79,14 @@
                     Click="ConnectRetryButton_Click" />
             </StackPanel>
 
-            <!-- Default mode: grid. Cards are focusable but inert in v1. -->
+            <!-- Default mode: grid. Cards open the playlist detail view. -->
             <GridView
                 x:Name="PlaylistsGrid"
                 XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"
                 SelectionMode="None"
                 IsItemClickEnabled="True"
+                ItemClick="Playlists_ItemClick"
                 Padding="0,0,0,24">
                 <GridView.ItemContainerStyle>
                     <Style TargetType="GridViewItem">
@@ -202,7 +193,8 @@
                 XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"
                 SelectionMode="None"
-                IsItemClickEnabled="True">
+                IsItemClickEnabled="True"
+                ItemClick="Playlists_ItemClick">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="Padding" Value="12,8" />
