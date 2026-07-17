@@ -176,6 +176,7 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
 - Users MUST be able to jump directly to any queued track from the expanded queue.
 - Any new Play action elsewhere in the app MUST replace the current queue instead of appending.
 - Song context menus MAY additionally offer explicit queue edits — "Play next" (insert directly after the current track) and "Add to queue" (append) — added 2026-07-17 (§16). These are deliberate user edits, not Play actions, and do not weaken the replace-not-append rule above.
+- The same pair applies to whole containers — albums, artists (the §8 oldest-album-first pool), and playlists — from card context menus wherever those are displayed and as secondary buttons on the corresponding detail pages (added 2026-07-18, §16). The block is inserted/appended in its internal order.
 
 ## 11. Background Playback
 
@@ -374,6 +375,71 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   Left-from-row focus is pinned to the play/pause button — checkpoint #6
   showed the XY engine picking whatever transport control was vertically
   nearest, which read as inconsistent.
+
+- 2026-07-18 (console checkpoint #7 feedback): **Container queue edits** —
+  "Play next"/"Add to queue" extend from songs to whole **albums, artists,
+  and playlists** (§10): two-item context menus (same icons) on every card
+  surface (Albums browse grid/list, artist-detail album grid, Home
+  carousels, Playlists grid/list, Artists grid/list) and icon-only
+  buttons next to Play/Shuffle on the three detail pages (placement
+  confirmed with Rafael). The block keeps its internal order (album =
+  disc/track, playlist = stored, artist = the §8 oldest-album-first pool)
+  and lands at current+1 / at the end; original-order placement and the
+  empty-queue play-immediately rule follow the 2026-07-17 song semantics.
+  Card menus fetch the songs on demand; a failed fetch changes nothing
+  (menu-closed contract). Artist adds reuse the §8 getAlbum fan-out,
+  shared with artist detail via `QueueActions.LoadArtistPoolAsync`.
+- 2026-07-18 (console checkpoint #7 feedback): **Controller hints are
+  drawn button badges, not sentences** (§13.1): `Controls/ControllerGlyph`
+  renders a monochrome outlined circle with the button letter (A/B/X/Y),
+  a pill for LB/RB, and the Fluent hamburger in a circle for the Menu
+  button — deliberately NOT the Xbox brand colors (Rafael's call) and not
+  a second icon font (§13.3 stays one set). Badges + short labels replace
+  the static hint sentences on the Songs header, both detail-page song
+  lists, the expanded queue, and the nav pane footer. Dynamic
+  input-device glyph swapping remains deferred.
+- 2026-07-18 (console checkpoint #7 feedback): **LB/RB cycle the shell
+  regions** (§13.1, superseding the 2026-07-17 fixed mapping as a strict
+  superset): RB moves nav → content → now-playing bar → nav, LB the
+  reverse; the bar is skipped while hidden; both remain inert while the
+  queue overlay traps focus. This is the requested "quick way to reach
+  the play bar" without burning a new button.
+- 2026-07-18 (console checkpoint #7 finding): **TV-safe shell inset**
+  (§2): the nav pane was clipped by TV overscan — the app-side padding
+  promised by the 2026-07-14 edge-to-edge decision now exists as
+  `ShellRoot` Padding 32,20,32,20, sized so the pane's leftmost
+  interactive pixel lands at the 48-epx TV-safe line and top/bottom
+  clear 27 epx. Backgrounds still paint the full 1920×1080 canvas; on
+  overscan-free displays the inset reads as a uniform background border
+  (accepted). The setup page already sat inside the safe area.
+
+- 2026-07-19 (console checkpoint #8 feedback): **Nav pane visual refresh**
+  (§5/§13.2/§13.3). (a) The pane renders as a **rounded floating card**
+  (radius 12, matching the now-playing bar): the OS NavigationView's own
+  pane brushes are overridden to Transparent — they live in generic.xaml's
+  theme dictionaries, the one resource class app-side overrides reliably
+  reach — and the shell draws a rounded backdrop behind the pane whose
+  width follows the open/compact state. (b) The built-in hamburger toggle
+  is retired (it was also the app's last Segoe MDL2 glyph — a standing
+  §13.3 violation) in favor of the Fluent **panel_left_contract /
+  panel_left_expand** pair (E8B6/E8BA, cmap-verified) on an ordinary
+  first menu item with `SelectsOnInvoked=False` — a menu item, not a
+  floated button or PaneHeader content, because ordinary items are the
+  pattern the gamepad focus engine is proven to handle (2026-07-14
+  PaneFooter lesson). (c) Badge letters in `ControllerGlyph` center via
+  `TextLineBounds=Tight` (checkpoint-#8 note: the default line box's
+  descender space seated capitals low).
+- 2026-07-19: **Nav icon size root cause + fix** (closes the item deferred
+  2026-07-15): the OS left-pane item template renders the icon inside a
+  Viewbox ("IconBox"), so `FontIcon.FontSize` never mattered, and the
+  box's margin resource (`NavigationViewItemIconBoxMargin`) is defined at
+  generic.xaml's **global scope** — resource references inside a system
+  template resolve at the template's own parse scope first, so an
+  App.xaml override is never consulted (on any device; both historical
+  on-device failures explained). Fix: the shell sizes each item's named
+  IconBox directly after template load (28 epx in the 48-epx icon
+  column). Accepted fragility: a future OS rename of "IconBox" would
+  silently restore small icons (fails soft).
 
 ## 17. Open Decisions / TODO
 

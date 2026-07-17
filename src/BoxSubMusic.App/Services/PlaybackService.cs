@@ -157,30 +157,55 @@ namespace BoxSubMusic.App.Services
         /// </summary>
         public void PlayNext(Song song)
         {
-            AddSong(song, insertNext: true);
+            if (song != null)
+            {
+                AddSongs(new[] { song }, insertNext: true,
+                    emptyQueueContext: new QueueContext(song.Title, song.CoverArtId));
+            }
         }
 
         /// <summary>
         /// Queue edit (context-menu "Add to queue", 2026-07-17): the song is
         /// appended to the end of the play order. Empty queue: same
-        /// play-immediately rule as <see cref="PlayNext"/>.
+        /// play-immediately rule as <see cref="PlayNext(Song)"/>.
         /// </summary>
         public void AddToQueue(Song song)
         {
-            AddSong(song, insertNext: false);
+            if (song != null)
+            {
+                AddSongs(new[] { song }, insertNext: false,
+                    emptyQueueContext: new QueueContext(song.Title, song.CoverArtId));
+            }
         }
 
-        private void AddSong(Song song, bool insertNext)
+        /// <summary>
+        /// Container form of "Play next" (2026-07-18): the whole block —
+        /// an album, a playlist, an artist pool — is inserted directly after
+        /// the current track in its given order. With no active queue the
+        /// block simply plays from its first song under
+        /// <paramref name="context"/> (the no-invisible-state rule).
+        /// </summary>
+        public void PlayNext(IReadOnlyList<Song> songs, QueueContext context)
         {
-            if (song == null)
+            AddSongs(songs, insertNext: true, emptyQueueContext: context);
+        }
+
+        /// <summary>Container form of "Add to queue" (2026-07-18): appends the block.</summary>
+        public void AddToQueue(IReadOnlyList<Song> songs, QueueContext context)
+        {
+            AddSongs(songs, insertNext: false, emptyQueueContext: context);
+        }
+
+        private void AddSongs(IReadOnlyList<Song> songs, bool insertNext, QueueContext emptyQueueContext)
+        {
+            if (songs == null || songs.Count == 0)
             {
                 return;
             }
 
             if (_list == null || Queue.IsEmpty)
             {
-                Play(new[] { song }, 0, shuffle: false,
-                    context: new QueueContext(song.Title, song.CoverArtId));
+                Play(songs, 0, shuffle: false, context: emptyQueueContext);
                 return;
             }
 
@@ -191,30 +216,41 @@ namespace BoxSubMusic.App.Services
             }
 
             // The queue and the item maps key tracks by reference identity;
-            // adding an instance that is already queued (e.g. "Play next" on
-            // the playing album's own row) needs a distinct instance.
-            if (_songToItem.ContainsKey(song))
+            // an instance that is already queued (e.g. "Play next" on the
+            // playing album's own row) — or repeated within this very batch —
+            // needs a distinct instance.
+            var added = new List<Song>(songs.Count);
+            var seen = new HashSet<Song>();
+            foreach (Song song in songs)
             {
-                song = CloneSong(song);
+                added.Add(_songToItem.ContainsKey(song) || !seen.Add(song)
+                    ? CloneSong(song)
+                    : song);
             }
 
             if (insertNext)
             {
-                Queue.InsertNext(song);
+                Queue.InsertNext(added);
             }
             else
             {
-                Queue.Append(song);
+                Queue.Append(added);
             }
 
             // Mirror: list items always sit in original (Tracks) order, so
-            // the item goes wherever the queue put the track there; under
-            // shuffle the play order is re-expressed via SetShuffledItems
-            // (console-verified not to interrupt the current track).
-            var item = CreateItem(client, song);
-            _songToItem[song] = item;
-            _itemToSong[item] = song;
-            _list.Items.Insert(IndexOfInTracks(song), item);
+            // each item goes wherever the queue put its track there (the
+            // block occupies contiguous ascending indices, so inserting in
+            // block order lands correctly); under shuffle the play order is
+            // re-expressed via SetShuffledItems (console-verified not to
+            // interrupt the current track).
+            foreach (Song song in added)
+            {
+                var item = CreateItem(client, song);
+                _songToItem[song] = item;
+                _itemToSong[item] = song;
+                _list.Items.Insert(IndexOfInTracks(song), item);
+            }
+
             if (Queue.ShuffleEnabled)
             {
                 ApplyShuffleToList();

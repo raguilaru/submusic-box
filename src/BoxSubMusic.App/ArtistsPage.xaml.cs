@@ -205,6 +205,40 @@ namespace BoxSubMusic.App
             }
         }
 
+        // --- Card context menu (container queue edits, 2026-07-18) ------------
+
+        private void Artists_ContextRequested(UIElement sender, Windows.UI.Xaml.Input.ContextRequestedEventArgs args)
+        {
+            // The gamepad Menu button raises ContextRequested on the focused
+            // item container, but the flyout sits on the template root —
+            // redirect (the console-verified pattern from the song lists).
+            var container = args.OriginalSource as Windows.UI.Xaml.Controls.Primitives.SelectorItem;
+            var root = container?.ContentTemplateRoot as FrameworkElement;
+            if (root?.ContextFlyout != null)
+            {
+                root.ContextFlyout.ShowAt(root);
+                args.Handled = true;
+            }
+        }
+
+        private void ArtistPlayNext_Click(object sender, RoutedEventArgs e)
+        {
+            var card = (sender as FrameworkElement)?.Tag as ArtistCard;
+            if (card != null)
+            {
+                _ = QueueActions.AddArtistAsync(card.Id, insertNext: true);
+            }
+        }
+
+        private void ArtistAddToQueue_Click(object sender, RoutedEventArgs e)
+        {
+            var card = (sender as FrameworkElement)?.Tag as ArtistCard;
+            if (card != null)
+            {
+                _ = QueueActions.AddArtistAsync(card.Id, insertNext: false);
+            }
+        }
+
         private void ConnectRetryButton_Click(object sender, RoutedEventArgs e)
         {
             var cts = _cts;

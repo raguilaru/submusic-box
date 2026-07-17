@@ -62,6 +62,7 @@
                 SelectionMode="None"
                 IsItemClickEnabled="True"
                 ItemClick="AlbumList_ItemClick"
+                ContextRequested="AlbumList_ContextRequested"
                 ScrollViewer.HorizontalScrollMode="Enabled"
                 ScrollViewer.HorizontalScrollBarVisibility="Hidden"
                 ScrollViewer.VerticalScrollMode="Disabled"
@@ -80,6 +81,30 @@
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:AlbumCard">
                         <StackPanel Width="220" Spacing="6">
+                            <StackPanel.ContextFlyout>
+                                <!-- Container queue edits (2026-07-18): the
+                                     album's songs are fetched on demand.
+                                     Gamepad Menu button routed via the
+                                     list-level redirect (console-verified). -->
+                                <MenuFlyout>
+                                    <MenuFlyoutItem
+                                        Text="Play next"
+                                        Tag="{x:Bind}"
+                                        Click="AlbumPlayNext_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
+                                        Text="Add to queue"
+                                        Tag="{x:Bind}"
+                                        Click="AlbumAddToQueue_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </StackPanel.ContextFlyout>
                             <Grid
                                 Width="220"
                                 Height="220"

@@ -5,27 +5,47 @@
     xmlns:local="using:BoxSubMusic.App">
 
     <Application.Resources>
-        <!-- Requirement §13.3: one consistent open-source icon set.
-             Decision 2026-07-10: Fluent UI System Icons (MIT), shipped as the
-             Regular icon font; glyph codepoints come from the set's official
-             FluentSystemIcons-Regular.json map. -->
-        <FontFamily x:Key="FluentIconFont">ms-appx:///Assets/Fonts/FluentSystemIcons-Regular.ttf#FluentSystemIcons-Regular</FontFamily>
+        <ResourceDictionary>
+            <!-- Rounded floating nav pane (console checkpoint #8 request,
+                 2026-07-19): the OS NavigationView paints its pane background
+                 rectangularly, so the pane's own brushes are silenced here and
+                 MainPage draws a rounded backdrop (radius 12, matching the
+                 now-playing bar) behind the pane instead. These brushes live
+                 in generic.xaml's THEME dictionaries, which is the one
+                 resource class app-side overrides reliably reach — unlike
+                 the global-scope Thickness lesson below. -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="Transparent" />
+                    <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="Transparent" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="Transparent" />
+                    <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="Transparent" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
 
-        <!-- The set's Filled style (added 2026-07-15, console checkpoint #4
-             follow-up): the favorite heart's starred state is a color-filled
-             heart, and the Regular font ships no filled glyphs. Same set,
-             same MIT license file. -->
-        <FontFamily x:Key="FluentIconFilledFont">ms-appx:///Assets/Fonts/FluentSystemIcons-Filled.ttf#FluentSystemIcons-Filled</FontFamily>
+            <!-- Requirement §13.3: one consistent open-source icon set.
+                 Decision 2026-07-10: Fluent UI System Icons (MIT), shipped as
+                 the Regular icon font; glyph codepoints come from the set's
+                 official FluentSystemIcons-Regular.json map. -->
+            <FontFamily x:Key="FluentIconFont">ms-appx:///Assets/Fonts/FluentSystemIcons-Regular.ttf#FluentSystemIcons-Regular</FontFamily>
 
-        <!-- 10-ft nav pane icons (console findings 2026-07-14/15): the OS
-             NavigationView left-pane template puts each item's icon in a
-             Viewbox whose size is 40 epx (hardcoded row height) minus this
-             margin — 12+12 vertical by default, i.e. a 16 epx icon.
-             FontIcon.FontSize is a no-op (Viewbox rescales), and the WinUI
-             resource NavigationViewItemOnLeftIconBoxHeight does not exist
-             in the OS generic.xaml (verified in the 26100 SDK). 6+6 gives
-             28 epx icons, pairing with the 20 epx item text in MainPage. -->
-        <Thickness x:Key="NavigationViewItemIconBoxMargin">10,6,16,6</Thickness>
+            <!-- The set's Filled style (added 2026-07-15, console checkpoint
+                 #4 follow-up): the favorite heart's starred state is a
+                 color-filled heart, and the Regular font ships no filled
+                 glyphs. Same set, same MIT license file. -->
+            <FontFamily x:Key="FluentIconFilledFont">ms-appx:///Assets/Fonts/FluentSystemIcons-Filled.ttf#FluentSystemIcons-Filled</FontFamily>
+
+            <!-- Nav icon size: the old NavigationViewItemIconBoxMargin
+                 override that lived here was removed 2026-07-19 — root cause
+                 finally understood: the template references that Thickness
+                 from generic.xaml's GLOBAL scope, and resource lookups inside
+                 a system template resolve at the template's own parse scope
+                 first, so an app-level override is never consulted (on any
+                 device — not a console quirk). Icons are enlarged by sizing
+                 each item's IconBox Viewbox from code instead (MainPage). -->
+        </ResourceDictionary>
     </Application.Resources>
 
 </Application>

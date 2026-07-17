@@ -132,8 +132,7 @@ namespace BoxSubMusic.App
 
             // Nothing to queue for an album-less artist (§15: visibly disabled
             // beats a Play that silently does nothing).
-            PlayButton.IsEnabled = detail.Albums.Count > 0;
-            ShuffleButton.IsEnabled = detail.Albums.Count > 0;
+            SetPlaybackButtonsEnabled(detail.Albums.Count > 0);
 
             ArtistNameText.Text = detail.Artist.Name;
             CountsText.Text = FormatCounts(detail.Artist.AlbumCount, detail.SongCount);
@@ -175,22 +174,44 @@ namespace BoxSubMusic.App
 
         private async void PlayButton_Click(object sender, RoutedEventArgs e)
         {
-            await StartPlaybackAsync(shuffle: false);
+            await RunPoolActionAsync(songs => PlaybackService.Instance.Play(
+                songs, 0, shuffle: false, context: PoolContext()));
         }
 
         private async void ShuffleButton_Click(object sender, RoutedEventArgs e)
         {
-            await StartPlaybackAsync(shuffle: true);
+            await RunPoolActionAsync(songs => PlaybackService.Instance.Play(
+                songs, 0, shuffle: true, context: PoolContext()));
+        }
+
+        private async void PlayNextButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Queue edits (2026-07-18): insert/append the whole pool without
+            // replacing the queue (distinct from the §8/§10 Play actions).
+            await RunPoolActionAsync(songs =>
+                PlaybackService.Instance.PlayNext(songs, PoolContext()));
+        }
+
+        private async void AddToQueueButton_Click(object sender, RoutedEventArgs e)
+        {
+            await RunPoolActionAsync(songs =>
+                PlaybackService.Instance.AddToQueue(songs, PoolContext()));
+        }
+
+        private QueueContext PoolContext()
+        {
+            return new QueueContext(_detail.Artist.Name, _detail.Artist.CoverArtId);
         }
 
         /// <summary>
-        /// §8: Play queues ALL of the artist's songs oldest-album-first (year
-        /// ascending, unknown years last, then name); Shuffle queues the same
-        /// pool randomized. getArtist carries albums without songs, so the
-        /// pool needs one getAlbum per album — fetched in parallel, like the
-        /// playlist tiles' artwork fan-out.
+        /// §8: the pool is ALL of the artist's songs oldest-album-first (year
+        /// ascending, unknown years last, then name), built by
+        /// <see cref="QueueActions.LoadArtistPoolAsync"/> — getArtist carries
+        /// albums without songs, so it fans out one getAlbum per album in
+        /// parallel. All four playback buttons share this fetch: they disable
+        /// while it runs and PlaybackStatusText reports a failure.
         /// </summary>
-        private async Task StartPlaybackAsync(bool shuffle)
+        private async Task RunPoolActionAsync(Action<List<Song>> action)
         {
             ArtistDetail detail = _detail;
             var client = AppSession.Client;
@@ -200,24 +221,12 @@ namespace BoxSubMusic.App
                 return;
             }
 
-            PlayButton.IsEnabled = false;
-            ShuffleButton.IsEnabled = false;
+            SetPlaybackButtonsEnabled(false);
             PlaybackStatusText.Visibility = Visibility.Collapsed;
             try
             {
-                var albums = detail.Albums
-                    .OrderBy(a => a.Year ?? int.MaxValue)
-                    .ThenBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
-                    .ToList();
-                AlbumDetail[] loaded = await Task.WhenAll(
-                    albums.Select(a => client.GetAlbumAsync(a.Id, cancellationToken)));
-
-                var songs = new List<Song>();
-                foreach (AlbumDetail album in loaded)
-                {
-                    songs.AddRange(album.Songs);
-                }
-
+                List<Song> songs = await QueueActions.LoadArtistPoolAsync(
+                    client, detail, cancellationToken);
                 if (songs.Count == 0)
                 {
                     PlaybackStatusText.Text = "This artist has no playable songs.";
@@ -225,11 +234,7 @@ namespace BoxSubMusic.App
                     return;
                 }
 
-                PlaybackService.Instance.Play(
-                    songs,
-                    0,
-                    shuffle,
-                    new QueueContext(detail.Artist.Name, detail.Artist.CoverArtId));
+                action(songs);
             }
             catch (OperationCanceledException)
             {
@@ -242,10 +247,16 @@ namespace BoxSubMusic.App
             }
             finally
             {
-                bool hasAlbums = _detail != null && _detail.Albums.Count > 0;
-                PlayButton.IsEnabled = hasAlbums;
-                ShuffleButton.IsEnabled = hasAlbums;
+                SetPlaybackButtonsEnabled(_detail != null && _detail.Albums.Count > 0);
             }
+        }
+
+        private void SetPlaybackButtonsEnabled(bool enabled)
+        {
+            PlayButton.IsEnabled = enabled;
+            ShuffleButton.IsEnabled = enabled;
+            PlayNextButton.IsEnabled = enabled;
+            AddToQueueButton.IsEnabled = enabled;
         }
 
         // --- Favorite heart (§8) --------------------------------------------
@@ -335,6 +346,40 @@ namespace BoxSubMusic.App
             if (e.ClickedItem is AlbumCard card)
             {
                 Frame.Navigate(typeof(AlbumDetailPage), card.Id);
+            }
+        }
+
+        // --- Album-card context menu (container queue edits, 2026-07-18) ------
+
+        private void Albums_ContextRequested(UIElement sender, Windows.UI.Xaml.Input.ContextRequestedEventArgs args)
+        {
+            // The gamepad Menu button raises ContextRequested on the focused
+            // GridViewItem, but the flyout sits on the item's template root —
+            // redirect (the console-verified pattern from the song lists).
+            var container = args.OriginalSource as Windows.UI.Xaml.Controls.Primitives.SelectorItem;
+            var root = container?.ContentTemplateRoot as FrameworkElement;
+            if (root?.ContextFlyout != null)
+            {
+                root.ContextFlyout.ShowAt(root);
+                args.Handled = true;
+            }
+        }
+
+        private void AlbumPlayNext_Click(object sender, RoutedEventArgs e)
+        {
+            var card = (sender as FrameworkElement)?.Tag as AlbumCard;
+            if (card != null)
+            {
+                _ = QueueActions.AddAlbumAsync(card.Id, insertNext: true);
+            }
+        }
+
+        private void AlbumAddToQueue_Click(object sender, RoutedEventArgs e)
+        {
+            var card = (sender as FrameworkElement)?.Tag as AlbumCard;
+            if (card != null)
+            {
+                _ = QueueActions.AddAlbumAsync(card.Id, insertNext: false);
             }
         }
 

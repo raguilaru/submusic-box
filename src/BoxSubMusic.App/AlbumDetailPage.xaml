@@ -90,6 +90,27 @@
                                     <TextBlock Text="Shuffle" FontSize="20" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
+                            <!-- Queue edits (2026-07-18): the container forms
+                                 of "Play next"/"Add to queue" — this album's
+                                 tracks, without replacing the queue. Icon-only
+                                 to keep the row from crowding; same
+                                 cmap-verified glyphs as the song menus. -->
+                            <Button
+                                x:Name="PlayNextButton"
+                                Padding="16,12"
+                                Click="PlayNextButton_Click"
+                                ToolTipService.ToolTip="Play next"
+                                AutomationProperties.Name="Play next">
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" FontSize="20" />
+                            </Button>
+                            <Button
+                                x:Name="AddToQueueButton"
+                                Padding="16,12"
+                                Click="AddToQueueButton_Click"
+                                ToolTipService.ToolTip="Add to queue"
+                                AutomationProperties.Name="Add to queue">
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" FontSize="20" />
+                            </Button>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
@@ -98,13 +119,14 @@
                      row jumps playback directly to that track (Slice 10). -->
                 <StackPanel Spacing="16">
                     <TextBlock Text="Tracks" FontSize="32" FontWeight="SemiBold" />
-                    <!-- Controller hint (console checkpoint #6: visible
-                         shortcut labels; same pattern as the Songs page). -->
-                    <TextBlock
-                        Text="Press A to play from a track. Press Menu for more options."
-                        FontSize="15"
-                        Opacity="0.6"
-                        FontStyle="Italic" />
+                    <!-- Controller hints as monochrome button badges
+                         (checkpoint #7 request, 2026-07-18). -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Opacity="0.7">
+                        <controls:ControllerGlyph Label="A" />
+                        <TextBlock Text="Play from track" FontSize="15" VerticalAlignment="Center" />
+                        <controls:ControllerGlyph Label="Menu" Margin="16,0,0,0" />
+                        <TextBlock Text="More options" FontSize="15" VerticalAlignment="Center" />
+                    </StackPanel>
                     <TextBlock
                         x:Name="NoTracksText"
                         Text="No tracks for this album."

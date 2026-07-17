@@ -335,3 +335,37 @@ advancement — everything else replaces wholesale.
 - **UI**: the expanded queue detects the play-order change by its normal
   snapshot comparison and rebuilds rows; menu items (with cmap-verified
   Fluent icons) exist on Songs rows, album track rows, and playlist rows.
+
+### Container form (albums / playlists / artists, added 2026-07-18)
+
+Checkpoint #7 extended the edits from single songs to whole containers;
+the design deliberately reuses every rule above:
+
+- **Core**: `InsertNext`/`Append` gained `IReadOnlyList<Song>` block
+  overloads (the single-song forms delegate to them). The block lands at
+  current+1 / at the end **in its internal order** — album = disc/track,
+  playlist = stored, artist = the §8 oldest-album-first pool. Original-
+  order placement and the empty-queue behavior are the single-song rules
+  applied to the block. Unit-tested (block order, shuffle placement,
+  un-shuffle at end, empty-list no-op, empty-queue block).
+- **Service**: `PlayNext/AddToQueue(IReadOnlyList<Song>, QueueContext)` —
+  clone-on-collision runs per song (including repeats *within* the batch),
+  the items are inserted at their original-order indices (a contiguous
+  ascending block, so insertion order is stable), and SetShuffledItems +
+  the resume persist run once per batch. Empty queue → `Play(block, 0,
+  unshuffled, context)` — the container plays immediately under its own
+  name/artwork.
+- **`Services/QueueActions`**: the card menus carry only ids, so the songs
+  are fetched on demand — getAlbum / getPlaylist (first-cover context) /
+  getArtist + the parallel getAlbum fan-out (`LoadArtistPoolAsync`, now
+  also used by ArtistDetailPage's Play/Shuffle — the page's four playback
+  buttons share one fetch path). Fetch failure after the menu closed
+  changes nothing (the menu-favorite contract); the artist fan-out makes
+  this the most failure-prone silent path — flagged as a refinement
+  candidate alongside the missing "added to queue" toast.
+- **Surfaces**: card context menus on Albums browse (grid/list), the
+  artist-detail album grid, the Home carousels, Playlists (grid/list),
+  Artists (grid/list) — all through the console-verified ListView/GridView
+  `ContextRequested` redirect — plus icon-only buttons next to
+  Play/Shuffle on the album, playlist, and artist detail pages (these use
+  the already-loaded songs; no refetch).

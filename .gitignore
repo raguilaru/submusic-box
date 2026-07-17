@@ -46,3 +46,6 @@ packages/
 *.lnk
 Thumbs.db
 desktop.ini
+
+# Affinity Designer lock files (editor-transient)
+*~lock~

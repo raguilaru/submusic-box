@@ -1,0 +1,49 @@
+<UserControl
+    x:Class="BoxSubMusic.App.Controls.ControllerGlyph"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!-- One controller-button badge for hint lines (checkpoint #7 request,
+         decision 2026-07-18): custom-drawn, MONOCHROME — an outlined circle
+         with the button letter (A/B/X/Y), a pill for LB/RB/View, a circle
+         with the hamburger glyph for the Menu button. Deliberately not the
+         Xbox brand colors (Rafael's call) and not a second icon font
+         (§13.3): shapes + text + one Fluent glyph, so it follows the theme
+         foreground and dims with the parent hint's Opacity. -->
+    <Border
+        x:Name="Shape"
+        Height="26"
+        MinWidth="26"
+        CornerRadius="13"
+        BorderThickness="1.5"
+        BorderBrush="{ThemeResource SystemControlForegroundBaseMediumHighBrush}"
+        Padding="6,0"
+        VerticalAlignment="Center">
+        <Grid>
+            <!-- TextLineBounds=Tight: center the GLYPH bounds, not the full
+                 line box — the default box carries descender space below the
+                 caps, which sat the letters visibly low in the badge
+                 (console checkpoint #8 note). -->
+            <TextBlock
+                x:Name="LabelText"
+                FontSize="13"
+                FontWeight="SemiBold"
+                TextLineBounds="Tight"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Center" />
+            <!-- Menu button: the hamburger, same official Fluent codepoint as
+                 the nav toggle (F561, cmap-verified — §13.3). -->
+            <FontIcon
+                x:Name="MenuIcon"
+                FontFamily="{StaticResource FluentIconFont}"
+                Glyph="&#xF561;"
+                FontSize="12"
+                Visibility="Collapsed"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Center" />
+        </Grid>
+    </Border>
+</UserControl>

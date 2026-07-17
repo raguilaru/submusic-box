@@ -1,19 +1,23 @@
 # Current Status
 
-Last updated: 2026-07-17 evening (**Console checkpoint #6 ran the whole
-backlog 1–17 — the Xbox is BACK.** Items 2–17 all passed (2 with an
-alignment note); item 1's focus trap itself held (nothing escapes, all
-reachable — the NavView.IsEnabled=false mechanism is now
-console-verified), but Left from a queue row landed on inconsistent
-transport controls. Same-day work, all code-complete and NOT yet
-device-verified: the queue-row Left fix, the Settings radio alignment
-fix, **the new "Play next"/"Add to queue" context-menu queue edits with
-icons on every song menu**, per-surface controller hint lines, and
-**LB/RB quick nav** (LB → nav pane, RB → content). Build green (compile;
-APPX0703 stays the known command-line-only packaging failure), **65 Core
-+ 66 SubsonicClient tests green**. **Next session: prompt Rafael for a VM
-F5 smoke pass or console re-test of the new backlog items 1–6; THEN start
-Slice 13 (Search — §17 paging decision first) or Slice 14.**)
+Last updated: 2026-07-19 (**Console checkpoint #8 verified ALL seven
+checkpoint-#7 items** — TV-safe inset, container queue edits from cards
+and detail pages incl. edge semantics, controller badges, LB/RB region
+cycling, pane footer hints — with one note: badge letters sat low in
+their outlines. This round, all code-complete and NOT yet
+device-verified: the **badge-letter centering fix**
+(TextLineBounds=Tight), the **rounded floating nav pane** (transparent
+pane brushes + a radius-12 backdrop matching the bar), the **modern pane
+toggle** (Fluent panel-contract/expand as a first menu item, replacing
+the Segoe MDL2 hamburger), and **bigger nav icons at last** — root cause
+found: the item template scales icons inside a Viewbox whose margin
+resource lives at generic.xaml's GLOBAL scope, unreachable by app
+overrides on any device; fixed by sizing the named `IconBox` Viewbox
+from code (16 → 28 epx). Build green (compile; APPX0703 stays the known
+command-line-only packaging failure), **70 Core + 66 SubsonicClient
+tests green**. **Next session: prompt Rafael for a VM F5 smoke pass or
+console re-test of the new backlog items 1–5; THEN start Slice 13
+(Search — §17 paging decision first) or Slice 14.**)
 
 ## Where we are
 
@@ -629,18 +633,109 @@ Slice 13 (Search — §17 paging decision first) or Slice 14.**)
     (`ContentFocus`). Both inert while the queue overlay traps focus;
     key-repeat guarded.
 
-**Verification state (checkpoint #6, 2026-07-17):** backlog items 2–17 all
-**verified by Rafael on console** (item 2 with the alignment note above) —
-that closes the Slice 12, Slice 05b, and playlist-detail device backlogs,
-including the Slice 11 focus trap mechanism. The 2.14 fixes/features above
-are the new unverified set (backlog items 1–6 below). Build green (x64
-Debug over SSH; APPX0703 packaging is the known command-line-only failure),
-**65 Core + 66 SubsonicClient** tests green.
+- **2.15 Console checkpoint #7 feedback round (2026-07-18 — fixes/features
+  code-complete, NOT yet device-verified):**
+  - **Container queue edits** ("Play next"/"Add to queue" for whole
+    albums, artists, and playlists — Rafael's request; detail-page
+    placement confirmed): Core `PlayQueue.InsertNext/Append` gained
+    **block overloads** (the block lands at current+1 in its internal
+    order / at the end; original-order placement follows the single-song
+    rules — same spot unshuffled, end under shuffle; empty queue → the
+    block becomes the queue at index 0). 5 new tests → **70 Core tests
+    green**. `PlaybackService.PlayNext/AddToQueue(IReadOnlyList<Song>,
+    QueueContext)` mirror the block into the live list (per-song
+    clone-on-collision incl. within-batch repeats; one SetShuffledItems +
+    persist at the end); **empty queue → the container plays immediately
+    from its first song** under its own context (no-invisible-state rule).
+    New `Services/QueueActions`: fetch-on-demand helpers for album
+    (getAlbum), playlist (getPlaylist, first-cover context), artist
+    (getArtist + the §8 oldest-album-first getAlbum fan-out, now shared
+    with ArtistDetailPage via `LoadArtistPoolAsync`); fetch failure =
+    nothing happens (menu-closed contract, same as the menu favorite).
+    **Surfaces:** card context menus (icons F56A/F7A8) on Albums browse
+    grid+list, artist-detail album grid, Home carousels, Playlists
+    grid+list, Artists grid+list — all via the console-verified
+    ContextRequested redirect — plus **icon-only Play next / Add to queue
+    buttons** next to Play/Shuffle on album, playlist, AND artist detail
+    (artist detail reuses the pool fetch with all four buttons disabling
+    during it).
+  - **Monochrome controller-button badges** (checkpoint-#7 request:
+    "Xbox-style icons, not colors"): new `Controls/ControllerGlyph` — an
+    outlined 26-epx circle with the button letter (A/B/X/Y), a pill for
+    LB/RB, the Fluent hamburger (F561, cmap-verified) in a circle for
+    Menu; theme-foreground monochrome, non-focusable, dims with the
+    parent hint's opacity. Not a second icon font (§13.3 intact). All
+    static hint sentences replaced: Songs header, album + playlist detail
+    lists, expanded queue, nav pane footer.
+  - **LB/RB region cycling** (checkpoint-#7 request "quick option to
+    reach the play bar"; decision 2026-07-18): RB cycles nav → content →
+    bar → nav, LB the reverse; the bar is skipped while hidden; the
+    focused region is detected by visual-tree ancestry; still inert while
+    the queue overlay is open. `NowPlayingBar` gained
+    `IsBarVisible`/`FocusPrimary()` (play/pause). From content, LB → nav
+    and RB-with-no-bar → nav, so the console-verified checkpoint-#6
+    behavior is a strict subset. Pane footer hint updated
+    ("LB/RB Menu · content · playback", "Y Queue").
+  - **TV-safe shell inset** (checkpoint-#7 finding: the nav pane was
+    clipped by TV overscan — the 2026-07-14 edge-to-edge decision
+    promised app-side padding "in Slice 14"; the bill arrived early):
+    `ShellRoot` Padding **32,20,32,20**, sized so the pane's leftmost
+    interactive pixel (item icons ~16 epx into the pane) lands at the
+    48-epx TV-safe line and top/bottom clear 27 epx. The page background
+    still paints the full canvas, so overscan crops only background;
+    SetupPage already sat at 48/64 margins and needed nothing.
+
+- **2.16 Console checkpoint #8 feedback round (2026-07-19 — nav pane
+  visual refresh, code-complete, NOT yet device-verified):**
+  - **Badge-letter centering (the one checkpoint-#8 note):**
+    `ControllerGlyph` letters sat visibly low — the TextBlock's line box
+    carries descender space below the caps, so centering the box seats
+    capital letters low. `TextLineBounds="Tight"` centers the actual
+    glyph bounds instead.
+  - **Rounded floating nav pane (request: match the bar's radius):** the
+    OS NavigationView paints its pane background as a hard rectangle, so
+    the pane brushes (`NavigationViewDefaultPaneBackground` /
+    `ExpandedPaneBackground`) are overridden to Transparent in App.xaml
+    **theme dictionaries** — the one resource class app-side overrides
+    reliably reach — and MainPage draws a `PaneBackdrop` Border behind
+    the pane: radius 12 (the bar's), acrylic-element brush (the pane's
+    former look), width following the pane state (280 open / 48 compact
+    via the existing PaneOpening/PaneClosing handlers).
+  - **Modern pane toggle (request: retire the hamburger):** the built-in
+    toggle is hidden (its glyph was Segoe MDL2 — §13.3 violation all
+    along) and replaced by an ordinary **first menu item** with the
+    Fluent panel-contract/expand pair (E8B6/E8BA, cmap-verified; glyph
+    swaps with pane state), `SelectsOnInvoked=False`, invoke toggles
+    `IsPaneOpen`. A menu item — not a floated button, not PaneHeader —
+    because ordinary items are the one pattern the gamepad focus engine
+    is proven to handle (the 2026-07-14 PaneFooter lesson).
+  - **Nav icons finally bigger (request: investigate deeper first; two
+    prior on-device failures explained):** the left-pane item template
+    renders the icon inside a **Viewbox** (`IconBox`) — a Viewbox scales
+    its child, so `FontIcon.FontSize` was always a no-op (attempt #1) —
+    and the box's size is 40 epx minus `NavigationViewItemIconBoxMargin`
+    (10,12,16,12 → a ~16-epx icon), a Thickness defined at
+    **generic.xaml's global scope**: resource references inside a system
+    template resolve at the template's own parse scope first, so the
+    App.xaml override was never consulted, on any device (attempt #2 —
+    not a console quirk). Fix: `MainPage.EnlargeNavIcons` sizes each
+    item's named `IconBox` directly after the template loads (28 epx in
+    the 48-epx icon column, margin 10,6), deferred-retry like
+    ContentFocus, re-run from ApplyNavVisibility for late-shown items.
+    The dead App.xaml override was removed with a tombstone comment.
+
+**Verification state (checkpoint #8, 2026-07-19):** all seven
+checkpoint-#7 items **verified by Rafael on console** (badges passed with
+the centering note fixed above). The 2.16 round is the new unverified set
+(backlog items 1–5 below). Build green (x64 Debug over SSH; APPX0703
+packaging is the known command-line-only failure), **70 Core + 66
+SubsonicClient** tests green.
 
 **Git state:** `main` holds Slice 10 (`f571bb4`), the checkpoint-#4 fix
 commits, Slice 11 (`87c5f28`), Slice 12 (`df15b3f`), Slice 05b
-(`edc5fde`), and the playlist detail view (`5fdb5db`) on top; the 2.14
-checkpoint-#6 round is uncommitted as of this update (see log).
+(`edc5fde`), the playlist detail view (`5fdb5db`), and the checkpoint-#6
+round (`d22f038`) on top; the 2.15 checkpoint-#7 round is uncommitted as
+of this update (see log).
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -667,17 +762,18 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-**2026-07-17 evening: the Xbox is BACK — checkpoint #6 ran the full 1–17
-backlog** (all passed except the two findings fixed the same day; see 2.14).
+**2026-07-19: checkpoint #8 closed the whole checkpoint-#7 backlog**; the
+same-day 2.16 round (badge centering, rounded pane, new toggle, big nav
+icons) is the new unverified set.
 
-1. **Prompt Rafael to verify the checkpoint-#6 round** — backlog items 1–6
-   below. Everything is console-preferred (two items are focus/10-ft
-   checks), but a VM F5 pass covers most of it first if convenient
-   (right-click stands in for the gamepad Menu button; keyboard cannot
-   stand in for LB/RB/Y — use the shared gamepad).
+1. **Prompt Rafael to verify the checkpoint-#8 round** — backlog items 1–5
+   below. The icon-size fix and the pane visuals are best judged on the
+   console (10 ft, real theme brushes); a VM F5 pass covers function
+   first (toggle invoke, backdrop width tracking, badge centering).
 2. Then: **Slice 13** (Search; lock the §17 endpoint/paging decision
-   first), **14** (resilience/polish incl. the deferred nav-icon-size
-   refinement and a possible queue-row context menu).
+   first), **14** (resilience/polish; a possible queue-row context menu).
+   The long-standing nav-icon-size refinement item closes with this
+   round if item 3 passes on device.
 
 ## On-device test backlog (next console pass)
 
@@ -693,51 +789,39 @@ console; **Automatic theme live-follow WORKS on the Xbox** (the
 `UISettings.ColorValuesChanged` open platform question is resolved: it
 fires); the whole resume loop, playlist detail, and light theme passed.
 
-Still carried from earlier: **nav pane icon size — DEFERRED to the
-refinement phase (Rafael's call 2026-07-15, low priority).** Two attempts
-failed on device: the WinUI-only `NavigationViewItemOnLeftIconBoxHeight`
-resource (absent from the OS generic.xaml — verified in the 26100 SDK) and
-the `NavigationViewItemIconBoxMargin` override (`10,6,16,6`, still in
-App.xaml). Next candidates: check whether the override is consulted at all
-on the console's OS build, or bypass the template (retemplate
-NavigationViewItem / put the FontIcon in the item Content).
+**Checkpoint #7 (2026-07-18) and checkpoint #8 (2026-07-19) are fully
+closed** — the TV-safe inset, all container queue edits (cards + detail
+pages + edge semantics), the controller badges, LB/RB region cycling, and
+the pane footer hints are console-verified; checkpoint #8's only note
+(badge letters low) is fixed in the round below. The long-deferred **nav
+pane icon size** is no longer deferred: its root cause is understood and
+fixed in code (see 2.16) — item 3 below is its device verification.
 
-**Checkpoint-#6 fix/feature round (2026-07-17 evening — NOT yet run on any
-device; VM F5 covers most with the shared gamepad — right-click stands in
-for the Menu button, but LB/RB/Y need the real controller):**
+**Checkpoint-#8 fix/feature round (2026-07-19 — NOT yet run on any device;
+pane visuals and icon size are best judged on console at 10 ft):**
 
-1. **Expanded-queue Left-from-row (re-test of the #6 finding):** from ANY
-   queue row — first, third, fifth, scrolled far down — Left lands on the
-   play/pause button, consistently. The rest of the trap behavior should
-   stay as verified (nothing escapes; B/Y close; focus returns to the
-   bar's queue button).
-2. **Settings radio alignment (re-test of the #6 note):** the three theme
-   radios' bullet and label are vertically centered on each other at
-   10 ft.
-3. **Play next / Add to queue:** from a Songs row, an album track row, AND
-   a playlist row (Menu button → new items with icons): "Play next"
-   inserts the song directly after the current track — pressing it twice
-   queues the most recent first; "Add to queue" appends to the end. In
-   both cases playback is NOT interrupted, the expanded queue (Y) shows
-   the edit immediately, and the counts in its header update. With
-   shuffle ON the insert still lands right after the current track;
-   toggling shuffle off afterwards shows the added song at the END of the
-   restored order. With NOTHING playing, both actions start playing that
-   song immediately (bar reveals; queue = that one song). Quit fully and
-   relaunch → the resume card restores the edited queue faithfully.
-4. **Menu icons:** the new context-menu icons render in both themes on
-   all three menus (no missing-glyph boxes), and the separators group the
-   items sensibly at 10 ft.
-5. **LB/RB quick nav:** from deep in any page (a detail page, a scrolled
-   list, the Songs table), LB jumps focus to the nav pane's selected
-   item; RB jumps back into the page content. Both do nothing while the
-   queue overlay is open. LB with the current section hidden (nav
-   toggles) falls back to Home.
-6. **Hint lines:** the expanded queue's hint, both detail pages' list
-   hints, and the nav pane footer hints are visible and readable at
-   10 ft; the pane footer hint disappears (not clips) when the pane is
-   collapsed with the hamburger; light theme renders all of them
-   legibly.
+1. **Badge letter centering (re-test of the #8 note):** the A/B/Y/LB/RB
+   letters sit optically centered in their outlines everywhere badges
+   appear (Songs header, detail lists, expanded queue, pane footer).
+2. **Rounded floating pane:** the nav pane renders as a rounded card
+   (radius 12, same as the bar) in both themes; no square background
+   peeks out behind the rounding; collapsing the pane (toggle item)
+   shrinks the card to the 48-epx compact strip and back without
+   visual artifacts; the expanded-queue overlay still covers everything.
+3. **Nav icon size (the long-deferred item, root cause finally fixed):**
+   the pane item icons — including Settings, Account, and the new toggle
+   — render visibly larger (28 epx, ~75% bigger than before) in both
+   pane states; hiding and re-showing a section from Settings keeps its
+   icon large; nothing clips inside the item rows.
+4. **Pane toggle item:** the first pane row shows the panel-contract
+   glyph (no hamburger anywhere); A on it collapses the pane (glyph
+   flips to panel-expand, icons-only strip remains navigable), A again
+   expands; the item never shows as "selected"; focus stays sane through
+   toggling; mouse click works too.
+5. **Pane visual regression sweep:** selection highlight, focus ring,
+   and the separator lines still render correctly on items over the new
+   backdrop; the pane footer hints still show/hide with the pane; LB
+   still lands on the selected item.
 
 *(Future slices: append your console items here.)*
 
@@ -804,21 +888,52 @@ for the Menu button, but LB/RB/Y need the real controller):**
   its song is starred from a list row); every page refetches on navigation
   and the bar re-reads on track change, so staleness cannot outlive the
   current view.
-- **Queue-edit notes ("Play next"/"Add to queue", 2026-07-17):** a song
+- **Queue-edit notes ("Play next"/"Add to queue", 2026-07-17/18):** a song
   added twice (or added while already in the queue) is a **cloned** `Song`
   instance, so starring one copy repaints only that copy's rows until the
   next refetch — the same accepted staleness class as the cross-surface
   heart note above. Under shuffle the original order receives edits at the
   END, so un-shuffling shows them last regardless of where they sat in the
-  shuffled order (documented Core semantics, unit-tested). The edits are
-  structural resume writes — a resumed queue carries them. No "added to
-  queue" toast/confirmation exists; the expanded queue (Y) is the way to
-  see the result — a §15-style feedback refinement candidate if it feels
-  mute on device.
-- **Hint lines are static text** (the Songs-header pattern): they name
-  gamepad buttons even for keyboard/mouse users. Dynamic input-glyph
-  swapping stays the deferred §13.1 item. The nav pane's footer hint hides
-  while the pane is collapsed (it would clip in the 48-epx strip).
+  shuffled order (documented Core semantics, unit-tested; blocks keep
+  their internal order). The edits are structural resume writes — a
+  resumed queue carries them. No "added to queue" toast/confirmation
+  exists; the expanded queue (Y) is the way to see the result — a
+  §15-style feedback refinement candidate if it feels mute on device.
+- **Container queue edits (2026-07-18):** card-menu adds fetch on demand —
+  album/playlist = one call, **artist = getArtist + one getAlbum per album
+  in parallel** (the known §8 fan-out cost, now reachable from any artist
+  card; large artists mean a visible delay between menu click and the
+  queue growing). A fetch failure after the menu closed changes nothing
+  and shows nothing (menu-closed contract) — with the fan-out this is the
+  most failure-prone silent path in the app; refinement candidate
+  together with the toast note above. Detail-page buttons reuse the
+  already-loaded songs (album/playlist) or the shared pool fetch with
+  button-disable + status line (artist).
+- **Hints are static badges** (`ControllerGlyph`, 2026-07-18): monochrome
+  outlined button shapes + short labels, shown even for keyboard/mouse
+  users. Dynamic input-glyph swapping stays the deferred §13.1 item. The
+  nav pane's footer hint hides while the pane is collapsed (it would clip
+  in the 48-epx strip).
+- **TV-safe inset (2026-07-18):** the shell content sits inside
+  `ShellRoot` Padding 32,20 (pane icons land at the 48-epx safe line;
+  27-epx top/bottom cleared); backgrounds still paint edge-to-edge. On
+  displays WITHOUT overscan (VM, monitors) the app now shows a 32/20-epx
+  background border around the shell — intended trade-off of the §2
+  own-padding approach. The expanded queue overlay lives inside the same
+  inset (its background matches the page brush, so the band is seamless).
+- **Nav pane visual refresh notes (2026-07-19):** the rounded backdrop's
+  width SNAPS between 280 and 48 on the pane events while the
+  NavigationView's own items animate — a brief mismatch during the slide
+  is possible (console feel-check; a width animation is the refinement if
+  it reads as jank). The pane toggle is an icon-only menu item (no label,
+  Win11 convention) that never joins the selection model; the built-in
+  toggle is hidden, which also removed the app's last Segoe MDL2 glyph.
+  `EnlargeNavIcons` depends on the template's Viewbox being NAMED
+  "IconBox" — true in the 26100 SDK template and stable across the
+  presenter styles, but a future OS template rename would silently return
+  icons to small (fails soft, nothing breaks). The old
+  `NavigationViewItemIconBoxMargin` App.xaml override is gone (proven
+  unreachable — generic.xaml global-scope resource).
 - **The now-playing report (`submission=false`) fires on every track start**,
   fire-and-forget like the play-count submission; both are silent on
   failure.
@@ -946,7 +1061,26 @@ for the Menu button, but LB/RB/Y need the real controller):**
   with cmap-verified icons on all three song menus), expanded-queue
   Left-from-row pinned to play/pause, Settings radio label centering,
   per-surface controller hint lines, and **LB/RB quick nav** (§16
-  decisions 2026-07-17). Unverified on device — backlog items 1–6.
+  decisions 2026-07-17). Console-verified at checkpoint #7 (2026-07-18).
+- 2026-07-18: **Console checkpoint #7** verified the whole checkpoint-#6
+  fix round; the same-day answer to its feedback: **container queue
+  edits** (block `InsertNext`/`Append` in Core + service, `QueueActions`
+  fetch helpers, card menus on all album/playlist/artist surfaces +
+  detail-page icon buttons), **`ControllerGlyph` monochrome button
+  badges** replacing every hint sentence, **LB/RB region cycling** (nav →
+  content → play bar), and the **TV-safe shell inset** (32/20 —
+  checkpoint-#7 overscan finding; §16 decisions 2026-07-18).
+  Console-verified at checkpoint #8 (2026-07-19).
+- 2026-07-19: **Console checkpoint #8** verified the whole checkpoint-#7
+  round (one note: badge letters low). Same-day nav-pane visual refresh:
+  badge `TextLineBounds=Tight`, **rounded floating pane** (transparent
+  pane brushes + radius-12 backdrop), **Fluent panel-contract/expand
+  toggle as a first menu item** (hamburger and the last Segoe MDL2 glyph
+  retired), and **28-epx nav icons** after finally isolating the root
+  cause (template Viewbox + generic.xaml global-scope margin resource —
+  app overrides unreachable by design; fixed via named-Viewbox sizing in
+  code). §16 decisions 2026-07-19. Unverified on device — backlog items
+  1–5.
 
 ## How to deploy (quick reference)
 

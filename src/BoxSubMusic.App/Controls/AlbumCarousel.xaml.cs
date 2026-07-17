@@ -85,5 +85,39 @@ namespace BoxSubMusic.App.Controls
                 AlbumClicked?.Invoke(this, card);
             }
         }
+
+        // --- Card context menu (container queue edits, 2026-07-18) ------------
+
+        private void AlbumList_ContextRequested(UIElement sender, Windows.UI.Xaml.Input.ContextRequestedEventArgs args)
+        {
+            // The gamepad Menu button raises ContextRequested on the focused
+            // item container, but the flyout sits on the template root —
+            // redirect (the console-verified pattern from the song lists).
+            var container = args.OriginalSource as Windows.UI.Xaml.Controls.Primitives.SelectorItem;
+            var root = container?.ContentTemplateRoot as FrameworkElement;
+            if (root?.ContextFlyout != null)
+            {
+                root.ContextFlyout.ShowAt(root);
+                args.Handled = true;
+            }
+        }
+
+        private void AlbumPlayNext_Click(object sender, RoutedEventArgs e)
+        {
+            var card = (sender as FrameworkElement)?.Tag as AlbumCard;
+            if (card != null)
+            {
+                _ = Services.QueueActions.AddAlbumAsync(card.Id, insertNext: true);
+            }
+        }
+
+        private void AlbumAddToQueue_Click(object sender, RoutedEventArgs e)
+        {
+            var card = (sender as FrameworkElement)?.Tag as AlbumCard;
+            if (card != null)
+            {
+                _ = Services.QueueActions.AddAlbumAsync(card.Id, insertNext: false);
+            }
+        }
     }
 }

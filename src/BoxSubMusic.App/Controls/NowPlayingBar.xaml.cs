@@ -54,6 +54,16 @@ namespace BoxSubMusic.App.Controls
             QueueButton.Focus(FocusState.Keyboard);
         }
 
+        /// <summary>True while the bar is revealed (a queue exists) — the
+        /// shell's LB/RB region cycle skips the bar otherwise.</summary>
+        public bool IsBarVisible => Root.Visibility == Visibility.Visible;
+
+        /// <summary>RB region-cycle target (2026-07-18): the primary control.</summary>
+        public bool FocusPrimary()
+        {
+            return PlayPauseButton.Focus(FocusState.Keyboard);
+        }
+
         public NowPlayingBar()
         {
             InitializeComponent();
