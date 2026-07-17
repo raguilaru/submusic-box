@@ -1,18 +1,16 @@
 # Current Status
 
-Last updated: 2026-07-19 (**Slice 14 (resilience/polish) — the LAST
-planned slice — is code-complete on branch `slice-14-resilience`, NOT
-yet device-verified.** Scope confirmed with Rafael: the audits + the
-no-silent-failure fixes + the expanded-queue row context menu (seek,
-dynamic input glyphs, and minor visual polish stay deferred beyond v1).
-Shipped: app-wide toast surface (queue-edit confirmations,
-container-fetch failure reports, per-track skip notices, failure-stop
-notice), queue-row context menu with overlay-close navigation, bounded
-fan-outs (artist pool + playlist tiles, ≤4 concurrent), audits clean,
-§17 error-copy TODO closed. Build green (compile; APPX0703 stays the
-known command-line-only packaging failure), **76 Core + 75
-SubsonicClient tests green**. **Next: console checkpoint #12 — backlog
-items 1–7 below.**)
+Last updated: 2026-07-19 (**Console checkpoint #12: Rafael verified all
+seven Slice 14 items on device — the LAST planned slice is closed.**
+Queue-edit confirmation toasts, toast visibility over the expanded
+queue, the container-fetch failure toast, per-track skip + failure-stop
+toasts, the queue-row context menu with overlay-close navigation, the
+bounded artist fan-out feel, and the throttled playlist tile artwork
+all passed. **Every slice 00–14 is now implemented and
+console-verified; the on-device backlog is empty.** Build green
+(compile; APPX0703 stays the known command-line-only packaging
+failure), **76 Core + 75 SubsonicClient tests green**. **PR #6 is
+merged to main — v1's planned scope is COMPLETE.**)
 
 ## Where we are
 
@@ -804,8 +802,9 @@ items 1–7 below.**)
   - **Console checkpoint #11 (2026-07-19): all eight Slice 13 items
     verified by Rafael on device — the slice is closed.**
 
-- **2.19 Slice 14 — resilience & polish (implemented 2026-07-19 —
-  code-complete, NOT yet device-verified; the last planned slice):**
+- **2.19 Slice 14 — resilience & polish (implemented 2026-07-19,
+  console-verified at checkpoint #12 the same day; the last planned
+  slice):**
   scope confirmed with Rafael up front (audits + no-silent-failure fixes
   + queue-row context menu; seek, dynamic input glyphs, and small visual
   polish deferred beyond v1). Design recorded in
@@ -855,16 +854,19 @@ items 1–7 below.**)
     codified in §16 and the §17 TODO closed; focus — nothing needed
     beyond the overlay-navigation handoff; memory — the §11 bounds
     (MaxPlayedItemsToKeepOpen=2, DecodePixelWidth caps) stand.
+  - **Console checkpoint #12 (2026-07-19): all seven Slice 14 items
+    verified by Rafael on device — the slice is closed.**
 
-**Verification state (2026-07-19):** Slice 14 is code-complete and
-**awaiting device verification — backlog items 1–7 below** (checkpoints
-#1–#11 are all closed). Build green (x64 Debug over SSH; APPX0703
+**Verification state (checkpoint #12, 2026-07-19):** the whole Slice 14
+round **verified by Rafael on console — all seven backlog items
+passed**. **Checkpoints #1–#12 are all closed; nothing is awaiting
+device verification.** Build green (x64 Debug over SSH; APPX0703
 packaging is the known command-line-only failure), **76 Core + 75
 SubsonicClient** tests green.
 
-**Git state:** `main` holds everything through Slice 13 (merged via
-PR #5 `a7fd283`; branding via PR #4 before it). Slice 14 lives on the
-open branch `slice-14-resilience`.
+**Git state:** `main` holds everything through Slice 14 (merged via
+PR #6 `7caa38b`; Slice 13 via PR #5, branding via PR #4 before it).
+No open branches.
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -891,16 +893,16 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-**2026-07-19: Slice 14 (resilience/polish) is code-complete** on
-`slice-14-resilience` — the last planned slice. Every slice 00–14 is
-now implemented; 14 awaits its console pass.
+**2026-07-19: checkpoint #12 closed Slice 14 and PR #6 is merged —
+v1's planned scope (slices 00–14) is COMPLETE**, implemented and
+console-verified end to end; the device backlog is empty.
 
-1. **Console checkpoint #12**: run backlog items 1–7 below (Rafael
-   drives F5).
-2. After the checkpoint passes: merge `slice-14-resilience` to main —
-   v1's planned scope is then complete. Remaining deferred-beyond-v1
-   candidates stay listed in "Known gaps" (seek, dynamic input glyphs,
-   small visual polish).
+There is no committed next slice. Anything further is refinement-phase
+work, picked with Rafael on request: the deferred-beyond-v1 items
+(seek, dynamic input glyphs, small visual polish), the
+transcoding-aware bitrate labels, disc headers, Songs-column tuning
+(all in "Known gaps") — plus release-prep questions (packaging/
+distribution beyond Dev Mode F5) that were never in the slice plan.
 
 ## On-device test backlog (next console pass)
 
@@ -934,39 +936,19 @@ with LB/RB precedence, All view + D-pad flow, scope filters with
 incremental paging, result actions and context menus, navigation-cache
 B-back, focus flow, empty/short-query states).
 
-Slice 14 items (checkpoint #12):
+**Checkpoint #12 (2026-07-19) closed the Slice 14 round — all seven
+items passed on device**: queue-edit confirmation toasts (song + container
+forms, legible, focus untouched), toast visibility over the open expanded
+queue, the container-fetch failure toast with the server unreachable,
+per-track skip toasts + the failure-stop toast with the bar hiding, the
+queue-row context menu (favorite sync incl. the left pane's heart,
+Go to album/artist with overlay-close navigation and correct B-back),
+acceptable large-artist start latency under the 4-request bound, and the
+throttled playlist tile artwork filling in completely.
 
-1. **Queue-edit confirmation toasts:** "Play next" / "Add to queue" from
-   a song context menu and from a container (album/playlist/artist) card
-   menu each show the confirmation toast ("… will play next" / "… added
-   to the queue"); wording legible at 10 ft; focus never moves — the
-   toast is purely visual.
-2. **Toast over the expanded queue:** with the queue overlay open (Y), a
-   queue edit's toast (triggered before opening) or a track-skip toast
-   renders visibly ON TOP of the overlay; the overlay's focus trap and
-   row navigation are unaffected.
-3. **Container-fetch failure toast:** with the server unreachable (e.g.
-   stop Navidrome / pull the Pi's network), a card-menu "Add to queue"
-   shows "Couldn't load the … — nothing was added to the queue." and the
-   queue is unchanged.
-4. **Per-track skip + failure stop:** kill the server mid-queue → each
-   failed track shows the "Skipped …" toast (newest replaces previous),
-   and once the whole queue's worth fails the "Playback stopped …" toast
-   shows and the bar hides.
-5. **Queue-row context menu:** Menu button on an expanded-queue row opens
-   the flyout (A still jumps); favorite toggle updates the row heart AND
-   the left pane's heart when it's the current track; "Go to album" /
-   "Go to artist" close the overlay and land on the detail page with
-   focus in the content; B-back returns to the previous page (the
-   overlay itself is not in the back stack — reopen with Y).
-6. **Artist fan-out feel with the 4-request bound:** Play / "Add to
-   queue" on a large artist still starts in acceptable time (bound trades
-   a little latency for not hammering the Pi).
-7. **Playlists tile artwork still fills in** (now throttled): all tiles
-   eventually composite; no tile stuck on the placeholder with a healthy
-   server.
+**The backlog is currently empty.**
 
-*(Future slices: append your console items here.)*
+*(Future work: append console items here.)*
 
 ## Known gaps / notes from this session
 
@@ -1016,8 +998,8 @@ Slice 14 items (checkpoint #12):
 - **Artist Play fan-out is bounded since Slice 14:** at most 4 getAlbum
   requests in flight (`BoundedParallel` in Core; the playlist-tile fan-out
   is gated the same way). A very large artist now trades a little start
-  latency for not hammering the server — feel-check on console
-  (backlog item 6).
+  latency for not hammering the server — start latency confirmed
+  acceptable on console at checkpoint #12.
 - **A failed stream item is skipped WITH a toast since Slice 14** ("Skipped
   '…'"); the consecutive-failure stop announces itself too. During a
   failure burst the newest toast replaces the previous one — there is no
@@ -1257,8 +1239,11 @@ Slice 14 items (checkpoint #12):
   handoff), bounded server fan-outs (Core `BoundedParallel`, ≤4;
   6 new tests → 76 Core green), audits clean (theming/states/focus/
   memory), §16 error-copy guidelines recorded, §17 TODO closed. Design
-  in 30-playback-architecture.md (Slice 14 section). On branch
-  `slice-14-resilience`, awaiting console checkpoint #12.
+  in 30-playback-architecture.md (Slice 14 section). PR #6.
+  **Checkpoint #12 (same day) verified all seven Slice 14 items on
+  console — every planned slice 00–14 is implemented and
+  console-verified. PR #6 merged (`7caa38b`): v1's planned scope is
+  COMPLETE.**
 
 ## How to deploy (quick reference)
 
