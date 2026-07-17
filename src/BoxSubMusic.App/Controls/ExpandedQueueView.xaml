@@ -218,6 +218,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Grid Grid.Row="0" ColumnSpacing="16">
@@ -256,7 +257,8 @@
                     Grid.Row="1"
                     SelectionMode="None"
                     IsItemClickEnabled="True"
-                    ItemClick="QueueList_ItemClick">
+                    ItemClick="QueueList_ItemClick"
+                    ContainerContentChanging="QueueList_ContainerContentChanging">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="Padding" Value="12,10" />
@@ -318,6 +320,17 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
+
+                <!-- Controller hint line (console checkpoint #6 feedback:
+                     visible shortcut labels, same static-text pattern as the
+                     Songs page header; dynamic input-glyph swapping remains
+                     the deferred §13.1 item). -->
+                <TextBlock
+                    Grid.Row="2"
+                    Text="Press A to jump to a song. Press Y or B to close the queue."
+                    FontSize="15"
+                    Opacity="0.6"
+                    FontStyle="Italic" />
             </Grid>
         </Grid>
     </Grid>

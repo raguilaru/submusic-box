@@ -210,6 +210,27 @@ namespace BoxSubMusic.App
             }
         }
 
+        private void PlayNext_Click(object sender, RoutedEventArgs e)
+        {
+            // Queue edits (2026-07-17): explicit insert/append, distinct from
+            // the replace-only Play actions (§10). With no queue the song
+            // simply plays (never invisible state).
+            var row = (sender as FrameworkElement)?.Tag as SongRow;
+            if (row != null)
+            {
+                PlaybackService.Instance.PlayNext(row.Song);
+            }
+        }
+
+        private void AddToQueue_Click(object sender, RoutedEventArgs e)
+        {
+            var row = (sender as FrameworkElement)?.Tag as SongRow;
+            if (row != null)
+            {
+                PlaybackService.Instance.AddToQueue(row.Song);
+            }
+        }
+
         private void StartPlayback(SongRow row)
         {
             var source = _songs;

@@ -141,6 +141,45 @@ namespace BoxSubMusic.App
                 QueueOverlay.Close();
                 e.Handled = true;
             }
+            else if (e.Key == VirtualKey.GamepadLeftShoulder
+                && !e.KeyStatus.WasKeyDown
+                && !QueueOverlay.IsOpen)
+            {
+                // Quick nav (console checkpoint #6 request, decision
+                // 2026-07-17): LB jumps focus to the nav pane from anywhere
+                // in the shell — the mnemonic pair of RB below. Inert while
+                // the overlay traps focus. A hidden selected section
+                // (nav-visibility toggle) falls back to Home.
+                var target = NavView.SelectedItem as NavigationViewItem;
+                if (target == null || target.Visibility == Visibility.Collapsed)
+                {
+                    target = HomeNavItem;
+                }
+
+                e.Handled = target.Focus(FocusState.Keyboard);
+            }
+            else if (e.Key == VirtualKey.GamepadRightShoulder
+                && !e.KeyStatus.WasKeyDown
+                && !QueueOverlay.IsOpen)
+            {
+                // RB: the other direction — into the page content. Reuses the
+                // deferred-focus helper; a page with nothing focusable (the
+                // Search placeholder) leaves focus where it was.
+                ContentFocus.MoveInto(ContentFrame);
+                e.Handled = true;
+            }
+        }
+
+        private void NavView_PaneOpening(NavigationView sender, object args)
+        {
+            NavHintPanel.Visibility = Visibility.Visible;
+        }
+
+        private void NavView_PaneClosing(NavigationView sender, NavigationViewPaneClosingEventArgs args)
+        {
+            // The compact pane is 48 epx wide; the hint text would clip into
+            // an unreadable sliver, so it hides with the pane.
+            NavHintPanel.Visibility = Visibility.Collapsed;
         }
 
         private void ContentFrame_Navigated(object sender, NavigationEventArgs e)

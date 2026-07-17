@@ -98,6 +98,13 @@
                      row jumps playback directly to that track (Slice 10). -->
                 <StackPanel Spacing="16">
                     <TextBlock Text="Tracks" FontSize="32" FontWeight="SemiBold" />
+                    <!-- Controller hint (console checkpoint #6: visible
+                         shortcut labels; same pattern as the Songs page). -->
+                    <TextBlock
+                        Text="Press A to play from a track. Press Menu for more options."
+                        FontSize="15"
+                        Opacity="0.6"
+                        FontStyle="Italic" />
                     <TextBlock
                         x:Name="NoTracksText"
                         Text="No tracks for this album."
@@ -130,20 +137,54 @@
                                              "Go to album" would be circular on
                                              this page, so the live action is
                                              "Go to artist". -->
+                                        <!-- Icons: Fluent Regular glyphs, all
+                                             cmap-verified (§13.3) — play F606,
+                                             next F56A, list-add F7A8, heart
+                                             F47A, person F5BE. -->
                                         <MenuFlyout>
                                             <MenuFlyoutItem
                                                 Text="Play"
                                                 Tag="{x:Bind}"
-                                                Click="PlayTrack_Click" />
+                                                Click="PlayTrack_Click">
+                                                <MenuFlyoutItem.Icon>
+                                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem
+                                                Text="Play next"
+                                                Tag="{x:Bind}"
+                                                Click="PlayNext_Click">
+                                                <MenuFlyoutItem.Icon>
+                                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem
+                                                Text="Add to queue"
+                                                Tag="{x:Bind}"
+                                                Click="AddToQueue_Click">
+                                                <MenuFlyoutItem.Icon>
+                                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutSeparator />
                                             <MenuFlyoutItem
                                                 Text="{x:Bind FavoriteLabel, Mode=OneWay}"
                                                 Tag="{x:Bind}"
-                                                Click="ToggleFavorite_Click" />
+                                                Click="ToggleFavorite_Click">
+                                                <MenuFlyoutItem.Icon>
+                                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF47A;" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutSeparator />
                                             <MenuFlyoutItem
                                                 Text="Go to artist"
                                                 Tag="{x:Bind}"
                                                 IsEnabled="{x:Bind HasArtistId}"
-                                                Click="GoToArtist_Click" />
+                                                Click="GoToArtist_Click">
+                                                <MenuFlyoutItem.Icon>
+                                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF5BE;" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
                                         </MenuFlyout>
                                     </Grid.ContextFlyout>
                                     <Grid.ColumnDefinitions>

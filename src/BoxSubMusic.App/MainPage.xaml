@@ -44,7 +44,30 @@
         PaneDisplayMode="Left"
         OpenPaneLength="280"
         SelectionChanged="NavView_SelectionChanged"
-        ItemInvoked="NavView_ItemInvoked">
+        ItemInvoked="NavView_ItemInvoked"
+        PaneOpening="NavView_PaneOpening"
+        PaneClosing="NavView_PaneClosing">
+
+        <!-- Global-shortcut hint (console checkpoint #6 feedback: visible
+             controller labels). Plain non-focusable text, so the PaneFooter
+             focus dead zone (2026-07-14) is irrelevant here; hidden while
+             the pane is collapsed because the strip would clip. -->
+        <NavigationView.PaneFooter>
+            <StackPanel x:Name="NavHintPanel" Margin="16,0,8,12" Spacing="2">
+                <TextBlock
+                    Text="Press LB for this menu, RB for the content."
+                    FontSize="15"
+                    Opacity="0.6"
+                    FontStyle="Italic"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Text="Press Y for the queue during playback."
+                    FontSize="15"
+                    Opacity="0.6"
+                    FontStyle="Italic"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </NavigationView.PaneFooter>
 
         <NavigationView.MenuItems>
             <NavigationViewItem Content="Search" Tag="search">

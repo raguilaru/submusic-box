@@ -298,3 +298,40 @@ Rules that matter:
 - The Home card renders only when the persisted state loads AND no queue
   is active this session (an active queue means the bar already shows the
   same truth; after Resume the card hides for the same reason).
+
+## Queue edits: "Play next" / "Add to queue" (added 2026-07-17)
+
+Console checkpoint #6 feature request; decisions confirmed with Rafael and
+recorded in §16. These are the first mutations of a *live* queue other than
+advancement — everything else replaces wholesale.
+
+- **Core** (`PlayQueue`, tested): `InsertNext(song)` inserts at
+  `CurrentIndex + 1` in the play order — repeated inserts each land at
+  current+1, so the most recent insert plays first. With shuffle off the
+  original order receives the song at the same spot (the two orders are
+  identical then); with shuffle on the original order receives it at the
+  end, so un-shuffling places it last (the original order never contained
+  it anywhere else). `Append(song)` appends to both orders. On an empty
+  queue both degrade to a single-track queue at index 0 (the service
+  normally routes that case through `Play` instead — see below).
+- **Service mirror** (`PlaybackService.PlayNext/AddToQueue`): with no
+  active queue the song simply plays as its own queue with a song-titled
+  `QueueContext` (decision: never build invisible/silent state). Otherwise
+  the new `MediaPlaybackItem` is inserted into the live list at the song's
+  original-order index — the list always sits in original order, so the
+  non-shuffled insert lands at current+1 and never at or before the
+  playing item; under shuffle the play order is re-expressed via
+  `SetShuffledItems` (console-verified not to interrupt the current
+  track). No `Play()` call — the playback state is untouched.
+- **Reference identity**: the queue, the item maps, and the row models all
+  key tracks by reference. Adding an instance that is already queued
+  ("Play next" on the playing album's own row, or the same row twice)
+  clones the `Song` first, so duplicates are distinct instances. A cloned
+  duplicate does not share `IsStarred` mutations with its sibling —
+  same accepted staleness class as the cross-surface heart repaints.
+- **Persistence**: both edits are structural, so `PersistQueueStructure`
+  rewrites the resume file; `ResumeState` needs no schema change (tracks +
+  play-order indices already express arbitrary orders).
+- **UI**: the expanded queue detects the play-order change by its normal
+  snapshot comparison and rebuilds rows; menu items (with cmap-verified
+  Fluent icons) exist on Songs rows, album track rows, and playlist rows.

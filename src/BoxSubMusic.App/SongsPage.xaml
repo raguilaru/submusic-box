@@ -128,19 +128,53 @@
                                          ListViewItem instead, which the
                                          ListView-level handler redirects here
                                          (console finding 2026-07-14). -->
+                                    <!-- Icons: Fluent Regular glyphs, all
+                                         cmap-verified (§13.3) — play F606,
+                                         next F56A, list-add F7A8, heart F47A,
+                                         album E010. -->
                                     <MenuFlyout>
                                         <MenuFlyoutItem
                                             Text="Play"
                                             Tag="{x:Bind}"
-                                            Click="PlaySong_Click" />
+                                            Click="PlaySong_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem
+                                            Text="Play next"
+                                            Tag="{x:Bind}"
+                                            Click="PlayNext_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem
+                                            Text="Add to queue"
+                                            Tag="{x:Bind}"
+                                            Click="AddToQueue_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutSeparator />
                                         <MenuFlyoutItem
                                             Text="{x:Bind FavoriteLabel, Mode=OneWay}"
                                             Tag="{x:Bind}"
-                                            Click="ToggleFavorite_Click" />
+                                            Click="ToggleFavorite_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF47A;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutSeparator />
                                         <MenuFlyoutItem
                                             Text="Go to album"
                                             Tag="{x:Bind}"
-                                            Click="GoToAlbum_Click" />
+                                            Click="GoToAlbum_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE010;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
                                     </MenuFlyout>
                                 </Grid.ContextFlyout>
                                 <Grid.ColumnDefinitions>

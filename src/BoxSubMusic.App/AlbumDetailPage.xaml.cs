@@ -197,6 +197,39 @@ namespace BoxSubMusic.App
             }
         }
 
+        private void PlayNext_Click(object sender, RoutedEventArgs e)
+        {
+            // Queue edits (2026-07-17): explicit insert/append, distinct from
+            // the replace-only Play actions (§10).
+            Song song = SongForRow(sender);
+            if (song != null)
+            {
+                PlaybackService.Instance.PlayNext(song);
+            }
+        }
+
+        private void AddToQueue_Click(object sender, RoutedEventArgs e)
+        {
+            Song song = SongForRow(sender);
+            if (song != null)
+            {
+                PlaybackService.Instance.AddToQueue(song);
+            }
+        }
+
+        private Song SongForRow(object sender)
+        {
+            var row = (sender as FrameworkElement)?.Tag as TrackRow;
+            var detail = _detail;
+            if (row == null || _rows == null || detail == null)
+            {
+                return null;
+            }
+
+            int index = _rows.IndexOf(row);
+            return index >= 0 && index < detail.Songs.Count ? detail.Songs[index] : null;
+        }
+
         private void StartPlayback(int startIndex, bool shuffle)
         {
             AlbumDetail detail = _detail;

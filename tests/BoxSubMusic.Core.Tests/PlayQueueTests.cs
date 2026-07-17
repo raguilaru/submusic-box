@@ -290,4 +290,131 @@ public class PlayQueueTests
         Assert.Same(songs[3], queue.CurrentTrack);
         Assert.Equal(3, queue.CurrentIndex);
     }
+
+    // --- InsertNext / Append (queue edits, 2026-07-17) ---------------------
+
+    [Fact]
+    public void InsertNext_Unshuffled_LandsAfterCurrentInBothOrders()
+    {
+        var queue = MakeQueue();
+        var songs = MakeSongs(4);
+        queue.Replace(songs, startIndex: 1, shuffle: false, context: null);
+        var added = MakeSong("added");
+
+        queue.InsertNext(added);
+
+        Assert.Same(added, queue.PlayOrder[2]);
+        Assert.Same(added, queue.Tracks[2]);
+        Assert.Equal(5, queue.PlayOrder.Count);
+        Assert.Equal(1, queue.CurrentIndex);
+        Assert.Same(songs[1], queue.CurrentTrack);
+    }
+
+    [Fact]
+    public void InsertNext_Twice_MostRecentPlaysFirst()
+    {
+        var queue = MakeQueue();
+        queue.Replace(MakeSongs(3), startIndex: 0, shuffle: false, context: null);
+        var first = MakeSong("first");
+        var second = MakeSong("second");
+
+        queue.InsertNext(first);
+        queue.InsertNext(second);
+
+        Assert.Same(second, queue.PlayOrder[1]);
+        Assert.Same(first, queue.PlayOrder[2]);
+    }
+
+    [Fact]
+    public void InsertNext_AtLastPosition_Appends()
+    {
+        var queue = MakeQueue();
+        var songs = MakeSongs(3);
+        queue.Replace(songs, startIndex: 2, shuffle: false, context: null);
+        var added = MakeSong("added");
+
+        queue.InsertNext(added);
+
+        Assert.Same(added, queue.PlayOrder[3]);
+        Assert.Same(added, queue.Tracks[3]);
+    }
+
+    [Fact]
+    public void InsertNext_Shuffled_PlayOrderAfterCurrent_OriginalOrderAtEnd()
+    {
+        var queue = MakeQueue();
+        var songs = MakeSongs(4);
+        queue.Replace(songs, startIndex: 0, shuffle: true, context: null);
+        Song current = queue.CurrentTrack!;
+        var added = MakeSong("added");
+
+        queue.InsertNext(added);
+
+        Assert.Same(added, queue.PlayOrder[queue.CurrentIndex + 1]);
+        Assert.Same(added, queue.Tracks[4]);
+        Assert.Same(current, queue.CurrentTrack);
+
+        // Un-shuffling restores the original order — the insert sits last.
+        queue.SetShuffle(false);
+        Assert.Equal(songs.Append(added), queue.PlayOrder);
+        Assert.Same(current, queue.CurrentTrack);
+    }
+
+    [Fact]
+    public void Append_AddsToEndOfBothOrders_CurrentUnchanged()
+    {
+        var queue = MakeQueue();
+        var songs = MakeSongs(3);
+        queue.Replace(songs, startIndex: 1, shuffle: false, context: null);
+        var added = MakeSong("added");
+
+        queue.Append(added);
+
+        Assert.Same(added, queue.PlayOrder[3]);
+        Assert.Same(added, queue.Tracks[3]);
+        Assert.Equal(1, queue.CurrentIndex);
+    }
+
+    [Fact]
+    public void Append_Shuffled_AddsToEndOfBothOrders()
+    {
+        var queue = MakeQueue();
+        queue.Replace(MakeSongs(4), startIndex: 0, shuffle: true, context: null);
+        var added = MakeSong("added");
+
+        queue.Append(added);
+
+        Assert.Same(added, queue.PlayOrder[4]);
+        Assert.Same(added, queue.Tracks[4]);
+    }
+
+    [Fact]
+    public void InsertNext_And_Append_OnEmptyQueue_BecomeSingleTrackQueue()
+    {
+        var insertQueue = MakeQueue();
+        var insertSong = MakeSong("a");
+        insertQueue.InsertNext(insertSong);
+        Assert.Same(insertSong, insertQueue.CurrentTrack);
+        Assert.Equal(0, insertQueue.CurrentIndex);
+
+        var appendQueue = MakeQueue();
+        var appendSong = MakeSong("b");
+        appendQueue.Append(appendSong);
+        Assert.Same(appendSong, appendQueue.CurrentTrack);
+        Assert.Equal(0, appendQueue.CurrentIndex);
+    }
+
+    [Fact]
+    public void InsertNext_And_Append_RaiseChanged()
+    {
+        var queue = MakeQueue();
+        queue.Replace(MakeSongs(2), startIndex: 0, shuffle: false, context: null);
+        int fired = 0;
+        queue.Changed += () => fired++;
+
+        queue.InsertNext(MakeSong("a"));
+        queue.Append(MakeSong("b"));
+
+        Assert.Equal(2, fired);
+    }
 }

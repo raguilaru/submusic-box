@@ -141,6 +141,74 @@ namespace BoxSubMusic.Core.Playback
             Changed?.Invoke();
         }
 
+        /// <summary>
+        /// Inserts a track directly after the current one in the play order
+        /// (the context menu's "Play next" — an explicit queue edit, distinct
+        /// from the §10 replace-only Play actions). Repeated inserts each
+        /// land at current+1, so the most recent insert plays first. With
+        /// shuffle off the original order gets the track at the same spot;
+        /// with shuffle on the original order gets it at the end, so
+        /// un-shuffling places it last (the original order never contained
+        /// it anywhere else). On an empty queue the track becomes a
+        /// single-track queue at index 0.
+        /// </summary>
+        public void InsertNext(Song track)
+        {
+            if (track == null)
+            {
+                throw new ArgumentNullException(nameof(track));
+            }
+
+            if (IsEmpty)
+            {
+                AddFirst(track);
+                return;
+            }
+
+            _playOrder.Insert(CurrentIndex + 1, track);
+            if (ShuffleEnabled)
+            {
+                _tracks.Add(track);
+            }
+            else
+            {
+                _tracks.Insert(CurrentIndex + 1, track);
+            }
+
+            Changed?.Invoke();
+        }
+
+        /// <summary>
+        /// Appends a track to the end of the play order and the original
+        /// order (the context menu's "Add to queue"). On an empty queue the
+        /// track becomes a single-track queue at index 0.
+        /// </summary>
+        public void Append(Song track)
+        {
+            if (track == null)
+            {
+                throw new ArgumentNullException(nameof(track));
+            }
+
+            if (IsEmpty)
+            {
+                AddFirst(track);
+                return;
+            }
+
+            _tracks.Add(track);
+            _playOrder.Add(track);
+            Changed?.Invoke();
+        }
+
+        private void AddFirst(Song track)
+        {
+            _tracks.Add(track);
+            _playOrder.Add(track);
+            CurrentIndex = 0;
+            Changed?.Invoke();
+        }
+
         /// <summary>Empties the queue (sign-out / stop).</summary>
         public void Clear()
         {

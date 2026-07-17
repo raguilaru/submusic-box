@@ -175,6 +175,7 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   - full up-next queue on the right
 - Users MUST be able to jump directly to any queued track from the expanded queue.
 - Any new Play action elsewhere in the app MUST replace the current queue instead of appending.
+- Song context menus MAY additionally offer explicit queue edits — "Play next" (insert directly after the current track) and "Add to queue" (append) — added 2026-07-17 (§16). These are deliberate user edits, not Play actions, and do not weaken the replace-not-append rule above.
 
 ## 11. Background Playback
 
@@ -307,10 +308,10 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   re-resolves on `UISettings.ColorValuesChanged` (dispatched to the UI
   thread; the `UISettings` instance is held statically so the event
   survives GC), giving live follow of a system theme change instead of the
-  launch-time snapshot `ElementTheme.Default` would give. Whether the event
-  fires on the console when the Xbox theme changes mid-session is
-  undocumented and console-unverified; the launch-time resolve is the
-  guaranteed floor. UI: three RadioButtons on Settings (chosen over a
+  launch-time snapshot `ElementTheme.Default` would give. The event was
+  undocumented for Xbox; **console checkpoint #6 (2026-07-17) verified it
+  DOES fire when the Xbox theme changes** — live-follow works on device.
+  UI: three RadioButtons on Settings (chosen over a
   ComboBox for 10-ft/controller use — no popup focus scope, all options
   visible, one A-press), applying instantly like the console's own theme
   setting; the page's XYFocus chain extends through them.
@@ -346,6 +347,33 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   (resume-card) artwork is the first constituent album cover — the
   single-image cut of the §7.4 composition. Playlists remain read-only in
   v1; browse tiles now open the detail view.
+
+- 2026-07-17 (console checkpoint #6 feedback): **Queue edits "Play next" /
+  "Add to queue"** join every song context menu (Songs rows, album track
+  rows, playlist rows) — an addition to §10's control surface, decided with
+  Rafael. Semantics: "Play next" inserts directly after the current track in
+  the play order (repeated inserts each land at current+1, so the most
+  recent plays first); "Add to queue" appends to the end of the play order.
+  Neither interrupts playback; under shuffle the original order receives the
+  song at the end, so un-shuffling places it last. With **no active queue
+  both actions play the song immediately** as its own queue (confirmed:
+  never build invisible/silent state). Repeated edits on the same row clone
+  the track instance (the queue and player mirror key by reference).
+  **Context menus gained icons** (§13.3, all cmap-verified in the shipped
+  Fluent Regular TTF): play F606, play-next F56A, add-to-queue F7A8
+  (text_bullet_list_add), heart F47A, album E010, person F5BE.
+- 2026-07-17 (console checkpoint #6 feedback): **Visible controller hints +
+  quick nav** (§13.1). Hints stay per-surface static text (the Songs-header
+  pattern; dynamic input-glyph swapping remains deferred): the expanded
+  queue gained "A jump / Y-B close" text, both detail pages' song lists
+  gained "A play / Menu options" text, and the nav pane's footer shows the
+  global shortcuts (non-focusable text — the 2026-07-14 PaneFooter focus
+  dead zone concerned focusable items; hidden while the pane is collapsed).
+  **LB jumps focus to the nav pane, RB into the page content**, app-wide in
+  the shell (inert while the queue overlay traps focus). Expanded-queue
+  Left-from-row focus is pinned to the play/pause button — checkpoint #6
+  showed the XY engine picking whatever transport control was vertically
+  nearest, which read as inconsistent.
 
 ## 17. Open Decisions / TODO
 

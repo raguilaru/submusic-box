@@ -180,8 +180,8 @@ state. **Slice 05b** (the real resume card) follows Slices 10/11.
 `ResumeState` + `PlayQueue.Restore`, app `ResumeStore`
 (LocalFolder XML structure + LocalSettings index/position scalars),
 `PlaybackService.Resume` with one-shot in-track seek, Home card whose Play
-restores and plays immediately. Console verification pending (STATUS
-backlog items 8–12).
+restores and plays immediately. Console-verified at checkpoint #6
+(2026-07-17).
 
 ### Deliverables
 - resume section (05a: stub that renders nothing without persisted context; 05b: real card)
@@ -331,7 +331,7 @@ mirrors album detail — composite header artwork, Play/Shuffle queue
 replacement, jump-to-track + current-track highlight, starred markers, and
 the standard row context menu (Go to album AND Go to artist). Tiles now
 open it. No playlist favorite heart (star/unstar has no playlist form).
-Device verification pending (STATUS backlog items 13–17).
+Console-verified at checkpoint #6 (2026-07-17).
 
 ### Deliverables
 - playlists grid/list browse
@@ -424,8 +424,8 @@ Implement theming and nav-visibility preferences.
 Implemented 2026-07-16 (§16): the nav-visibility half had existed since
 Slice 04; this slice added the theme selector — RadioButtons on Settings,
 instant apply, root-frame `RequestedTheme`, Automatic resolved from
-`UISettings` with `ColorValuesChanged` live-follow. Console verification
-pending (STATUS backlog items 2–7).
+`UISettings` with `ColorValuesChanged` live-follow. Console-verified at
+checkpoint #6 (2026-07-17) — the live-follow event fires on Xbox.
 
 ### Deliverables
 - Automatic/Dark/Light theme selector

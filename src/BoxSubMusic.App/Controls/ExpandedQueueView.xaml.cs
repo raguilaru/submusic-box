@@ -374,6 +374,19 @@ namespace BoxSubMusic.App.Controls
 
         // --- Control handlers --------------------------------------------------
 
+        private void QueueList_ContainerContentChanging(
+            ListViewBase sender, ContainerContentChangingEventArgs args)
+        {
+            // Console checkpoint #6 finding: Left from a queue row landed on
+            // whatever transport control happened to be vertically nearest —
+            // shuffle from one row, previous from another. Pin every row's
+            // Left to the primary play/pause button so the exit is one
+            // consistent, predictable target (in-tree XYFocus hints are
+            // console-verified tech; a hint must live on the focusable
+            // container itself, not the template content).
+            args.ItemContainer.XYFocusLeft = PlayPauseButton;
+        }
+
         private void QueueList_ItemClick(object sender, ItemClickEventArgs e)
         {
             if (e.ClickedItem is QueueRow row)

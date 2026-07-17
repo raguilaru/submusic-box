@@ -148,6 +148,115 @@ namespace BoxSubMusic.App.Services
             Player.Play();
         }
 
+        /// <summary>
+        /// Queue edit (context-menu "Play next", 2026-07-17): the song plays
+        /// directly after the current track; playback is not interrupted.
+        /// With no queue there is nothing to insert into — the song plays
+        /// immediately as its own queue (confirmed with Rafael: never build
+        /// invisible/silent state).
+        /// </summary>
+        public void PlayNext(Song song)
+        {
+            AddSong(song, insertNext: true);
+        }
+
+        /// <summary>
+        /// Queue edit (context-menu "Add to queue", 2026-07-17): the song is
+        /// appended to the end of the play order. Empty queue: same
+        /// play-immediately rule as <see cref="PlayNext"/>.
+        /// </summary>
+        public void AddToQueue(Song song)
+        {
+            AddSong(song, insertNext: false);
+        }
+
+        private void AddSong(Song song, bool insertNext)
+        {
+            if (song == null)
+            {
+                return;
+            }
+
+            if (_list == null || Queue.IsEmpty)
+            {
+                Play(new[] { song }, 0, shuffle: false,
+                    context: new QueueContext(song.Title, song.CoverArtId));
+                return;
+            }
+
+            var client = AppSession.Client;
+            if (client == null)
+            {
+                return;
+            }
+
+            // The queue and the item maps key tracks by reference identity;
+            // adding an instance that is already queued (e.g. "Play next" on
+            // the playing album's own row) needs a distinct instance.
+            if (_songToItem.ContainsKey(song))
+            {
+                song = CloneSong(song);
+            }
+
+            if (insertNext)
+            {
+                Queue.InsertNext(song);
+            }
+            else
+            {
+                Queue.Append(song);
+            }
+
+            // Mirror: list items always sit in original (Tracks) order, so
+            // the item goes wherever the queue put the track there; under
+            // shuffle the play order is re-expressed via SetShuffledItems
+            // (console-verified not to interrupt the current track).
+            var item = CreateItem(client, song);
+            _songToItem[song] = item;
+            _itemToSong[item] = song;
+            _list.Items.Insert(IndexOfInTracks(song), item);
+            if (Queue.ShuffleEnabled)
+            {
+                ApplyShuffleToList();
+            }
+
+            PersistQueueStructure(Session.Position);
+        }
+
+        private int IndexOfInTracks(Song song)
+        {
+            IReadOnlyList<Song> tracks = Queue.Tracks;
+            for (int i = 0; i < tracks.Count; i++)
+            {
+                if (ReferenceEquals(tracks[i], song))
+                {
+                    return i;
+                }
+            }
+
+            return tracks.Count - 1;
+        }
+
+        private static Song CloneSong(Song song)
+        {
+            return new Song(
+                song.Id,
+                song.Title,
+                song.Artist,
+                song.ArtistId,
+                song.Album,
+                song.AlbumId,
+                song.CoverArtId,
+                song.Duration,
+                song.Track,
+                song.DiscNumber,
+                song.Year,
+                song.Format,
+                song.BitRate,
+                song.ContentType,
+                song.IsStarred);
+        }
+
         public void TogglePlayPause()
         {
             if (_list == null)

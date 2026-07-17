@@ -1,19 +1,19 @@
 # Current Status
 
-Last updated: 2026-07-17 (**Playlist detail/playback view implemented.**
-The Xbox is STILL unavailable (Rafael confirmed); the console backlog is
-parked until he signals it is back. Rafael chose to defer the VM F5 smoke
-pass for Slices 12 + 05b and build first: the playlist detail/playback
-view (the piece deferred out of Slice 09, unblocked since Slice 10) is
-now code-complete — `PlaylistDetailPage` mirroring album detail with the
-§7.4 composite header artwork, Play/Shuffle queue replacement,
-jump-to-track + current-track highlight, starred markers, and the full
-row context menu; Playlists tiles are live. Build + all 123 tests green.
-**Nothing from Slices 12, 05b, or this view has run on any device** —
-backlog items 2–17 (item 1 carried too). **Next session: FIRST prompt
-Rafael for the VM F5 smoke pass (now also covering playlist detail, items
-13–17), or the full console checkpoint 1–17 if the Xbox is back; THEN
-start Slice 13 (Search — §17 paging decision first) or Slice 14.**)
+Last updated: 2026-07-17 evening (**Console checkpoint #6 ran the whole
+backlog 1–17 — the Xbox is BACK.** Items 2–17 all passed (2 with an
+alignment note); item 1's focus trap itself held (nothing escapes, all
+reachable — the NavView.IsEnabled=false mechanism is now
+console-verified), but Left from a queue row landed on inconsistent
+transport controls. Same-day work, all code-complete and NOT yet
+device-verified: the queue-row Left fix, the Settings radio alignment
+fix, **the new "Play next"/"Add to queue" context-menu queue edits with
+icons on every song menu**, per-surface controller hint lines, and
+**LB/RB quick nav** (LB → nav pane, RB → content). Build green (compile;
+APPX0703 stays the known command-line-only packaging failure), **65 Core
++ 66 SubsonicClient tests green**. **Next session: prompt Rafael for a VM
+F5 smoke pass or console re-test of the new backlog items 1–6; THEN start
+Slice 13 (Search — §17 paging decision first) or Slice 14.**)
 
 ## Where we are
 
@@ -583,28 +583,64 @@ start Slice 13 (Search — §17 paging decision first) or Slice 14.**)
   - Loading / empty ("This playlist has no songs." + visibly disabled
     Play/Shuffle, §15) / retryable error states; `ContentFocus` on reveal.
 
-**Verification state (checkpoint #5, 2026-07-16):** the context-menu
-favorite toggle, the row starred markers, and the expanded queue view
-(open/close paths, jump-to-track, live updates) are **verified by Rafael**.
-The **only open item is the overlay's focus trap** (backlog item 6 —
-NavView.IsEnabled=false is a new trapping mechanism on console): the Xbox
-is temporarily unavailable, so it carries to the next console pass. Build
-green (x64 Debug over SSH; APPX0703 packaging is the known
-command-line-only failure), **44 Core + 66 SubsonicClient** tests green.
+- **2.14 Console checkpoint #6 feedback round (2026-07-17 evening — fixes
+  code-complete, NOT yet device-verified):**
+  - **Expanded-queue Left-from-row fix (checkpoint finding, was backlog
+    item 1):** Left from a queue row went to whatever transport control was
+    vertically nearest (rows 1–2 fine, row 3 → shuffle, rows 4–5 →
+    previous). Every row container's `XYFocusLeft` is now pinned to the
+    play/pause button via `ContainerContentChanging` (in-tree XYFocus hints
+    are console-verified tech; the hint must sit on the focusable
+    ListViewItem, not the template content). The trap itself and full
+    reachability PASSED — `NavView.IsEnabled=false` is console-verified.
+  - **Settings radio alignment (checkpoint note on item 2):** the OS
+    RadioButton template top-anchors the bullet in a fixed 32-epx band
+    (center y=16) and pads content `8,6,0,0` Top-aligned — tuned for the
+    default 14-epx font, so the 20-epx labels sat ~4 epx low. Fix grounded
+    in the 26100 SDK generic.xaml: `Padding="8,0,0,0"` +
+    `VerticalContentAlignment="Center"` puts both centers at 16.
+  - **"Play next" / "Add to queue" queue edits (feature request; decisions
+    confirmed with Rafael, §16 + design-doc section):** on every song
+    context menu (Songs rows, album track rows, playlist rows). Core:
+    `PlayQueue.InsertNext` (at current+1 in play order; original order gets
+    it at the same spot unshuffled / at the end under shuffle, so
+    un-shuffling places it last; repeated inserts — most recent first) and
+    `Append`; 8 new tests → **65 Core tests green**. Service:
+    `PlayNext`/`AddToQueue` insert the `MediaPlaybackItem` into the live
+    list (original-order index; never at/before the playing item), under
+    shuffle re-express via `SetShuffledItems` (console-verified
+    non-interrupting), persist structure; **empty queue → the song plays
+    immediately as its own queue** (decision: no invisible state); an
+    already-queued instance is cloned first (reference-identity maps).
+  - **Context menus gained icons** (§13.3, cmap-verified in the shipped
+    Regular TTF): play F606, play-next F56A, add-to-queue F7A8, heart F47A,
+    album E010, person F5BE; separators group play / favorite / navigate.
+  - **Controller hint lines (checkpoint request; decision: per-surface
+    static text, the Songs-header pattern):** expanded queue ("Press A to
+    jump to a song. Press Y or B to close the queue."), album + playlist
+    detail song lists ("Press A to play… Press Menu for more options."),
+    and the nav pane footer ("LB for this menu, RB for the content" / "Y
+    for the queue during playback") — non-focusable text, so the 2026-07-14
+    PaneFooter dead zone is irrelevant; hidden while the pane is collapsed
+    (PaneOpening/PaneClosing).
+  - **LB/RB quick nav (checkpoint request; decision 2026-07-17):** in the
+    shell, LB focuses the nav pane's selected item (Home fallback when the
+    section is hidden), RB moves focus into the page content
+    (`ContentFocus`). Both inert while the queue overlay traps focus;
+    key-repeat guarded.
 
-**Slices 12 and 05b (2026-07-16) are code-complete but entirely unverified
-on device** (Xbox still unavailable): their console checks are backlog
-items 2–7 (theme) and 8–12 (resume). Build green after both slices
-(x64 Debug over SSH; APPX0703 stays the known command-line-only packaging
-failure), **57 Core + 66 SubsonicClient** tests green. Most checks
-(theme radios/persistence/Automatic-via-Windows-theme; the whole resume
-loop) are VM-F5-testable before the console pass; the console adds the
-Xbox-theme integration, 10-ft light-theme readability, and the real
-suspend/terminate lifecycle.
+**Verification state (checkpoint #6, 2026-07-17):** backlog items 2–17 all
+**verified by Rafael on console** (item 2 with the alignment note above) —
+that closes the Slice 12, Slice 05b, and playlist-detail device backlogs,
+including the Slice 11 focus trap mechanism. The 2.14 fixes/features above
+are the new unverified set (backlog items 1–6 below). Build green (x64
+Debug over SSH; APPX0703 packaging is the known command-line-only failure),
+**65 Core + 66 SubsonicClient** tests green.
 
 **Git state:** `main` holds Slice 10 (`f571bb4`), the checkpoint-#4 fix
-commits, Slice 11 (`87c5f28`), Slice 12 (`df15b3f`), and Slice 05b
-(`edc5fde`) on top (see log).
+commits, Slice 11 (`87c5f28`), Slice 12 (`df15b3f`), Slice 05b
+(`edc5fde`), and the playlist detail view (`5fdb5db`) on top; the 2.14
+checkpoint-#6 round is uncommitted as of this update (see log).
 
 ## Working mode (updated 2026-07-14: console checkpoints are BACK)
 
@@ -631,157 +667,77 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-**2026-07-17: Rafael confirmed the Xbox is STILL unavailable.** The console
-backlog (items 1–12 below) stays parked until Rafael explicitly signals the
-Xbox is back — do not re-prompt for the console checkpoint before then; the
-VM F5 smoke pass is the only device coverage available meanwhile.
+**2026-07-17 evening: the Xbox is BACK — checkpoint #6 ran the full 1–17
+backlog** (all passed except the two findings fixed the same day; see 2.14).
 
-1. **Prompt Rafael for a VM F5 smoke pass first** — Slices 12, 05b, AND
-   the playlist detail view have not run on ANY device yet. VM-coverable
-   now: theme items 2–5 and 7 (substituting the Windows theme setting),
-   the whole resume loop (items 8–12), and playlist detail items 13–17
-   (right-click standing in for the gamepad Menu button). **When the Xbox
-   is back: the full backlog 1–17** — adds the Slice 11 focus trap, the
-   Xbox-theme integration (5–6), 10-ft light-theme readability (3), the
-   real suspend/terminate lifecycle, and the gamepad Menu-button menu on
-   playlist rows.
+1. **Prompt Rafael to verify the checkpoint-#6 round** — backlog items 1–6
+   below. Everything is console-preferred (two items are focus/10-ft
+   checks), but a VM F5 pass covers most of it first if convenient
+   (right-click stands in for the gamepad Menu button; keyboard cannot
+   stand in for LB/RB/Y — use the shared gamepad).
 2. Then: **Slice 13** (Search; lock the §17 endpoint/paging decision
    first), **14** (resilience/polish incl. the deferred nav-icon-size
    refinement and a possible queue-row context menu).
 
 ## On-device test backlog (next console pass)
 
-**Checkpoint #3 (2026-07-14) ran the previously accumulated items 1–18.**
-Rafael reported three issues (fixed same day — see "Where we are"); no other
-problems were reported. Still open:
+**Checkpoints #3–#5 (2026-07-14 → 2026-07-16) and their re-tests are fully
+closed**
+(see git history / earlier revisions of this file for the item-by-item
+detail). **Checkpoint #6 (2026-07-17) ran the accumulated items 1–17 —
+Slice 11 focus trap, Slice 12 theme, Slice 05b resume, playlist detail —
+and Rafael verified ALL of them** except two findings fixed the same day
+(queue-row Left focus; radio label alignment — both in the new list below).
+Notable closures: the `NavView.IsEnabled=false` focus trap works on
+console; **Automatic theme live-follow WORKS on the Xbox** (the
+`UISettings.ColorValuesChanged` open platform question is resolved: it
+fires); the whole resume loop, playlist detail, and light theme passed.
 
-**Console-verified 2026-07-14 (re-tests #4–#6):** nav restructure
-(Settings/Account reachable), XYFocusDown hints (toggle/heart), in-content
-navigation focus (card → detail both paths, Songs, B-back), favorite heart
-renders, main-content sizing at 1:1 scale, Songs AND album-track context
-menus. Still open:
+Still carried from earlier: **nav pane icon size — DEFERRED to the
+refinement phase (Rafael's call 2026-07-15, low priority).** Two attempts
+failed on device: the WinUI-only `NavigationViewItemOnLeftIconBoxHeight`
+resource (absent from the OS generic.xaml — verified in the 26100 SDK) and
+the `NavigationViewItemIconBoxMargin` override (`10,6,16,6`, still in
+App.xaml). Next candidates: check whether the override is consulted at all
+on the console's OS build, or bypass the template (retemplate
+NavigationViewItem / put the FontIcon in the item Content).
 
-**Also console-verified (re-tests #8–#9, 2026-07-15):** starred-heart
-visuals, edge-to-edge rendering, no edge clipping, Settings toggle focus
-chain (up/down walks the switches, Left reaches the nav). Still open:
+**Checkpoint-#6 fix/feature round (2026-07-17 evening — NOT yet run on any
+device; VM F5 covers most with the shared gamepad — right-click stands in
+for the Menu button, but LB/RB/Y need the real controller):**
 
-1. ~~Release|x64 .NET Native run~~ — **DONE, console checkpoint #4
-   2026-07-15** ("plays music as expected"). Debug/Release parity risk for
-   the media stack is retired.
-2. **DEFERRED to the refinement phase (Rafael's call 2026-07-15, low
-   priority): nav pane icon size.** Two attempts failed on device: the
-   WinUI-only `NavigationViewItemOnLeftIconBoxHeight` resource (absent
-   from the OS generic.xaml — verified in the 26100 SDK) and the
-   `NavigationViewItemIconBoxMargin` override (`10,6,16,6`, still in
-   App.xaml — the template math said 40-epx row minus margin = icon
-   height, but on-device the icons did not grow). Next candidates when
-   picked back up: verify whether the override is being consulted at all
-   on the console's OS build (the 26100 *SDK* template may not match the
-   console's), or bypass the template entirely — retemplate
-   NavigationViewItem, or drop the Icon property and put the FontIcon in
-   the item Content.
-
-**Checkpoint #4 (2026-07-15) ran all Slice 10 items** — everything passed
-except the four findings fixed the same day. **Re-test (same day):
-scrobbling, bar Up/Left focus, bar favorite heart, and nav re-click all
-verified working on console.** Two new findings from that pass (heart visual
-redesign + browse-page Up-to-toggle) were fixed the same day. Open items for
-the next console pass:
-
-**Console-verified 2026-07-15 (third round):** heart redesign on all three
-surfaces, browse-page Up-to-toggle (grid + list, all three sections), guide
-media card (A on the media tile shows the full OS control set). Still open:
-
-**Checkpoint #5 (2026-07-16) ran items 3–8:** context-menu favorite toggle
-(3), row starred markers (4), and the expanded queue view (5, 7, 8 —
-open/close paths, jump-to-track, live updates) all **verified by Rafael**.
-One item could not be run (Xbox temporarily unavailable) and stays open:
-
-1. **Focus trap while the overlay is open** (was item 6): focus lands on
-   the current track's queue row on open (visible ring); XY can reach every
-   transport control and the queue list, and **cannot escape into the nav
-   pane or the page behind** — especially Left from the leftmost transport
-   buttons and Up from the top row. The trap is `NavView.IsEnabled=false`,
-   a mechanism not yet exercised on console (the PaneFooter history is why
-   this deserves an explicit check). Also confirm that after closing, focus
-   returns to the bar's queue button.
-
-**Slice 12 (2026-07-16, theme selector — NOT yet run anywhere on device;
-items 2–5 and 7 are also VM-F5 smoke-testable, substituting the Windows
-theme setting for the Xbox one):**
-
-2. **Theme radios by controller:** on Settings, D-pad Down from the
-   Playlists switch reaches Automatic → Dark → Light (bottom edge pinned,
-   no straying into the nav pane); Up walks back through the toggles; Left
-   exits to the nav; A checks a radio and the check state is readable at
+1. **Expanded-queue Left-from-row (re-test of the #6 finding):** from ANY
+   queue row — first, third, fifth, scrolled far down — Left lands on the
+   play/pause button, consistently. The rest of the trap behavior should
+   stay as verified (nothing escapes; B/Y close; focus returns to the
+   bar's queue button).
+2. **Settings radio alignment (re-test of the #6 note):** the three theme
+   radios' bullet and label are vertically centered on each other at
    10 ft.
-3. **Instant re-theme, all surfaces:** selecting Dark/Light re-themes
-   immediately with no restart and no artifacts — nav pane, all browse
-   pages (grid + list), both detail pages, Songs, Playlists tiles,
-   now-playing bar, expanded queue overlay, context flyouts, tooltips.
-   In **light theme** specifically check: focus ring visibility at 10 ft,
-   the FavoriteHeart (starred: accent fill + black rim; unstarred: dark
-   outline) on all three surfaces, row starred markers, and the
-   now-playing bar's chrome-brush background contrast.
-4. **Persistence:** pick Dark (then Light), quit the app fully, relaunch —
-   the choice survives, and the very first rendered frame is already the
-   chosen theme (no flash of the other theme).
-5. **Automatic at launch:** with the mode on Automatic, the app matches
-   the console's Settings → General → Personalization → "My color &
-   theme" at launch, for both console values.
-6. **Automatic live-follow (the open platform question):** with the app
-   running in Automatic, change the Xbox theme — does the app re-theme
-   without a restart? `UISettings.ColorValuesChanged` on Xbox is
-   undocumented; if it never fires, the launch snapshot is the accepted
-   fallback and the §16 entry + this doc must be updated to say so.
-7. **Setup page in light theme:** sign out while in Light — the setup
-   page renders themed (the root-frame mechanism covers it; confirm).
-
-**Slice 05b (2026-07-16, queue persistence + resume card — NOT yet run
-anywhere on device; the whole loop is also VM-F5-testable):**
-
-8. **The resume loop:** play something (an album, mid-queue), quit the app
-   fully, relaunch → Home shows "Pick up where you left off" with the
-   context artwork + name and the saved track's "Title · Artist"; the card
-   is reachable by D-pad; A starts playback at that track, within ~10 s of
-   the saved position (exact when the app was paused/suspended before the
-   quit); the bar reveals and the card hides.
-9. **No auto-play at launch:** with persisted state present, launch is
-   silent until the card is pressed — nothing restores by itself.
-10. **Fidelity:** resume a shuffled queue with repeat set — the expanded
-    queue (Y) shows the same play order with the marker on the right
-    track, and the bar's shuffle/repeat toggles show the saved states.
-11. **Sign-out clears:** sign out, set up again → no resume card (also
-    covers the different-server/user validation).
-12. **Card suppression:** while something is playing, navigating to Home
-    shows NO card (the bar is the truth); after the consecutive-failure
-    stop the card must not reappear on Home either (state was cleared).
-
-**Playlist detail view (2026-07-17 — NOT yet run on any device; items
-13–17 are VM-F5-testable, with right-click standing in for the gamepad
-Menu button in item 15; the console pass adds the real Menu-button path
-and 10-ft readability):**
-
-13. **Tiles open detail:** from Playlists (grid AND list view), A opens
-    the playlist detail; the header shows the composite artwork (a
-    single-album playlist renders one full cover; 2/3/4-album playlists
-    render the adaptive composite with no empty cells), name, owner,
-    song count + total duration; B returns to the browse page.
-14. **Playback entry points:** Play starts at the first song in stored
-    order; Shuffle randomizes (the first track too); the bar reveals; the
-    expanded queue (Y) header shows the playlist name + song count; row
-    A/Enter jumps to that song and the accent current-track marker
-    follows track changes.
-15. **Row context menu:** Menu button (console) / right-click (VM) opens
-    Play, Add/Remove favorite (label tracks state, the row's heart marker
-    repaints, and the row changes only after the server accepts), Go to
-    album, and Go to artist — the latter two disabled when the server
-    omits the id; both navigate correctly when enabled.
-16. **Resume interplay:** play a playlist, quit fully, relaunch → the
-    Home resume card shows the playlist name + first constituent album
-    cover; its Play resumes at the saved song/position.
-17. **Empty playlist** (if one exists on the server): detail shows "This
-    playlist has no songs." with Play/Shuffle visibly disabled.
+3. **Play next / Add to queue:** from a Songs row, an album track row, AND
+   a playlist row (Menu button → new items with icons): "Play next"
+   inserts the song directly after the current track — pressing it twice
+   queues the most recent first; "Add to queue" appends to the end. In
+   both cases playback is NOT interrupted, the expanded queue (Y) shows
+   the edit immediately, and the counts in its header update. With
+   shuffle ON the insert still lands right after the current track;
+   toggling shuffle off afterwards shows the added song at the END of the
+   restored order. With NOTHING playing, both actions start playing that
+   song immediately (bar reveals; queue = that one song). Quit fully and
+   relaunch → the resume card restores the edited queue faithfully.
+4. **Menu icons:** the new context-menu icons render in both themes on
+   all three menus (no missing-glyph boxes), and the separators group the
+   items sensibly at 10 ft.
+5. **LB/RB quick nav:** from deep in any page (a detail page, a scrolled
+   list, the Songs table), LB jumps focus to the nav pane's selected
+   item; RB jumps back into the page content. Both do nothing while the
+   queue overlay is open. LB with the current section hidden (nav
+   toggles) falls back to Home.
+6. **Hint lines:** the expanded queue's hint, both detail pages' list
+   hints, and the nav pane footer hints are visible and readable at
+   10 ft; the pane footer hint disappears (not clips) when the pane is
+   collapsed with the hamburger; light theme renders all of them
+   legibly.
 
 *(Future slices: append your console items here.)*
 
@@ -802,18 +758,15 @@ and 10-ft readability):**
   this session. Suspend-position flush relies on OnSuspending actually
   firing — true for normal Xbox app lifecycle; a hard kill from the OS UI
   without suspension falls back to the 10 s scalars.
-- **Theme notes (Slice 12):** Automatic's live-follow depends on
-  `UISettings.ColorValuesChanged` firing on the console for an Xbox theme
-  change — undocumented, console-check item 6; the launch-time resolve is
-  the guaranteed floor either way. The event also fires for accent-color
+- **Theme notes (Slice 12):** Automatic's live-follow is **console-verified
+  (checkpoint #6, 2026-07-17): `UISettings.ColorValuesChanged` DOES fire on
+  the Xbox** when the console theme changes — the open platform question is
+  resolved, no fallback needed. The event also fires for accent-color
   changes (harmless: the handler just re-applies the same resolved theme).
   `FavoriteHeart` reads `SystemAccentColor` once at construction, so an
   accent change mid-session repaints hearts only after their page/control
-  is rebuilt — pre-existing behavior, unchanged by this slice. Light theme
-  has never been seen on a real TV: every surface uses `ThemeResource`
-  brushes so it renders, but 10-ft contrast (focus rings, the black-rimmed
-  heart, the bar's chrome background) is exactly what checkpoint item 3
-  verifies.
+  is rebuilt — pre-existing behavior, unchanged by this slice. Light-theme
+  10-ft contrast passed checkpoint #6 (item 3).
 - **Expanded-queue scope notes (Slice 11):** queue rows are jump-only — no
   context menu (favorite/go-to from a queue row are refinement-phase
   candidates; the established row-menu pattern drops in unchanged). The
@@ -851,6 +804,21 @@ and 10-ft readability):**
   its song is starred from a list row); every page refetches on navigation
   and the bar re-reads on track change, so staleness cannot outlive the
   current view.
+- **Queue-edit notes ("Play next"/"Add to queue", 2026-07-17):** a song
+  added twice (or added while already in the queue) is a **cloned** `Song`
+  instance, so starring one copy repaints only that copy's rows until the
+  next refetch — the same accepted staleness class as the cross-surface
+  heart note above. Under shuffle the original order receives edits at the
+  END, so un-shuffling shows them last regardless of where they sat in the
+  shuffled order (documented Core semantics, unit-tested). The edits are
+  structural resume writes — a resumed queue carries them. No "added to
+  queue" toast/confirmation exists; the expanded queue (Y) is the way to
+  see the result — a §15-style feedback refinement candidate if it feels
+  mute on device.
+- **Hint lines are static text** (the Songs-header pattern): they name
+  gamepad buttons even for keyboard/mouse users. Dynamic input-glyph
+  swapping stays the deferred §13.1 item. The nav pane's footer hint hides
+  while the pane is collapsed (it would clip in the 48-epx strip).
 - **The now-playing report (`submission=false`) fires on every track start**,
   fire-and-forget like the play-count submission; both are silent on
   failure.
@@ -969,7 +937,16 @@ and 10-ft readability):**
   artwork, Play/Shuffle queue replacement, jump-to-track + highlight,
   starred markers, full row context menu (Go to album AND artist); tiles
   live; no playlist favorite heart (no star/unstar form for playlists).
-  Unverified on device — backlog items 13–17.
+  Console-verified at checkpoint #6.
+- 2026-07-17 evening: **Console checkpoint #6** verified everything from
+  Slices 11 (focus trap), 12 (theme — incl. `ColorValuesChanged` firing on
+  Xbox), 05b (resume), and playlist detail; two findings + feature
+  requests answered the same day: **queue edits "Play next"/"Add to
+  queue"** (Core `InsertNext`/`Append` + live-list mirror + menu items
+  with cmap-verified icons on all three song menus), expanded-queue
+  Left-from-row pinned to play/pause, Settings radio label centering,
+  per-surface controller hint lines, and **LB/RB quick nav** (§16
+  decisions 2026-07-17). Unverified on device — backlog items 1–6.
 
 ## How to deploy (quick reference)
 

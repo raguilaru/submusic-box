@@ -68,11 +68,20 @@
             FontSize="20"
             Opacity="0.7" />
 
+        <!-- Bullet/label alignment (console checkpoint #6 note): the OS
+             RadioButton template top-anchors the bullet in a fixed 32-epx
+             band (center y=16) and gives the content Padding="8,6,0,0" with
+             Top alignment — tuned for the default 14-epx font, so our 20-epx
+             labels sat ~4 epx low. Zeroing the top padding and centering the
+             content puts both centers at 16 (verified against the 26100 SDK
+             generic.xaml template). -->
         <RadioButton
             x:Name="ThemeAutomatic"
             Content="Automatic"
             GroupName="Theme"
             FontSize="20"
+            Padding="8,0,0,0"
+            VerticalContentAlignment="Center"
             XYFocusUp="{x:Bind PlaylistsToggle}"
             XYFocusDown="{x:Bind ThemeDark}"
             Checked="Theme_Checked" />
@@ -81,6 +90,8 @@
             Content="Dark"
             GroupName="Theme"
             FontSize="20"
+            Padding="8,0,0,0"
+            VerticalContentAlignment="Center"
             XYFocusUp="{x:Bind ThemeAutomatic}"
             XYFocusDown="{x:Bind ThemeLight}"
             Checked="Theme_Checked" />
@@ -89,6 +100,8 @@
             Content="Light"
             GroupName="Theme"
             FontSize="20"
+            Padding="8,0,0,0"
+            VerticalContentAlignment="Center"
             XYFocusUp="{x:Bind ThemeDark}"
             XYFocusDown="{x:Bind ThemeLight}"
             Checked="Theme_Checked" />
