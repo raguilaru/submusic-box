@@ -1,14 +1,17 @@
 # Current Status
 
-Last updated: 2026-07-19 (**Console checkpoint #10: Rafael verified the
-whole 2.17 rename/branding round on console — everything passed** (full
-logo on tiles/setup page, guide app-list icon after the 1.0.1.0
-versioned redeploy, splash with no seam, `SubMusicBox` client name in
-Navidrome). **The on-device backlog is EMPTY for the first time since
-checkpoint #3.** The verified fixes sit on branch
-`branding-full-logo-fixes` (`eb88231`, pushed), ready to merge to main.
-**Next: Slice 13 (Search) — the §17 endpoint/scopes/paging decisions
-are being locked with Rafael, then implement.**)
+Last updated: 2026-07-19 (**Console checkpoint #10 closed the 2.17
+branding round — all passed; branding merged to main (PR #4). Same day:
+Slice 13 (Search) implemented** (2.18): the §17 decisions were locked
+with Rafael first (search3, submit-triggered, "All" view + scope
+filters, incremental scoped paging, Songs-browse queue semantics for
+song results), then `SubsonicApiClient.SearchAsync` + `SearchPage`
+landed on branch `slice-13-search`. Build green (compile; APPX0703
+stays the known command-line-only packaging failure), **70 Core + 75
+SubsonicClient tests green** (9 new: 8 search unit-test cases + 1 live
+search test). NOT yet device-verified —
+backlog below. **Next: VM smoke test (F5), then the console pass; then
+Slice 14.**)
 
 ## Where we are
 
@@ -751,6 +754,53 @@ are being locked with Rafael, then implement.**)
     three URL tests now assert against `SubsonicApiClient.ClientName`
     instead of a literal, keeping tests name-agnostic.
 
+- **2.18 Slice 13 — Search (implemented 2026-07-19 — code-complete, NOT
+  yet device-verified):**
+  - **All four §17 decisions locked with Rafael before coding** (recorded
+    in §16): search3 endpoint, submit-triggered (no live-as-you-type),
+    "All" view + scope filters, Songs-browse queue semantics for song
+    results.
+  - Client: `SearchAsync(query, artistCount, albumCount, songCount,
+    offsets…)` + `SearchResult` model (artists/albums/songs mapped with
+    the existing MapArtist/MapAlbum/MapSong). Rejects empty queries (the
+    empty-query full-library contract stays GetSongsAsync's). 9 new tests
+    → **75 SubsonicClient tests green** (was 66). **Live-verified against
+    Navidrome**, which surfaced one behavior: Navidrome matches whole-word
+    prefixes and **ignores single-character tokens** (a 1-char query
+    returns nothing; 2+ chars work) — the app stays permissive (any
+    non-empty query submits; a 1-char query truthfully shows "No
+    results"), and the live test derives its query from a real song title.
+  - App `SearchPage` (routed from the shell's `search` tag — the last
+    SectionPage placeholder is out of the nav): query box (InputScope
+    Search, submit on Enter/OSK accept, Search button for mouse) with the
+    **SetupPage inline gamepad editing** (X backspace, LB/RB caret —
+    deliberately outranks LB/RB region cycling while the box has focus;
+    static badge hints in the pristine state); **scope filter row appears
+    in the content area once a search ran** (§5): All / Artists / Albums /
+    Songs segmented toggles, exclusivity in code. **All view** = one
+    search3 request (6 artists / 6 albums / 10 songs), three sections in
+    the browse visual language (horizontal card strips + the §7.3 song
+    columns), empty sections collapse. **Scoped views** = full
+    incrementally paged lists (fresh `IncrementalSource` per scope per
+    query, 100/page via search3 offsets; scoped grids reuse the browse
+    card templates). Artist/album results navigate to detail; song rows
+    play (queue = that list's loaded rows at the chosen song, context
+    "Search results"), with the full context menu — Play / Play next /
+    Add to queue / favorite toggle / **Go to album AND Go to artist**
+    (`SongRow` gained ArtistId/HasAlbumId/HasArtistId, read from the
+    carried Song). Card menus carry the container queue edits. All
+    console-verified patterns reused: ContextRequested redirect,
+    XYFocusUp pins onto the filter row, ContentFocus on reveal (submit
+    moves focus into results; scope switches don't steal it).
+  - States: pristine hint, loading, per-scope empty ("No artists match
+    …"), error + Retry (reloads the current scope from the top),
+    **explicit unsupported state for pre-1.8 servers** (search3's
+    introduction version; no Retry, §3).
+  - **The page is navigation-cached** (`NavigationCacheMode.Required`) so
+    B-back from a result's detail page returns to the same query and
+    results — the one deliberate exception to refetch-on-navigation
+    (staleness note below).
+
 **Verification state (checkpoint #10, 2026-07-19):** the whole 2.17
 rename/branding round **verified by Rafael on console — all four backlog
 items passed** (full logo everywhere, guide icon after the versioned
@@ -790,13 +840,14 @@ pre-Slice-10 checkpoint item.**
 
 ## Next step (start here next session)
 
-**2026-07-19: checkpoint #10 closed the 2.17 branding round** — the
-device backlog is empty.
+**2026-07-19: Slice 13 (Search) is code-complete** on branch
+`slice-13-search` (branding is merged — main is clean beneath it).
 
-1. Merge `branding-full-logo-fixes` into `main` (console-verified).
-2. **Slice 13** (Search): the §17 endpoint/scopes/paging decisions are
-   being locked with Rafael, then implement.
-3. Next console pass: whatever Slice 13 adds.
+1. VM smoke test (arm64 Local Machine F5): pages render, mouse path,
+   filter switching, incremental scroll.
+2. Console pass: the Search backlog items below (checkpoint #11).
+3. Then **Slice 14** (resilience/polish; possible queue-row context
+   menu).
 
 ## On-device test backlog (next console pass)
 
@@ -824,7 +875,35 @@ full logo on every asset, guide app-list icon (fixed by the 1.0.1.0
 versioned redeploy), seamless splash, and the `SubMusicBox` client name
 in Navidrome all verified on console.
 
-**The backlog is currently empty.**
+**Slice 13 — Search (2026-07-19, checkpoint #11 candidates):**
+
+1. **OSK flow:** A on the query box opens the keyboard; typing + accept
+   (or the Menu-button accelerator) submits and results appear; the OSK
+   dismisses.
+2. **Inline gamepad editing on the box:** with the OSK dismissed, X
+   deletes backwards, LB/RB move the caret — and from anywhere OUTSIDE
+   the box, LB/RB still cycle nav → content → bar (the box takes
+   precedence only while focused).
+3. **All view:** three sections render (artists/albums/songs), D-pad
+   moves between the filter row, the strips, and the song rows; empty
+   sections are absent, not blank strips.
+4. **Scope filters:** each filter switches to its full list; scrolling a
+   scoped list keeps loading pages (incremental); switching back to All
+   keeps the original top results; the active filter stays visibly
+   checked.
+5. **Result actions:** artist/album cards open detail; A on a song plays
+   (queue = that list's loaded rows, positioned correctly — check the
+   expanded queue); Menu on a song row opens the full context menu incl.
+   Go to album AND Go to artist; Menu on a card offers Play next / Add
+   to queue.
+6. **B-back from a result's detail page returns to the same query +
+   results** (navigation cache), including scroll position feel.
+7. **Focus:** entering Search lands in the query box; after submit,
+   focus moves into the results; Up from results reaches the filter row
+   (not the nav pane); error states focus Retry.
+8. **Empty + short queries:** a nonsense query shows "No results for
+   …"; a single-letter query on Navidrome also shows it (server-side
+   token behavior — expected, not a bug).
 
 *(Future slices: append your console items here.)*
 
@@ -966,8 +1045,18 @@ in Navidrome all verified on console.
   completes; if the user is deliberately browsing the nav pane while a slow
   page loads, focus will jump into the content. Accepted for v1 — loads are
   fast and the alternative (guards) adds complexity.
-- The remaining placeholder section page (Search) has no focusable content,
-  so Right-into-content has no target there. Fine until that slice lands.
+- **Search notes (Slice 13):** the page is navigation-cached (the one
+  refetch-on-navigation exception), so starred markers on kept results can
+  lag behind a star/unstar done elsewhere until the next search — the same
+  accepted staleness class as the cross-surface heart notes. While the
+  query box has focus, LB/RB move the caret instead of cycling shell
+  regions (deliberate; everywhere else they still cycle). Navidrome
+  ignores single-character search tokens (verified live), so a 1-char
+  query truthfully shows "No results" — the app imposes no minimum length
+  of its own. The scoped song list's play-queue is "rows loaded so far",
+  Songs-browse style; the All view's is just the top 10. `SectionPage`
+  still exists as the shell's fallback page type but no nav item routes to
+  it anymore.
 - **Playlists are read-only but fully browsable (Slice 09 + the 2026-07-17
   detail view):** tiles open the detail/playback view; create/edit/delete
   stay out of v1. Composite tile artwork still loads lazily per tile (one

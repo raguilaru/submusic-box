@@ -455,8 +455,35 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   GUID. Tests assert the client name via `SubsonicApiClient.ClientName`,
   not a literal, so the code stays project-name-agnostic.
 
+- 2026-07-19: **Slice 13 Search — endpoint, trigger, scopes, and paging**
+  (resolves the §17 TODO; all four decisions confirmed with Rafael).
+  (a) **Endpoint: search3** (ID3-based, the same world as getArtists/
+  getAlbumList2) — one request fills any combination of the artist/album/
+  song scopes; search3 exists since API 1.8, so pre-1.8 servers get an
+  explicit unsupported state (§3) rather than a legacy search2 fallback.
+  (b) **The query runs on submit** (Enter / the console OSK's accept; a
+  Search button covers mouse users) — no live-as-you-type requests.
+  (c) **Results: an "All" view + scope filters in the content area** (§5):
+  All shows the top 6 artists, 6 albums, and 10 songs from one request in
+  three sections (empty sections collapse); segmented Artists/Albums/Songs
+  filters switch to a full single-scope list paged incrementally via
+  search3 offsets (the browse-view `IncrementalSource` pattern, 100/page).
+  Result order within a scope is server-defined (search3 has no client
+  sort). (d) **A/Enter on a song result replaces the queue with the song
+  results loaded in that list** (All's top matches, or the scoped list's
+  pages so far), positioned at the chosen song — the Songs-browse
+  semantics; artist/album results open their detail pages. Song rows carry
+  the full context menu (Play, queue edits, favorite, Go to album AND Go
+  to artist); artist/album cards carry the container queue edits.
+  Supporting decisions: the Search page is **navigation-cached** so B-back
+  from a result's detail page returns to the same query and results — the
+  one deliberate exception to the refetch-on-navigation pattern (starred
+  markers on kept results may lag until the next search); the query box
+  gets the SetupPage **inline gamepad editing** (X backspace, LB/RB caret),
+  which deliberately outranks LB/RB region cycling while the box has focus.
+
 ## 17. Open Decisions / TODO
 
-- TODO: choose exact search endpoints/scopes and pagination/virtualization behavior for large libraries — resolve before Slice 13. (Browse views settled on incremental loading 2026-07-13; search may follow the same pattern.)
+- RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.
 - RESOLVED 2026-07-13: playlist editing scope for v1 is **read-only browse** (see §16). Create/edit/delete deferred beyond v1 unless later requested.
 - TODO: define error-state copy guidelines and offline/unreachable-server retry UX in more detail.

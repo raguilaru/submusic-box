@@ -73,6 +73,27 @@ namespace BoxSubMusic.App.Models
         /// <summary>Album id for "Go to album"; null when the server gave none.</summary>
         public string AlbumId { get; }
 
+        /// <summary>Disables "Go to album" when the server sent no album id.</summary>
+        public bool HasAlbumId
+        {
+            get { return !string.IsNullOrEmpty(AlbumId); }
+        }
+
+        /// <summary>
+        /// Artist id for "Go to artist" (Search rows, Slice 13); read from the
+        /// carried Song so existing construction sites stay unchanged.
+        /// </summary>
+        public string ArtistId
+        {
+            get { return Song.ArtistId; }
+        }
+
+        /// <summary>Disables "Go to artist" when the server sent no artist id.</summary>
+        public bool HasArtistId
+        {
+            get { return !string.IsNullOrEmpty(Song.ArtistId); }
+        }
+
         public string Title { get; }
         public string Artist { get; }
         public string Album { get; }

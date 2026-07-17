@@ -461,6 +461,11 @@ Implement search entry, active-state filters, and results UX.
 
 ### Open design note
 Search API shape and pagination behavior need final clarification.
+Resolved 2026-07-19 (§16): search3, submit-triggered, "All" view (top
+6/6/10) + Artists/Albums/Songs scope filters with incremental paging via
+search3 offsets; song results play with the Songs-browse queue semantics;
+pre-1.8 servers get an explicit unsupported state. Implemented 2026-07-19
+(`SearchPage`, `SubsonicApiClient.SearchAsync`).
 
 ### Acceptance focus
 - filters are in content area, not left nav
