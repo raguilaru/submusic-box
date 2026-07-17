@@ -15,7 +15,7 @@ public class StreamAndScrobbleTests
         Assert.Equal("tr-1", query["id"]);
         Assert.Equal("alice", query["u"]);
         Assert.Equal(TestHelpers.Md5Hex(TestHelpers.DefaultPassword + query["s"]), query["t"]);
-        Assert.Equal("BoxSubMusic", query["c"]);
+        Assert.Equal(SubsonicApiClient.ClientName, query["c"]);
     }
 
     [Fact]

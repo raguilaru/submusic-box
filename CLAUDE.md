@@ -4,7 +4,9 @@
 @docs/requirements/60-implementation-slices.md
 
 # Project
-BoxSubMusic — native Xbox Series X/S music streaming app for Subsonic/OpenSubsonic servers.
+SubMusic Box — native Xbox Series X/S music streaming app for Subsonic/OpenSubsonic servers.
+(Display name since 2026-07-19; the solution, projects, and namespaces keep the
+BoxSubMusic code name — the rename is display-layer only, see §16.)
 Primary target: UWP + XAML + C# with controller-first 10-foot UX.
 This project is requirement-driven. The requirements docs are the source of truth.
 

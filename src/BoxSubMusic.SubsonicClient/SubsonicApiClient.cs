@@ -20,7 +20,7 @@ namespace BoxSubMusic.SubsonicClient;
 /// </summary>
 public sealed class SubsonicApiClient
 {
-    public const string ClientName = "BoxSubMusic";
+    public const string ClientName = "SubMusicBox";
 
     /// <summary>Highest Subsonic API version this client implements.</summary>
     public const string DeclaredApiVersion = "1.16.1";

@@ -18,7 +18,7 @@ public class AuthenticationTests
         var query = TestHelpers.QueryOf(handler.Requests[0]);
         Assert.Equal("alice", query["u"]);
         Assert.Equal("1.16.1", query["v"]);
-        Assert.Equal("BoxSubMusic", query["c"]);
+        Assert.Equal(SubsonicApiClient.ClientName, query["c"]);
         Assert.False(query.ContainsKey("p"));
         Assert.Matches("^[0-9a-f]{32}$", query["t"]);
         Assert.Equal(TestHelpers.Md5Hex(TestHelpers.DefaultPassword + query["s"]), query["t"]);

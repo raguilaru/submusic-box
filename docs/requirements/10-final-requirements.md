@@ -440,6 +440,19 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   IconBox directly after template load (28 epx in the 48-epx icon
   column). Accepted fragility: a future OS rename of "IconBox" would
   silently restore small icons (fails soft).
+- 2026-07-19: **App display name is "SubMusic Box"** (supersedes the
+  2026-07-07 BoxSubMusic naming) — a **display-layer rename only**:
+  manifest DisplayName/Description, tile/splash/store assets generated
+  from `logos/SubMusic Box - logo.png` (square tiles use the "S"-card
+  crop — the wordmark is illegible below ~300 px; wide tile and splash
+  use the full logo padded on its own #1E1E1C background, which is also
+  the manifest tile/splash BackgroundColor), the setup-page header
+  (logo + title), and the Subsonic `c=` client name (`SubMusicBox`).
+  Internal identifiers deliberately keep the BoxSubMusic code name:
+  solution/project/namespace names, the PasswordVault resource
+  (renaming would orphan stored credentials), and the package identity
+  GUID. Tests assert the client name via `SubsonicApiClient.ClientName`,
+  not a literal, so the code stays project-name-agnostic.
 
 ## 17. Open Decisions / TODO
 
