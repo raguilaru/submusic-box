@@ -84,8 +84,13 @@ namespace BoxSubMusic.App
         /// references inside a system template resolve at the template's own
         /// parse scope first, so an App.xaml override is never consulted (on
         /// any device). The one reliable fix short of retemplating: size the
-        /// named Viewbox directly once the template has loaded — 28 epx in
-        /// the 48-epx icon column (10+28+10), pairing with the 20-epx text.
+        /// named Viewbox directly once the template has loaded — 28 epx,
+        /// pairing with the 20-epx text. Alignment (UI feedback 2026-07-19:
+        /// icons sat high next to the labels and off-center in the compact
+        /// strip): the box CENTERS in its template zone both ways instead of
+        /// carrying the old top-left-biased fixed margin, so it tracks the
+        /// row's 56-epx height and the zone's actual position in either pane
+        /// state.
         /// </summary>
         private void EnlargeNavIcons(int attemptsLeft)
         {
@@ -112,7 +117,9 @@ namespace BoxSubMusic.App
 
                     iconBox.Width = 28;
                     iconBox.Height = 28;
-                    iconBox.Margin = new Thickness(10, 6, 10, 6);
+                    iconBox.Margin = new Thickness(0);
+                    iconBox.HorizontalAlignment = HorizontalAlignment.Center;
+                    iconBox.VerticalAlignment = VerticalAlignment.Center;
                 }
 
                 if (anyMissing && attemptsLeft > 1)

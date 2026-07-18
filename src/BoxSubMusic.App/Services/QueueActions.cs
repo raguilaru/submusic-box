@@ -13,16 +13,34 @@ namespace BoxSubMusic.App.Services
 {
     /// <summary>
     /// Container queue edits (2026-07-18): "Play next" / "Add to queue" for a
-    /// whole album, playlist, or artist from a card context menu. The songs
-    /// are fetched on demand (cards carry only ids), then handed to
+    /// whole album, playlist, or artist from a card context menu — joined by
+    /// "Play" (2026-07-19 UI round): the §10 replace-the-queue action, same
+    /// semantics as the detail page's Play button. The songs are fetched on
+    /// demand (cards carry only ids), then handed to
     /// <see cref="PlaybackService"/> as one block. Failure mode matches the
     /// context-menu favorite toggle: the menu is closed by the time the fetch
-    /// fails, so nothing changes and nothing shown ever lies (§15 spirit —
+    /// fails, so nothing changes and the toast says so (§15 spirit —
     /// the queue simply does not gain songs that could not be loaded).
     /// </summary>
     public static class QueueActions
     {
-        public static async Task AddAlbumAsync(string albumId, bool insertNext)
+        private enum ContainerAction
+        {
+            /// <summary>Replace the queue and start playing (§10).</summary>
+            Play,
+            /// <summary>Insert after the current track.</summary>
+            PlayNext,
+            /// <summary>Append to the end of the play order.</summary>
+            Append,
+        }
+
+        public static Task PlayAlbumAsync(string albumId)
+            => AlbumAsync(albumId, ContainerAction.Play);
+
+        public static Task AddAlbumAsync(string albumId, bool insertNext)
+            => AlbumAsync(albumId, insertNext ? ContainerAction.PlayNext : ContainerAction.Append);
+
+        private static async Task AlbumAsync(string albumId, ContainerAction action)
         {
             var client = AppSession.Client;
             if (client == null || string.IsNullOrEmpty(albumId))
@@ -33,18 +51,24 @@ namespace BoxSubMusic.App.Services
             try
             {
                 AlbumDetail detail = await client.GetAlbumAsync(albumId, CancellationToken.None);
-                Dispatch(detail.Songs, insertNext,
+                Dispatch(detail.Songs, action,
                     new QueueContext(detail.Album.Name, detail.Album.CoverArtId));
             }
             catch (SubsonicClientException)
             {
                 // Nothing changed — but say so (Slice 14, §15): the menu
                 // closed long before the fetch failed.
-                Toast.Show("Couldn't load the album — nothing was added to the queue.");
+                Toast.Show(FailureMessage("album", action));
             }
         }
 
-        public static async Task AddPlaylistAsync(string playlistId, bool insertNext)
+        public static Task PlayPlaylistAsync(string playlistId)
+            => PlaylistAsync(playlistId, ContainerAction.Play);
+
+        public static Task AddPlaylistAsync(string playlistId, bool insertNext)
+            => PlaylistAsync(playlistId, insertNext ? ContainerAction.PlayNext : ContainerAction.Append);
+
+        private static async Task PlaylistAsync(string playlistId, ContainerAction action)
         {
             var client = AppSession.Client;
             if (client == null || string.IsNullOrEmpty(playlistId))
@@ -57,17 +81,23 @@ namespace BoxSubMusic.App.Services
                 PlaylistDetail detail = await client.GetPlaylistAsync(playlistId, CancellationToken.None);
                 // Same artwork rule as playlist Play: the first constituent
                 // album cover (single-image cut of the §7.4 composition).
-                Dispatch(detail.Songs, insertNext, new QueueContext(
+                Dispatch(detail.Songs, action, new QueueContext(
                     detail.Playlist.Name,
                     PlaylistArtwork.SelectCoverArtIds(detail.Songs).FirstOrDefault()));
             }
             catch (SubsonicClientException)
             {
-                Toast.Show("Couldn't load the playlist — nothing was added to the queue.");
+                Toast.Show(FailureMessage("playlist", action));
             }
         }
 
-        public static async Task AddArtistAsync(string artistId, bool insertNext)
+        public static Task PlayArtistAsync(string artistId)
+            => ArtistAsync(artistId, ContainerAction.Play);
+
+        public static Task AddArtistAsync(string artistId, bool insertNext)
+            => ArtistAsync(artistId, insertNext ? ContainerAction.PlayNext : ContainerAction.Append);
+
+        private static async Task ArtistAsync(string artistId, ContainerAction action)
         {
             var client = AppSession.Client;
             if (client == null || string.IsNullOrEmpty(artistId))
@@ -79,12 +109,12 @@ namespace BoxSubMusic.App.Services
             {
                 ArtistDetail detail = await client.GetArtistAsync(artistId, CancellationToken.None);
                 List<Song> pool = await LoadArtistPoolAsync(client, detail, CancellationToken.None);
-                Dispatch(pool, insertNext,
+                Dispatch(pool, action,
                     new QueueContext(detail.Artist.Name, detail.Artist.CoverArtId));
             }
             catch (SubsonicClientException)
             {
-                Toast.Show("Couldn't load the artist's songs — nothing was added to the queue.");
+                Toast.Show(FailureMessage("artist's songs", action));
             }
         }
 
@@ -124,21 +154,35 @@ namespace BoxSubMusic.App.Services
             return songs;
         }
 
-        private static void Dispatch(IReadOnlyList<Song> songs, bool insertNext, QueueContext context)
+        private static void Dispatch(IReadOnlyList<Song> songs, ContainerAction action, QueueContext context)
         {
             if (songs.Count == 0)
             {
                 return;
             }
 
-            if (insertNext)
+            switch (action)
             {
-                PlaybackService.Instance.PlayNext(songs, context);
+                case ContainerAction.Play:
+                    // §10: Play replaces the queue and starts from the first
+                    // song — identical to the detail page's Play button. The
+                    // bar reveal + audio are the feedback (no toast).
+                    PlaybackService.Instance.Play(songs, 0, shuffle: false, context: context);
+                    break;
+                case ContainerAction.PlayNext:
+                    PlaybackService.Instance.PlayNext(songs, context);
+                    break;
+                default:
+                    PlaybackService.Instance.AddToQueue(songs, context);
+                    break;
             }
-            else
-            {
-                PlaybackService.Instance.AddToQueue(songs, context);
-            }
+        }
+
+        private static string FailureMessage(string what, ContainerAction action)
+        {
+            return action == ContainerAction.Play
+                ? "Couldn't load the " + what + " — playback didn't start."
+                : "Couldn't load the " + what + " — nothing was added to the queue.";
         }
     }
 }

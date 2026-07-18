@@ -116,6 +116,14 @@
                 <StackPanel.ContextFlyout>
                     <MenuFlyout>
                         <MenuFlyoutItem
+                            Text="Play"
+                            Tag="{x:Bind}"
+                            Click="ArtistPlay_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
                             Text="Play next"
                             Tag="{x:Bind}"
                             Click="ArtistPlayNext_Click">
@@ -133,7 +141,7 @@
                         </MenuFlyoutItem>
                     </MenuFlyout>
                 </StackPanel.ContextFlyout>
-                <Grid Width="200" Height="200" CornerRadius="8">
+                <Grid Width="200" Height="200" CornerRadius="8" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
                     <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
                         <FontIcon
                             FontFamily="{StaticResource FluentIconFont}"
@@ -158,6 +166,14 @@
                 <StackPanel.ContextFlyout>
                     <MenuFlyout>
                         <MenuFlyoutItem
+                            Text="Play"
+                            Tag="{x:Bind}"
+                            Click="AlbumPlay_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
                             Text="Play next"
                             Tag="{x:Bind}"
                             Click="AlbumPlayNext_Click">
@@ -175,13 +191,9 @@
                         </MenuFlyoutItem>
                     </MenuFlyout>
                 </StackPanel.ContextFlyout>
-                <Grid Width="200" Height="200" CornerRadius="8">
+                <Grid Width="200" Height="200" CornerRadius="8" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
                     <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
-                        <FontIcon
-                            FontFamily="{StaticResource FluentIconFont}"
-                            Glyph="&#xE855;"
-                            FontSize="64"
-                            Opacity="0.4" />
+                        <controls:VinylDisc Margin="22" />
                     </Border>
                     <Image Stretch="UniformToFill">
                         <Image.Source>

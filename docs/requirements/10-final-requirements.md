@@ -515,9 +515,90 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   (queue edits). Silent-by-design remains limited to telemetry-class
   calls (scrobbling) and the favorite heart's snap-back, both recorded
   decisions.
+- 2026-07-19: **Bitrate restriction: the server-side limit is
+  authoritative — no client-side quality setting** (Rafael's call,
+  superseding the client-setting shape briefly recorded earlier the same
+  day; outcome of the bitrate-restriction investigation, detail in
+  STATUS "Known gaps"). The v1 no-overrides decision on `stream` stands
+  as the way the app *respects* a server-enforced restriction: the
+  server transcodes, the client streams what it is given. The failures
+  observed were server-side (Navidrome 0.62.0 ignored player MaxBitRate
+  on /stream — their #5583, fixed in 0.63.0; a lossless transcoding
+  target still silently serves raw). The one app-side piece, implemented
+  in **Slice 14**: a **decode-failure mp3 fallback** — when a stream
+  fails with a decode-class error (DecodeError/SourceNotSupportedError — the
+  signature of a server transcode format this hardware lacks, e.g.
+  Navidrome's Opus default), the track is retried once with
+  **`format=mp3`** (core API 1.6.0, decodable on every Xbox; the server
+  still applies its own bitrate cap to that transcode, so the
+  restriction stays respected — works on every Subsonic/OpenSubsonic
+  server, §3). Once a fallback item audibly plays, the session builds
+  further stream URLs as mp3 directly, so a fully-transcoded queue does
+  not fail-and-retry on every track (already-built items in the current
+  queue still retry individually — accepted hiccup). Network-class
+  failures keep the normal skip/stop path untouched. Research
+  (2026-07-19): Microsoft's Xbox codec table lists no Opus/Ogg at all
+  (audio set: AAC/MP3/FLAC/ALAC/WAV/WMA/AC-3), so the fallback engaging
+  is the EXPECTED path on a restricting Navidrome; console-verify that
+  it engages cleanly.
+- 2026-07-19: **Playback surfaces show the DELIVERED stream's
+  format/bitrate, not the file's tags** (closes the §10 display known
+  gap; prompted by Rafael's on-device observation that a
+  server-restricted stream — delivered as Opus 32 kbps — still showed
+  "M4A · 256 kbps"). The now-playing bar and the expanded queue read
+  the current item's audio-track encoding properties
+  (`PlaybackService.TryGetDeliveredStreamInfo`: codec subtype +
+  declared bitrate) — platform-sourced, so it is server-agnostic (§3),
+  needs no server extension, and also reflects the mp3 decode-fallback
+  when it engages. Tag values remain only as the brief pre-open
+  fallback (the next Changed after the stream opens refreshes the
+  line), and streams that declare no bitrate (VBR Opus) show the codec
+  alone rather than a guessed number. **Browse/search song lists
+  deliberately keep the file's tag metadata** (§7.3): a list row
+  describes the file in the library; what a future playback of it
+  would deliver depends on server transcoding config at that moment
+  and is unknowable per row without streaming it.
+
+- 2026-07-19: **"Play" joins the container card context menus** (§10;
+  Rafael's request): every artist/album/playlist card menu (browse
+  grids/lists, Home carousels, search result cards, the artist-detail
+  album grid) now opens with Play above Play next / Add to queue. Play
+  is the standard §10 replace-the-queue action — identical semantics to
+  the detail page's Play button (album = disc/track order, playlist =
+  stored order, artist = the §8 oldest-album-first pool), fetched on
+  demand like the queue edits. A failed fetch changes nothing and
+  toasts "…playback didn't start" (menu-closed contract).
+- 2026-07-19: **Browse-page initial focus lands below the view toggle**
+  (§13.1/§13.5; Rafael's request): on pages with a grid/list toggle
+  (Artists, Albums, Playlists) the content-owns-focus pass targets the
+  ACTIVE view, so first focus is the first card, not the toggle. The
+  toggle remains always visible and one Up-press away (the existing
+  XYFocusUp pins).
+- 2026-07-19: **Retro visual theme — direction "B: retro flavored"**
+  (§13.2/§13.3; direction, accent policy, typography, and motifs
+  confirmed with Rafael through a design Q&A with mockups): the app's
+  visual identity derives from the SubMusic Box logo. (a) The logo
+  palette REPLACES the console accent app-wide — dark theme: seafoam
+  #7FADA9 accent, cream #E9DCC0, petrol sleeve teal #253B3F surfaces;
+  light theme: deep teal #2F6B66, aged tan, pale seafoam — implemented
+  as App.xaml theme-dictionary resources (`Retro*`) plus overrides of
+  `SystemAccentColor` and the reachable control brush keys (key names
+  verified against the 26100 generic.xaml). (b) Surfaces: the nav pane
+  backdrop and the now-playing bar paint in the sleeve teal; nav
+  section icons take the accent; progress lines and the play/pause
+  primary fill in cream with per-theme ink. (c) Motifs: the logo's
+  triple-stripe underline (`RetroStripes`) under section headers; a
+  drawn vinyl record (`VinylDisc`) as the album-artwork placeholder
+  (artist/playlist glyph placeholders unchanged); a spinning vinyl
+  (`SpinningVinyl`, independent-animation storyboard, spins only while
+  visible and playing) as the current-track marker; 1-epx tan
+  "parchment" frames on card artwork and detail headers. (d) Typography
+  stays Segoe UI (no display font in this round). Dynamic input glyphs
+  and further §13.1 items remain deferred.
 
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.
 - RESOLVED 2026-07-13: playlist editing scope for v1 is **read-only browse** (see §16). Create/edit/delete deferred beyond v1 unless later requested.
 - RESOLVED 2026-07-19: error-state copy guidelines and unreachable-server retry UX — see §16 (Slice 14). Copy rules codified; retry UX stays the established pattern (inline error + focused Retry, reload from the top; toast for closed-surface and background failures).
+- RESOLVED 2026-07-19: bitrate restriction — the server-side limit is authoritative, no client-side quality setting; the app's contribution is the Slice 14 decode-failure `format=mp3` fallback. See §16 (2026-07-19); Ogg/Opus decode remains a console-verify item.

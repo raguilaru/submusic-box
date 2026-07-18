@@ -30,7 +30,7 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Grid Grid.Column="0" Width="320" Height="320" CornerRadius="12">
+                    <Grid Grid.Column="0" Width="320" Height="320" CornerRadius="12" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
                         <!-- Placeholder: same official Fluent codepoint as the
                              Playlists nav item (§13.3: never invent codepoints). -->
                         <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
@@ -269,7 +269,7 @@
                                         </MenuFlyout>
                                     </Grid.ContextFlyout>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="64" />
                                         <ColumnDefinition Width="*" />
                                         <!-- Starred-heart marker column. -->
                                         <ColumnDefinition Width="28" />
@@ -282,18 +282,16 @@
                                     <TextBlock
                                         Grid.Column="0"
                                         Text="{x:Bind Number}"
-                                        Visibility="{x:Bind NumberVisibility, Mode=OneWay}"
                                         FontSize="20"
                                         Opacity="0.6"
                                         TextAlignment="Right" />
-                                    <FontIcon
+                                    <controls:SpinningVinyl
                                         Grid.Column="0"
-                                        FontFamily="{StaticResource FluentIconFont}"
-                                        Glyph="&#xE855;"
-                                        FontSize="20"
-                                        Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                        Width="26"
+                                        Height="26"
                                         Visibility="{x:Bind NowPlayingVisibility, Mode=OneWay}"
-                                        HorizontalAlignment="Right" />
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center" />
                                     <TextBlock
                                         Grid.Column="1"
                                         Text="{x:Bind Title}"

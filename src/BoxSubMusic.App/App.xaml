@@ -14,14 +14,115 @@
                  in generic.xaml's THEME dictionaries, which is the one
                  resource class app-side overrides reliably reach — unlike
                  the global-scope Thickness lesson below. -->
+            <!-- Retro theme (UI round 2026-07-19, direction confirmed with
+                 Rafael): the SubMusic Box logo's palette — petrol teal,
+                 seafoam, warm cream/parchment on charcoal — replaces the
+                 console accent color app-wide (§13.2/§16). Two override
+                 classes, both console-proven reachable:
+                 - Retro* keys are the app's own brushes (markers, surfaces,
+                   stripes, card frames).
+                 - System/control brush keys (SystemControlForegroundAccent,
+                   ToggleButton checked, RadioButton checked) are theme-
+                   dictionary overrides — templates reference them via
+                   ThemeResource, the one resource class app-side overrides
+                   reliably reach (the NavigationView pane-brush lesson).
+                 SystemAccentColor itself is overridden for code reads
+                 (FavoriteHeart); framework-internal brushes composed from it
+                 in generic.xaml scope are NOT expected to follow (the
+                 global-scope lesson) — the keys below cover those paths. -->
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
                     <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="Transparent" />
                     <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="Transparent" />
+
+                    <!-- Seafoam accent on dark (from the logo's lower "S" stripes). -->
+                    <Color x:Key="SystemAccentColor">#FF7FADA9</Color>
+                    <Color x:Key="RetroAccentColor">#FF7FADA9</Color>
+                    <SolidColorBrush x:Key="RetroAccentBrush" Color="#FF7FADA9" />
+                    <!-- Warm parchment (the logo's cream) — progress fills,
+                         selected pills, stripe #1. -->
+                    <SolidColorBrush x:Key="RetroCreamBrush" Color="#FFE9DCC0" />
+                    <!-- Petrol sleeve teal — nav pane backdrop + playback surfaces. -->
+                    <SolidColorBrush x:Key="RetroSurfaceBrush" Color="#FF253B3F" />
+                    <!-- Worn-paper tan at low opacity — browse card frames. -->
+                    <SolidColorBrush x:Key="RetroCardBorderBrush" Color="#59C8B694" />
+                    <!-- The triple-stripe motif, cream → seafoam like the "S". -->
+                    <SolidColorBrush x:Key="RetroStripeBrush1" Color="#FFE9DCC0" />
+                    <SolidColorBrush x:Key="RetroStripeBrush2" Color="#FFA9C2BE" />
+                    <SolidColorBrush x:Key="RetroStripeBrush3" Color="#FF7FADA9" />
+                    <!-- Ink for content sitting ON a cream fill (play/pause). -->
+                    <SolidColorBrush x:Key="RetroOnCreamBrush" Color="#FF1E1E1C" />
+                    <!-- Vinyl placeholder parts (VinylDisc/SpinningVinyl):
+                         the record stays near-black in both themes, like the
+                         logo's; only the label follows the accent teal. -->
+                    <SolidColorBrush x:Key="RetroVinylBrush" Color="#FF1B1B19" />
+                    <SolidColorBrush x:Key="RetroVinylGrooveBrush" Color="#2EFFFFFF" />
+                    <SolidColorBrush x:Key="RetroVinylLabelBrush" Color="#FF2C4A4F" />
+                    <SolidColorBrush x:Key="RetroVinylHoleBrush" Color="#FF0E0E0D" />
+                    <!-- Ink for content ON the accent fill (the spinning
+                         marker's label stripe): dark ink on seafoam. -->
+                    <SolidColorBrush x:Key="RetroOnAccentBrush" Color="#FF1E1E1C" />
+                    <!-- Marker-disc detailing (SpinningVinyl): a soft cream
+                         rim + brighter grooves so the record reads on dark
+                         rows. Theme-stable like the record body. -->
+                    <SolidColorBrush x:Key="RetroMarkerRimBrush" Color="#B3E9DCC0" />
+                    <SolidColorBrush x:Key="RetroMarkerGrooveBrush" Color="#59FFFFFF" />
+
+                    <SolidColorBrush x:Key="SystemControlForegroundAccentBrush" Color="#FF7FADA9" />
+                    <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="#FF7FADA9" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#FF7FADA9" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#FF8FBBB7" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#FF6E9995" />
+                    <!-- Seafoam is a light fill: checked content flips to ink
+                         (the default alt-chrome-white would wash out). -->
+                    <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="#FF1E1E1C" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPointerOver" Color="#FF1E1E1C" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPressed" Color="#FF1E1E1C" />
+                    <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStroke" Color="#FF7FADA9" />
+                    <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStrokePointerOver" Color="#FF8FBBB7" />
+                    <SolidColorBrush x:Key="RadioButtonCheckGlyphFill" Color="#FF7FADA9" />
+                    <SolidColorBrush x:Key="RadioButtonCheckGlyphFillPointerOver" Color="#FF8FBBB7" />
+                    <SolidColorBrush x:Key="RadioButtonCheckGlyphFillPressed" Color="#FF6E9995" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="Transparent" />
                     <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="Transparent" />
+
+                    <!-- Deep sleeve teal on light (seafoam lacks contrast there). -->
+                    <Color x:Key="SystemAccentColor">#FF2F6B66</Color>
+                    <Color x:Key="RetroAccentColor">#FF2F6B66</Color>
+                    <SolidColorBrush x:Key="RetroAccentBrush" Color="#FF2F6B66" />
+                    <!-- "Cream" darkens to aged tan so it reads on light surfaces. -->
+                    <SolidColorBrush x:Key="RetroCreamBrush" Color="#FF8A7550" />
+                    <SolidColorBrush x:Key="RetroSurfaceBrush" Color="#FFD9E5E2" />
+                    <SolidColorBrush x:Key="RetroCardBorderBrush" Color="#80A08B63" />
+                    <SolidColorBrush x:Key="RetroStripeBrush1" Color="#FF8A7550" />
+                    <SolidColorBrush x:Key="RetroStripeBrush2" Color="#FF4E8783" />
+                    <SolidColorBrush x:Key="RetroStripeBrush3" Color="#FF2F6B66" />
+                    <!-- Light theme's "cream" is a dark tan, so its ink is pale. -->
+                    <SolidColorBrush x:Key="RetroOnCreamBrush" Color="#FFF5EFE0" />
+                    <SolidColorBrush x:Key="RetroVinylBrush" Color="#FF1B1B19" />
+                    <SolidColorBrush x:Key="RetroVinylGrooveBrush" Color="#2EFFFFFF" />
+                    <SolidColorBrush x:Key="RetroVinylLabelBrush" Color="#FF2F6B66" />
+                    <SolidColorBrush x:Key="RetroVinylHoleBrush" Color="#FF0E0E0D" />
+                    <!-- Light theme's accent is the deep teal, so its ink is pale. -->
+                    <SolidColorBrush x:Key="RetroOnAccentBrush" Color="#FFF5EFE0" />
+                    <SolidColorBrush x:Key="RetroMarkerRimBrush" Color="#B3E9DCC0" />
+                    <SolidColorBrush x:Key="RetroMarkerGrooveBrush" Color="#59FFFFFF" />
+
+                    <SolidColorBrush x:Key="SystemControlForegroundAccentBrush" Color="#FF2F6B66" />
+                    <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="#FF2F6B66" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#FF2F6B66" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#FF3D7C76" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#FF265853" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="#FFF5EFE0" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPointerOver" Color="#FFF5EFE0" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPressed" Color="#FFF5EFE0" />
+                    <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStroke" Color="#FF2F6B66" />
+                    <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStrokePointerOver" Color="#FF3D7C76" />
+                    <SolidColorBrush x:Key="RadioButtonCheckGlyphFill" Color="#FF2F6B66" />
+                    <SolidColorBrush x:Key="RadioButtonCheckGlyphFillPointerOver" Color="#FF3D7C76" />
+                    <SolidColorBrush x:Key="RadioButtonCheckGlyphFillPressed" Color="#FF265853" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 

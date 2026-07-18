@@ -1,0 +1,17 @@
+<UserControl
+    x:Class="BoxSubMusic.App.Controls.RetroStripes"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    IsHitTestVisible="False"
+    IsTabStop="False">
+
+    <!-- The logo's triple-stripe motif (retro theme, 2026-07-19): three thin
+         cream→seafoam lines, used as an underline under section headers.
+         Pure decoration — never focusable, width set by the consumer. Brushes
+         are theme-aware (App.xaml Retro* theme dictionaries). -->
+    <StackPanel Spacing="3">
+        <Rectangle Height="3" RadiusX="1.5" RadiusY="1.5" Fill="{ThemeResource RetroStripeBrush1}" />
+        <Rectangle Height="3" RadiusX="1.5" RadiusY="1.5" Fill="{ThemeResource RetroStripeBrush2}" />
+        <Rectangle Height="3" RadiusX="1.5" RadiusY="1.5" Fill="{ThemeResource RetroStripeBrush3}" />
+    </StackPanel>
+</UserControl>

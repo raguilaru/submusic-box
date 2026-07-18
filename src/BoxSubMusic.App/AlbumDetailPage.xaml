@@ -26,13 +26,9 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Grid Grid.Column="0" Width="320" Height="320" CornerRadius="12">
+                    <Grid Grid.Column="0" Width="320" Height="320" CornerRadius="12" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
                         <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
-                            <FontIcon
-                                FontFamily="{StaticResource FluentIconFont}"
-                                Glyph="&#xE855;"
-                                FontSize="96"
-                                Opacity="0.4" />
+                            <controls:VinylDisc Margin="32" />
                         </Border>
                         <Image x:Name="ArtworkImage" Stretch="UniformToFill" />
                     </Grid>
@@ -210,7 +206,7 @@
                                         </MenuFlyout>
                                     </Grid.ContextFlyout>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="64" />
                                         <ColumnDefinition Width="*" />
                                         <!-- Starred-heart marker column
                                              (checkpoint #4 feedback). -->
@@ -226,18 +222,16 @@
                                     <TextBlock
                                         Grid.Column="0"
                                         Text="{x:Bind Number}"
-                                        Visibility="{x:Bind NumberVisibility, Mode=OneWay}"
                                         FontSize="20"
                                         Opacity="0.6"
                                         TextAlignment="Right" />
-                                    <FontIcon
+                                    <controls:SpinningVinyl
                                         Grid.Column="0"
-                                        FontFamily="{StaticResource FluentIconFont}"
-                                        Glyph="&#xE855;"
-                                        FontSize="20"
-                                        Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                        Width="26"
+                                        Height="26"
                                         Visibility="{x:Bind NowPlayingVisibility, Mode=OneWay}"
-                                        HorizontalAlignment="Right" />
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center" />
                                     <TextBlock
                                         Grid.Column="1"
                                         Text="{x:Bind Title}"

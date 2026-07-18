@@ -114,11 +114,24 @@ namespace BoxSubMusic.App.Controls
 
             TitleText.Text = song.Title;
             ArtistAlbumText.Text = JoinWithDots(song.Artist, song.Album);
-            StreamInfoText.Text = JoinWithDots(
-                song.Format?.ToUpperInvariant(),
-                song.BitRate.HasValue
-                    ? song.BitRate.Value.ToString(CultureInfo.InvariantCulture) + " kbps"
-                    : null);
+            // Delivered-stream info when the item is open (a restricting
+            // server transcodes, so the tags can lie about what is actually
+            // playing — §10 display fix 2026-07-19); tag values only as the
+            // pre-open fallback. Changed fires again once playback starts,
+            // which refreshes this line with the live values.
+            string liveFormat;
+            int? liveKbps;
+            StreamInfoText.Text = _playback.TryGetDeliveredStreamInfo(out liveFormat, out liveKbps)
+                ? JoinWithDots(
+                    liveFormat,
+                    liveKbps.HasValue
+                        ? liveKbps.Value.ToString(CultureInfo.InvariantCulture) + " kbps"
+                        : null)
+                : JoinWithDots(
+                    song.Format?.ToUpperInvariant(),
+                    song.BitRate.HasValue
+                        ? song.BitRate.Value.ToString(CultureInfo.InvariantCulture) + " kbps"
+                        : null);
             UpdateArtwork(song);
 
             PlayPauseIcon.Glyph = _playback.IsPlaying ? PauseGlyph : PlayGlyph;

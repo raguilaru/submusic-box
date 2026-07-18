@@ -33,8 +33,8 @@
         Padding="20,14"
         MinHeight="112"
         CornerRadius="12"
-        Background="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}"
-        BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
+        Background="{ThemeResource RetroSurfaceBrush}"
+        BorderBrush="{ThemeResource RetroCardBorderBrush}"
         BorderThickness="1"
         ColumnSpacing="20">
         <Grid.RenderTransform>
@@ -71,15 +71,10 @@
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <!-- Artwork thumbnail with the music-note placeholder behind it
-             (same official Fluent codepoint as the Songs nav item). -->
+        <!-- Artwork thumbnail with the vinyl-disc placeholder behind it. -->
         <Grid Grid.Column="0" Width="84" Height="84" CornerRadius="8" VerticalAlignment="Center">
             <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
-                <FontIcon
-                    FontFamily="{StaticResource FluentIconFont}"
-                    Glyph="&#xE855;"
-                    FontSize="32"
-                    Opacity="0.4" />
+                <local:VinylDisc Margin="8" />
             </Border>
             <Image x:Name="ArtworkImage" Stretch="UniformToFill" />
         </Grid>
@@ -145,7 +140,8 @@
                 Height="64"
                 Padding="0"
                 CornerRadius="32"
-                Background="{ThemeResource SystemControlBackgroundBaseLowBrush}"
+                Background="{ThemeResource RetroCreamBrush}"
+                Foreground="{ThemeResource RetroOnCreamBrush}"
                 Click="PlayPauseButton_Click"
                 XYFocusLeft="{x:Bind PreviousButton}"
                 XYFocusRight="{x:Bind NextButton}"
@@ -188,6 +184,7 @@
                 x:Name="TrackProgress"
                 Grid.Column="1"
                 VerticalAlignment="Center"
+                Foreground="{ThemeResource RetroCreamBrush}"
                 Maximum="1"
                 Value="0" />
             <TextBlock x:Name="TotalText" Grid.Column="2" FontSize="17" Opacity="0.8" Text="0:00" />

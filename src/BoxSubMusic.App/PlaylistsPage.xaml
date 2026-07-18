@@ -25,11 +25,13 @@
 
         <!-- Header: title + always-visible grid/list toggle (§13.5). -->
         <Grid Grid.Row="0" Margin="0,0,0,24">
-            <TextBlock
-                Text="Playlists"
-                FontSize="48"
-                FontWeight="SemiBold"
-                VerticalAlignment="Center" />
+            <StackPanel VerticalAlignment="Center" Spacing="8">
+                <TextBlock
+                    Text="Playlists"
+                    FontSize="48"
+                    FontWeight="SemiBold" />
+                <controls:RetroStripes Width="150" HorizontalAlignment="Left" />
+            </StackPanel>
             <controls:ViewModeToggle
                 x:Name="ViewModeToggle"
                 HorizontalAlignment="Right"
@@ -105,6 +107,14 @@
                                      view-level redirect (console-verified). -->
                                 <MenuFlyout>
                                     <MenuFlyoutItem
+                                        Text="Play"
+                                        Tag="{x:Bind}"
+                                        Click="PlaylistPlay_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
                                         Text="Play next"
                                         Tag="{x:Bind}"
                                         Click="PlaylistPlayNext_Click">
@@ -122,7 +132,7 @@
                                     </MenuFlyoutItem>
                                 </MenuFlyout>
                             </StackPanel.ContextFlyout>
-                            <Grid Width="200" Height="200" CornerRadius="8">
+                            <Grid Width="200" Height="200" CornerRadius="8" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
                                 <!-- Placeholder shows while the composite loads
                                      and when a playlist has no artwork. Same
                                      official Fluent codepoint as the Playlists
@@ -233,6 +243,14 @@
                             <StackPanel.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuFlyoutItem
+                                        Text="Play"
+                                        Tag="{x:Bind}"
+                                        Click="PlaylistPlay_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
                                         Text="Play next"
                                         Tag="{x:Bind}"
                                         Click="PlaylistPlayNext_Click">
@@ -250,7 +268,7 @@
                                     </MenuFlyoutItem>
                                 </MenuFlyout>
                             </StackPanel.ContextFlyout>
-                            <Grid Width="56" Height="56" CornerRadius="6">
+                            <Grid Width="56" Height="56" CornerRadius="6" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
                                     <FontIcon
                                         FontFamily="{StaticResource FluentIconFont}"

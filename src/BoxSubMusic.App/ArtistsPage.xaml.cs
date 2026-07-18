@@ -153,7 +153,11 @@ namespace BoxSubMusic.App
             ApplyViewMode();
 
             // Focus convention: loaded content owns focus (see ContentFocus).
-            ContentFocus.MoveInto(this);
+            // Into the active view, not the page: the page's first focusable
+            // is the view-mode toggle, and landing there put the first card
+            // an extra press away (UI feedback 2026-07-19 — focus the first
+            // element BELOW the toggle; Up still reaches it via XYFocusUp).
+            ContentFocus.MoveInto(ViewModeToggle.IsListMode ? (UIElement)ArtistsList : ArtistsGrid);
         }
 
         private void ShowConnectError(string message)
@@ -218,6 +222,15 @@ namespace BoxSubMusic.App
             {
                 root.ContextFlyout.ShowAt(root);
                 args.Handled = true;
+            }
+        }
+
+        private void ArtistPlay_Click(object sender, RoutedEventArgs e)
+        {
+            var card = (sender as FrameworkElement)?.Tag as ArtistCard;
+            if (card != null)
+            {
+                _ = QueueActions.PlayArtistAsync(card.Id);
             }
         }
 

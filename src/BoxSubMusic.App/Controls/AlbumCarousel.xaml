@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:models="using:BoxSubMusic.App.Models"
+    xmlns:local="using:BoxSubMusic.App.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
@@ -18,6 +19,7 @@
             x:Name="TitleText"
             FontSize="28"
             FontWeight="SemiBold" />
+        <local:RetroStripes Width="110" HorizontalAlignment="Left" Margin="0,-6,0,0" />
 
         <Grid MinHeight="300">
             <ProgressRing
@@ -88,6 +90,14 @@
                                      list-level redirect (console-verified). -->
                                 <MenuFlyout>
                                     <MenuFlyoutItem
+                                        Text="Play"
+                                        Tag="{x:Bind}"
+                                        Click="AlbumPlay_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
                                         Text="Play next"
                                         Tag="{x:Bind}"
                                         Click="AlbumPlayNext_Click">
@@ -108,18 +118,14 @@
                             <Grid
                                 Width="220"
                                 Height="220"
-                                CornerRadius="8">
+                                CornerRadius="8"
+                                BorderBrush="{ThemeResource RetroCardBorderBrush}"
+                                BorderThickness="1">
                                 <!-- Placeholder shows through until artwork
-                                     loads (or when the server has none). The
-                                     music-note glyph is the same official
-                                     Fluent codepoint used by the Songs nav
-                                     item (§13.3: never invent codepoints). -->
+                                     loads (or when the server has none):
+                                     the vinyl disc (retro theme). -->
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
-                                    <FontIcon
-                                        FontFamily="{StaticResource FluentIconFont}"
-                                        Glyph="&#xE855;"
-                                        FontSize="64"
-                                        Opacity="0.4" />
+                                    <local:VinylDisc Margin="24" />
                                 </Border>
                                 <Image Stretch="UniformToFill">
                                     <Image.Source>

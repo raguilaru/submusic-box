@@ -22,11 +22,13 @@
 
         <!-- Header: title + always-visible grid/list toggle (§13.5). -->
         <Grid Grid.Row="0" Margin="0,0,0,24">
-            <TextBlock
-                Text="Albums"
-                FontSize="48"
-                FontWeight="SemiBold"
-                VerticalAlignment="Center" />
+            <StackPanel VerticalAlignment="Center" Spacing="8">
+                <TextBlock
+                    Text="Albums"
+                    FontSize="48"
+                    FontWeight="SemiBold" />
+                <controls:RetroStripes Width="150" HorizontalAlignment="Left" />
+            </StackPanel>
             <controls:ViewModeToggle
                 x:Name="ViewModeToggle"
                 HorizontalAlignment="Right"
@@ -102,6 +104,14 @@
                                      view-level redirect (console-verified). -->
                                 <MenuFlyout>
                                     <MenuFlyoutItem
+                                        Text="Play"
+                                        Tag="{x:Bind}"
+                                        Click="AlbumPlay_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
                                         Text="Play next"
                                         Tag="{x:Bind}"
                                         Click="AlbumPlayNext_Click">
@@ -119,16 +129,10 @@
                                     </MenuFlyoutItem>
                                 </MenuFlyout>
                             </StackPanel.ContextFlyout>
-                            <Grid Width="200" Height="200" CornerRadius="8">
-                                <!-- Album placeholder uses the same official
-                                     Fluent music-note codepoint as the Songs
-                                     nav item (§13.3: never invent codepoints). -->
+                            <Grid Width="200" Height="200" CornerRadius="8" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
+                                <!-- Vinyl-disc placeholder (retro theme, 2026-07-19). -->
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
-                                    <FontIcon
-                                        FontFamily="{StaticResource FluentIconFont}"
-                                        Glyph="&#xE855;"
-                                        FontSize="64"
-                                        Opacity="0.4" />
+                                    <controls:VinylDisc Margin="22" />
                                 </Border>
                                 <Image Stretch="UniformToFill">
                                     <Image.Source>
@@ -164,6 +168,14 @@
                             <StackPanel.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuFlyoutItem
+                                        Text="Play"
+                                        Tag="{x:Bind}"
+                                        Click="AlbumPlay_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
                                         Text="Play next"
                                         Tag="{x:Bind}"
                                         Click="AlbumPlayNext_Click">
@@ -181,13 +193,9 @@
                                     </MenuFlyoutItem>
                                 </MenuFlyout>
                             </StackPanel.ContextFlyout>
-                            <Grid Width="56" Height="56" CornerRadius="6">
+                            <Grid Width="56" Height="56" CornerRadius="6" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
-                                    <FontIcon
-                                        FontFamily="{StaticResource FluentIconFont}"
-                                        Glyph="&#xE855;"
-                                        FontSize="24"
-                                        Opacity="0.4" />
+                                    <controls:VinylDisc Margin="6" />
                                 </Border>
                                 <Image Stretch="UniformToFill">
                                     <Image.Source>

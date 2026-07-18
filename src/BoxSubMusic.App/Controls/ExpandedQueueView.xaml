@@ -85,13 +85,9 @@
             <!-- Left pane (§10): rich metadata + the full transport cluster.
                  Same control set as the compact bar, larger. -->
             <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="24">
-                <Grid Width="400" Height="400" CornerRadius="12" HorizontalAlignment="Left">
+                <Grid Width="400" Height="400" CornerRadius="12" HorizontalAlignment="Left" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
                     <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
-                        <FontIcon
-                            FontFamily="{StaticResource FluentIconFont}"
-                            Glyph="&#xE855;"
-                            FontSize="112"
-                            Opacity="0.4" />
+                        <local:VinylDisc Margin="40" />
                     </Border>
                     <Image x:Name="ArtworkImage" Stretch="UniformToFill" />
                 </Grid>
@@ -129,6 +125,7 @@
                         x:Name="TrackProgress"
                         Grid.Column="1"
                         VerticalAlignment="Center"
+                        Foreground="{ThemeResource RetroCreamBrush}"
                         Maximum="1"
                         Value="0" />
                     <TextBlock x:Name="TotalText" Grid.Column="2" FontSize="18" Opacity="0.8" Text="0:00" />
@@ -170,7 +167,8 @@
                         Height="72"
                         Padding="0"
                         CornerRadius="36"
-                        Background="{ThemeResource SystemControlBackgroundBaseLowBrush}"
+                        Background="{ThemeResource RetroCreamBrush}"
+                        Foreground="{ThemeResource RetroOnCreamBrush}"
                         Click="PlayPauseButton_Click"
                         XYFocusLeft="{x:Bind PreviousButton}"
                         XYFocusRight="{x:Bind NextButton}"
@@ -228,6 +226,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Spacing="4">
                         <TextBlock Text="Queue" FontSize="32" FontWeight="SemiBold" />
+                        <local:RetroStripes Width="110" HorizontalAlignment="Left" />
                         <TextBlock
                             x:Name="QueueContextText"
                             FontSize="18"
@@ -318,7 +317,7 @@
                                     </MenuFlyout>
                                 </Grid.ContextFlyout>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="56" />
+                                    <ColumnDefinition Width="76" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="28" />
                                     <ColumnDefinition Width="Auto" />
@@ -327,18 +326,16 @@
                                 <TextBlock
                                     Grid.Column="0"
                                     Text="{x:Bind Position}"
-                                    Visibility="{x:Bind PositionVisibility, Mode=OneWay}"
                                     FontSize="20"
                                     Opacity="0.6"
                                     TextAlignment="Right" />
-                                <FontIcon
+                                <local:SpinningVinyl
                                     Grid.Column="0"
-                                    FontFamily="{StaticResource FluentIconFont}"
-                                    Glyph="&#xE855;"
-                                    FontSize="20"
-                                    Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                    Width="26"
+                                    Height="26"
                                     Visibility="{x:Bind NowPlayingVisibility, Mode=OneWay}"
-                                    HorizontalAlignment="Right" />
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center" />
                                 <TextBlock
                                     Grid.Column="1"
                                     Text="{x:Bind Title}"

@@ -1,6 +1,65 @@
 # Current Status
 
-Last updated: 2026-07-19 (**Console checkpoint #12: Rafael verified all
+Last updated: 2026-07-19, sixth pass (**nav-icon fix: the collapsed-rail
+correction stands; the expanded-label `ContentTemplate` was reverted
+after it blanked all nav icons on device.** The fifth pass added two
+nav fixes; on device the icons vanished completely. Diagnosed by
+elimination: `CompactPaneLength="48"` only affects the collapsed pane
+width and cannot hide expanded icons, so the culprit was the other
+fifth-pass change — the `NavigationViewItem.ContentTemplate` override
+(intended to apply `TextLineBounds="Tight"` to the label). Overriding a
+NavigationViewItem's ContentTemplate disrupts how its presenter hosts
+the item, taking the icons with it. Reverted; `CompactPaneLength="48"`
+(collapsed-rail centering) and `VerticalContentAlignment="Center"`
+(kept from round two) remain. The residual label-descender offset is a
+minor deferred item needing a safer technique than a bare
+ContentTemplate swap. Build green. Earlier passes the same day below.)
+
+Previous update, 2026-07-19 fifth pass (**nav-icon alignment round three
+— the real causes, found by reading the 26100 SDK's
+`NavigationViewItemPresenter` template over SSH.** Collapsed rail: the
+template's icon column is hardcoded to 48 epx but
+`NavigationView.CompactPaneLength` was never set and defaulted to 40 —
+an 8-epx mismatch invisible until measured, uniform across every icon
+("unbalanced" rather than per-icon wobble); fixed by setting
+`CompactPaneLength="48"` to match. Expanded labels: attempted via an
+explicit `ContentTemplate` (`TextLineBounds="Tight"`) — REVERTED next
+pass, it blanked the icons on device. Round two's per-glyph
+square-FontIcon-bounds fix is kept but wasn't the real cause. Also:
+Rafael confirmed the redesigned spinning-vinyl marker (dark record +
+rim + grooves + seafoam label + stripe) looks right on device. Build
+green. Earlier passes the same day below.)
+
+Previous update, 2026-07-19 fourth pass (**playback surfaces now show
+the DELIVERED stream's format/bitrate** — Rafael confirmed the
+server-side bitrate restriction transcodes correctly on device
+(Navidrome log: opus 32 kbps from a 256 kbps m4a) but the bar still
+showed the file's tags; the bar + expanded queue now read the playing
+item's audio-track encoding properties
+(`PlaybackService.TryGetDeliveredStreamInfo`), closing the §10 label
+known gap. Browse/search lists keep tag metadata by design. Build
+green; backlog item 3 in the bitrate group covers the on-device
+check. Earlier passes the same day below.)
+
+Previous update, 2026-07-19 third pass (**UI/UX refresh round
+code-complete, NOT yet device-verified** — Rafael's three requests:
+"Play" on every container card context menu, browse-page initial
+focus lands on the first card below the view toggle, and the **retro
+visual theme** derived from the SubMusic Box logo (direction B
+"retro flavored", confirmed via design Q&A: logo palette replaces the
+system accent app-wide, petrol-teal nav pane + playback surfaces,
+triple-stripe header motif, vinyl-disc artwork placeholders, a
+spinning-vinyl current-track marker, parchment card frames; Segoe UI
+kept). 3 new controls (RetroStripes, VinylDisc, SpinningVinyl); build
+green, 76 Core + 78 SubsonicClient tests green; console items appended
+to the backlog. Earlier passes the same day below.)
+
+Previous update, 2026-07-19 second pass (**bitrate-restriction
+investigation + decode-failure mp3 fallback added to Slice 14 after
+checkpoint #12** — §16 decision: the server-side limit is
+authoritative, no client-side quality setting; 4 new console items in
+the backlog, 3 new SubsonicClient tests → 78. Earlier the same day:
+**Console checkpoint #12: Rafael verified all
 seven Slice 14 items on device — the LAST planned slice is closed.**
 Queue-edit confirmation toasts, toast visibility over the expanded
 queue, the container-fetch failure toast, per-track skip + failure-stop
@@ -856,13 +915,116 @@ merged to main — v1's planned scope is COMPLETE.**)
     (MaxPlayedItemsToKeepOpen=2, DecodePixelWidth caps) stand.
   - **Console checkpoint #12 (2026-07-19): all seven Slice 14 items
     verified by Rafael on device — the slice is closed.**
+  - **Decode-failure mp3 fallback (added after checkpoint #12 — the
+    §16 bitrate-restriction decision):** `SubsonicApiClient.GetStreamUri`
+    gained optional `maxBitRate`/`format` parameters (3 new tests → **78
+    SubsonicClient tests green**; the app itself still sends NO overrides
+    by default — the server-side restriction is the authoritative quality
+    control, Rafael's call, no client-side setting). `PlaybackService`:
+    an `ItemFailed` with a decode-class error (DecodeError/
+    SourceNotSupportedError — the signature of a server transcode format the
+    Xbox lacks, e.g. Navidrome's Opus default) retries that track once
+    in place with `format=mp3` (item swapped in the live list, MoveTo
+    back, maps/shuffle order updated; not counted toward the
+    consecutive-failure stop, no skip toast); after a fallback item
+    audibly plays, the session builds further stream URLs as mp3
+    directly. Network-class failures keep the normal skip/stop path.
+    NOT yet device-verified — backlog items 1–4.
 
-**Verification state (checkpoint #12, 2026-07-19):** the whole Slice 14
-round **verified by Rafael on console — all seven backlog items
-passed**. **Checkpoints #1–#12 are all closed; nothing is awaiting
-device verification.** Build green (x64 Debug over SSH; APPX0703
-packaging is the known command-line-only failure), **76 Core + 75
-SubsonicClient** tests green.
+- **2.20 UI/UX refresh round (2026-07-19, third pass — code-complete,
+  NOT device-verified):** Rafael's three requests, visual direction
+  confirmed through a design Q&A (options A/B/C mockups; B chosen).
+  - **"Play" on container card menus** (§10 semantics — replace the
+    queue, play from the first song, identical to the detail-page Play):
+    `QueueActions` refactored around a private `ContainerAction`
+    (Play/PlayNext/Append) with new `PlayAlbumAsync`/`PlayPlaylistAsync`/
+    `PlayArtistAsync`; failure toast "Couldn't load the … — playback
+    didn't start." (menu-closed contract). Menu item (icon F606) added
+    ABOVE Play next/Add to queue on every card surface: Artists/Albums/
+    Playlists browse (grid+list), artist-detail album grid, Home
+    carousels, Search artist+album cards.
+  - **Browse-page initial focus lands below the view toggle:** the three
+    toggle-carrying pages (Artists/Albums/Playlists) now pass the ACTIVE
+    view (grid or list) to `ContentFocus.MoveInto` instead of the page,
+    so first focus is the first card; the toggle stays one Up away
+    (XYFocusUp pins unchanged).
+  - **Retro theme:** App.xaml theme dictionaries carry the logo palette
+    (dark: seafoam accent #7FADA9, cream #E9DCC0, petrol surface
+    #253B3F, tan card frames; light: deep teal #2F6B66, aged tan,
+    pale-seafoam surface). `SystemAccentColor` + the reachable control
+    brush keys (SystemControlForeground/HighlightAccentBrush,
+    ToggleButton checked incl. ink foregrounds, RadioButton checked —
+    key names verified against the 26100 generic.xaml over SSH) are
+    overridden per-theme; FavoriteHeart picks the override up through
+    its existing SystemAccentColor read. Nav section icons painted
+    RetroAccentBrush; PaneBackdrop + NowPlayingBar are RetroSurfaceBrush
+    (bar border = tan frame); progress lines + play/pause fills are
+    cream with per-theme ink (`RetroOnCreamBrush`).
+  - **New controls:** `RetroStripes` (cream→seafoam triple underline;
+    browse/Songs page titles, Home title + resume header, carousel
+    titles, expanded-queue header), `VinylDisc` (Ellipse-drawn record,
+    Viewbox-scaled; replaces every music-note ALBUM-artwork placeholder
+    — carousel/browse cards, search album cards, artist-detail album
+    grid, album-detail header, resume card, bar, expanded queue; artist
+    "people" and playlist glyphs unchanged), `SpinningVinyl` (current-
+    track marker in album detail, playlist detail, and queue rows —
+    RenderTransform rotation storyboard, spins only while visible AND
+    playing, freezes on pause, unsubscribes from
+    PlaybackService.Changed on unload). **Same-day feedback fixes: (1) "the
+    vinyl doesn't move" — a bare vinyl is rotationally symmetric, so
+    its rotation was invisible at 22 epx; the animation also targets
+    the documented independent property path with
+    EnableDependentAnimation=True as a run-anyway guarantee. (2) The
+    near-black record vanished on dark rows and hid the track number —
+    the marker (only; static placeholders unchanged) now carries an
+    accent ring + accent label + on-accent rotating stripe
+    (RetroOnAccentBrush: ink on seafoam / pale on deep teal), sits at
+    the number column's LEFT edge, and the number stays visible beside
+    it (column widened 48→64 on the detail pages, 56→76 in the queue;
+    the NumberVisibility/PositionVisibility model properties are no
+    longer bound). (3) Nav icons, round two: centering
+    the IconBox alone changed nothing — the template's ContentGrid is a
+    40-epx-tall grid with a 48-epx icon column, so the old margin was
+    already geometrically centered; the REAL offset is each glyph's
+    metrics inside the FontIcon (the Viewbox scales the icon's whole
+    text line box, bearings included — worst on the panel-toggle
+    glyph). Fix: every nav FontIcon gets explicit square 24×24 bounds
+    (FontIcon centers its glyph in its own box, so the Viewbox scales a
+    true square), plus VerticalContentAlignment=Center in the item
+    style so the label centering is explicit. (4) The marker was
+    restyled again after the accent-badge cut stopped reading as a
+    vinyl: it is now its own marker-tuned disc (dark record + soft
+    cream rim + two brighter groove rings + small seafoam label with
+    the rotating stripe + spindle hole), 26 epx, separate from the
+    placeholder VinylDisc. Confirmed good by Rafael. (5) Nav icons,
+    round three — the REAL causes, found by reading the 26100 SDK's
+    `NavigationViewItemPresenter` template over SSH (round two's square
+    FontIcon bounds was a real but insufficient fix, kept):
+    **collapsed rail** — the template's icon column is HARDCODED to
+    48 epx regardless of pane state, but `NavigationView.CompactPaneLength`
+    was never set and defaults to 40 — an unrelated resource never kept
+    in sync with the template's own column width, so every icon's true
+    center sat 4 epx off the rail's actual center (uniform bias, reads
+    as "unbalanced" rather than per-icon wobble). Fix: `CompactPaneLength="48"`
+    on the NavigationView, matching the column exactly. **Expanded
+    labels** — the item's text Content renders through an
+    auto-generated TextBlock whose default line box carries descender
+    space below the caps, the identical bug already fixed on
+    `ControllerGlyph`'s button letters; `VerticalContentAlignment=Center`
+    (round two) centers the line BOX against the icon but can't fix
+    glyphs sitting low WITHIN that box. Fix: an explicit
+    `NavigationViewItem.ContentTemplate` (`TextBlock` with
+    `TextLineBounds="Tight"` + `VerticalAlignment="Center"`) on the item
+    style.**
+  - Browse card artwork (200/56), detail headers (320), and the
+    expanded-queue artwork carry the 1-epx tan parchment frame.
+
+**Verification state (2026-07-19, second pass):** checkpoint #12
+closed the original Slice 14 round (**all seven backlog items
+passed**); the same-day **decode-failure mp3 fallback is NOT yet
+device-verified** (backlog items 1–4). Build green (x64 Debug over
+SSH; APPX0703 packaging is the known command-line-only failure),
+**76 Core + 78 SubsonicClient** tests green.
 
 **Git state:** `main` holds everything through Slice 14 (merged via
 PR #6 `7caa38b`; Slice 13 via PR #5, branding via PR #4 before it).
@@ -897,12 +1059,13 @@ pre-Slice-10 checkpoint item.**
 v1's planned scope (slices 00–14) is COMPLETE**, implemented and
 console-verified end to end; the device backlog is empty.
 
-There is no committed next slice. Anything further is refinement-phase
-work, picked with Rafael on request: the deferred-beyond-v1 items
-(seek, dynamic input glyphs, small visual polish), the
-transcoding-aware bitrate labels, disc headers, Songs-column tuning
-(all in "Known gaps") — plus release-prep questions (packaging/
-distribution beyond Dev Mode F5) that were never in the slice plan.
+There is no committed next slice; refinement-phase work has begun on
+request. **Next console pass: the backlog below** — the decode-failure
+mp3 fallback items (1–4) plus the 2026-07-19 UI/UX refresh round
+(items 5–12, incl. the retro theme's light/dark 10-ft check and the
+accent-brush override reach on the console OS build). Other candidates
+remain: seek, dynamic input glyphs, transcoding-aware bitrate labels,
+disc headers, Songs-column tuning, release-prep/packaging.
 
 ## On-device test backlog (next console pass)
 
@@ -946,11 +1109,117 @@ Go to album/artist with overlay-close navigation and correct B-back),
 acceptable large-artist start latency under the 4-request bound, and the
 throttled playlist tile artwork filling in completely.
 
-**The backlog is currently empty.**
+**Post-checkpoint-#12 addition (decode-failure mp3 fallback, §16
+bitrate-restriction decision) — unverified on device:**
+
+1. **Server-side bitrate restriction end-to-end:** set a max bitrate
+   (no transcoding format, or a lossy one — NOT flac) on the
+   **SubMusicBox [NSPlayer]** player entry in Navidrome, play something
+   high-bitrate, and confirm the restriction is honored (Navidrome log
+   shows "Transcode decision: transcode"; no "no compatible profile"
+   warning).
+2. **Ogg/Opus decode on Xbox — expectation: does NOT decode natively**
+   (researched 2026-07-19: Microsoft's Xbox codec table lists no
+   Opus/Ogg/Vorbis at all — the audio set is AAC/MP3/FLAC/ALAC/WAV/
+   WMA/AC-3; Jellyfin's Xbox app has the same symptom, Opus tracks play
+   silent, jellyfin-xbox#109). So with the restriction active the mp3
+   fallback engaging is the EXPECTED path, not a question mark: the
+   first track should hiccup once (brief silence/retry) and then play
+   as mp3 at the capped bitrate; subsequent queues should play without
+   the hiccup (session prefers mp3 after the first successful
+   fallback). No "Skipped …" toast for the retried track; playback
+   must not stop. If Opus somehow plays natively instead, that's fine
+   too — the fallback stays dormant.
+   *(Optional experiment while here: install the "Web Media
+   Extensions" Store package on the console — an FFmpeg-based system
+   codec provider that historically shipped for Xbox too and adds
+   Ogg/Vorbis/Opus to UWP apps automatically — and re-test; if Opus
+   then direct-plays, that's a zero-code quality win worth documenting
+   for users.)*
+3. **Delivered-stream labels (bar + expanded queue):** with the
+   restriction active, the format/bitrate line must show what is
+   actually playing (e.g. "OPUS", or "MP3 · <cap> kbps" once the
+   fallback engages) instead of the file's "M4A · 256 kbps"; on an
+   unrestricted server it should show the real codec (e.g. "AAC"
+   for an m4a) with the file bitrate. The tag values may flash for
+   an instant at track start (pre-open fallback) — acceptable.
+4. **Network failures still behave:** with the restriction active and
+   the server unreachable, the normal skip toasts + failure-stop must
+   still occur (decode fallback must not swallow network errors).
+
+**UI/UX refresh round (2026-07-19, third pass) — unverified on
+device:**
+
+5. **Card-menu "Play":** on an artist, album, and playlist card (browse
+   pages, Home carousel, search results, artist-detail album grid) the
+   new "Play" item replaces the queue and starts that container from
+   its first song; bar reveals; large-artist Play shows the known
+   pool-fetch delay before audio.
+6. **Browse focus:** opening Artists/Albums/Playlists lands focus on
+   the FIRST CARD (not the grid/list toggle); Up from the first row
+   still reaches the toggle; the toggle still works.
+7. **Retro accent reach:** hearts, starred markers, current-track
+   markers, checked shuffle/view toggles, Settings radios, and the nav
+   selection indicator all show the seafoam/teal accent — note ANY
+   surface still showing the console's system accent color (the
+   override's reach on the console OS build is the open question).
+8. **Teal surfaces:** nav pane backdrop + now-playing bar read as the
+   logo's petrol teal with legible text in BOTH themes (pane text
+   contrast on teal is the dark-theme check; the pale-seafoam pane is
+   the light-theme check). The pane backdrop lost its acrylic
+   translucency by design (solid brush now).
+9. **Stripe motif:** triple stripes under page titles, carousel
+   titles, resume header, and the queue header — legible, not
+   distracting, correctly colored in both themes.
+10. **Vinyl placeholders:** artless albums show the vinyl disc at every
+    size (cards, bar, 320/400 headers, resume card); loading tiles show
+    it briefly before art paints.
+11. **Spinning marker (CONFIRMED GOOD on device, 2026-07-19):** the
+    current-track row in album detail, playlist detail, and the
+    expanded queue shows a small vinyl-record disc with a rim, groove
+    rings, and a seafoam label with a rotating stripe — clearly visible
+    on the dark row background, spinning while playing, frozen on
+    pause; the TRACK NUMBER stays visible next to it; scrolling a long
+    list stays smooth (storyboards are gated to visible markers).
+13. **Nav icon alignment (unverified):** FIRST confirm the icons are
+    VISIBLE again (the fifth-pass ContentTemplate blanked them; reverted
+    sixth pass). Then: compact strip — icons centered in the 48-epx rail
+    (`CompactPaneLength="48"` fix, the real collapsed-rail cause);
+    expanded pane — labels reasonably centered against their icons
+    (`VerticalContentAlignment="Center"`; a residual descender offset is
+    a known minor deferred item — do NOT reintroduce a bare
+    ContentTemplate override, it hides the icons).
+12. **Parchment frames:** the 1-epx tan border on cards/headers reads
+    as intentional at 10 ft in both themes (not as a rendering
+    artifact).
 
 *(Future work: append console items here.)*
 
 ## Known gaps / notes from this session
+
+- **Retro theme notes (2026-07-19 third pass):** the palette lives in
+  App.xaml's theme dictionaries as `Retro*` keys plus overrides of
+  `SystemAccentColor` and the reachable control brush keys (ToggleButton
+  checked, RadioButton checked, the two SystemControl accent brushes —
+  names verified against the 26100 generic.xaml). Framework brushes
+  composed from SystemAccentColor at generic.xaml scope may NOT follow
+  the override (the known global-scope lesson) — any surface still
+  showing the console accent on device gets its own brush-key override
+  next round. The "zero hardcoded colors in XAML" audit stance is
+  unchanged: every new color is a ThemeResource with dark+light values.
+  `FavoriteHeart`'s code read of SystemAccentColor resolves through the
+  app override but not per-runtime-theme (it reads the Default
+  dictionary's value); the seafoam fill + black rim is legible on both
+  themes, accepted. The pane backdrop is now a solid brush (acrylic
+  gone by design). The spinning marker is a RenderTransform storyboard
+  (independent animation), gated to visible + playing; if the console
+  feel-test shows any cost, the gate can tighten further.
+- **Container "Play" (2026-07-19):** card-menu Play fetches on demand
+  like the queue edits (artist = the bounded §8 fan-out, so a large
+  artist has a visible menu-click→audio delay); its fetch-failure toast
+  says playback didn't start. Play from a card replaces the queue
+  WITHOUT confirmation — §10 standard behavior, same as detail-page
+  Play.
 
 - **Playback is in (Slices 10–11 + 05b + playlist detail) — remaining
   playback gap:** no seek from either playback surface (not a §10
@@ -991,10 +1260,41 @@ throttled playlist tile artwork filling in completely.
   ShuffleEnabled is undocumented, so a platform mismatch would produce one
   imperceptible wrong-item MoveTo before the corrective one. Jump-to-track
   verified at checkpoint #5; no wrong-track blip reported.
-- **Stream format/bitrate labels describe the file's tags, not the delivered
-  stream:** v1 sends no transcoding overrides, so a server configured to
-  transcode will play a different bitrate than the bar shows. Revisit with
-  the OpenSubsonic `transcoding` extension in the refinement phase.
+- **Playback surfaces show the DELIVERED stream since 2026-07-19** (the
+  "labels describe the file's tags" gap is CLOSED for the bar + expanded
+  queue): `PlaybackService.TryGetDeliveredStreamInfo` reads the playing
+  item's audio-track encoding properties (codec + declared bitrate), so a
+  server-restricted stream shows e.g. "OPUS" / "MP3 · 128 kbps" instead
+  of the file's "M4A · 256 kbps" (Rafael's on-device finding). Tag values
+  appear only for the moment before the stream opens; VBR streams that
+  declare no bitrate show the codec alone. Browse/search lists keep tag
+  metadata by design — a row describes the library file, not a future
+  playback's server transcode.
+- **Bitrate restriction investigation (2026-07-19, live against Navidrome)
+  → decode-failure mp3 fallback implemented in Slice 14** (§16: the
+  server-side limit is authoritative; NO client-side quality setting,
+  Rafael's call). Rafael's server-side per-player max-bitrate restriction
+  was silently ignored (raw stream, Navidrome warning "Transcode
+  decision: no compatible profile … audio bitrate not supported"). Two
+  causes found: Navidrome 0.62.0 ignored player MaxBitRate on the legacy
+  /stream path (their issue #5583, fixed in 0.63.0 — the server has
+  since been upgraded to 0.63.2 and max-bitrate-only restriction was
+  verified working live); and on 0.63.2 a player transcoding format of
+  **flac** (lossless target from a lossy source) still silently serves
+  raw with that exact warning — use max bitrate alone or a lossy format,
+  set on the **SubMusicBox [NSPlayer]** player entry (Navidrome keeps
+  one entry per client name + user agent; [NSPlayer] is the one that
+  streams). App-side (Slice 14): a server-transcoded stream the Xbox
+  cannot decode (Opus is Navidrome's default downsampling format;
+  researched 2026-07-19 — Opus/Ogg absent from Microsoft's Xbox codec
+  table, so the fallback engaging is expected) is retried once with
+  `format=mp3` — the server
+  still applies its own bitrate cap, so the restriction stays respected
+  on every Subsonic/OpenSubsonic server; after the first fallback item
+  plays, the session builds stream URLs as mp3 directly. Network-class
+  failures keep the normal skip/stop path. Console-verify items: does a
+  restricted (Opus) stream play natively; if not, does the fallback
+  engage and keep the queue playing.
 - **Artist Play fan-out is bounded since Slice 14:** at most 4 getAlbum
   requests in flight (`BoundedParallel` in Core; the playlist-tile fan-out
   is gated the same way). A very large artist now trades a little start
