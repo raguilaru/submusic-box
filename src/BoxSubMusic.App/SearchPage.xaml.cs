@@ -696,6 +696,15 @@ namespace BoxSubMusic.App
             }
         }
 
+        private void ArtistPlay_Click(object sender, RoutedEventArgs e)
+        {
+            var card = (sender as FrameworkElement)?.Tag as ArtistCard;
+            if (card != null)
+            {
+                _ = QueueActions.PlayArtistAsync(card.Id);
+            }
+        }
+
         private void ArtistPlayNext_Click(object sender, RoutedEventArgs e)
         {
             var card = (sender as FrameworkElement)?.Tag as ArtistCard;
@@ -711,6 +720,15 @@ namespace BoxSubMusic.App
             if (card != null)
             {
                 _ = QueueActions.AddArtistAsync(card.Id, insertNext: false);
+            }
+        }
+
+        private void AlbumPlay_Click(object sender, RoutedEventArgs e)
+        {
+            var card = (sender as FrameworkElement)?.Tag as AlbumCard;
+            if (card != null)
+            {
+                _ = QueueActions.PlayAlbumAsync(card.Id);
             }
         }
 

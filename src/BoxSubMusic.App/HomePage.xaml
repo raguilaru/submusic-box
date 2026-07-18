@@ -50,6 +50,7 @@
                     Text="Home"
                     FontSize="48"
                     FontWeight="SemiBold" />
+                <controls:RetroStripes Width="150" HorizontalAlignment="Left" Margin="0,-28,0,0" />
 
                 <!-- Slice 05b (§6.1): resume card. Shown only when a valid
                      persisted queue exists for this server AND nothing is
@@ -67,6 +68,7 @@
                         Text="Pick up where you left off"
                         FontSize="28"
                         FontWeight="SemiBold" />
+                    <controls:RetroStripes Width="110" HorizontalAlignment="Left" Margin="0,-8,0,0" />
                     <Button
                         x:Name="ResumeCard"
                         Padding="0"
@@ -80,14 +82,10 @@
                             </Grid.ColumnDefinitions>
                             <Grid Width="160" Height="160">
                                 <!-- Same placeholder treatment as the album
-                                     cards: music-note glyph until artwork
+                                     cards: the vinyl disc shows until artwork
                                      loads (or when there is none). -->
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
-                                    <FontIcon
-                                        FontFamily="{StaticResource FluentIconFont}"
-                                        Glyph="&#xE855;"
-                                        FontSize="48"
-                                        Opacity="0.4" />
+                                    <controls:VinylDisc Margin="16" />
                                 </Border>
                                 <Image x:Name="ResumeArtImage" Stretch="UniformToFill" />
                             </Grid>

@@ -7,6 +7,7 @@ using BoxSubMusic.SubsonicClient.Models;
 using Windows.Foundation;
 using Windows.Media;
 using Windows.Media.Core;
+using Windows.Media.MediaProperties;
 using Windows.Media.Playback;
 using Windows.Storage.Streams;
 using Windows.UI.Core;
@@ -57,6 +58,22 @@ namespace BoxSubMusic.App.Services
         // (unreachable server), stop instead of skipping forever.
         private int _consecutiveFailures;
 
+        // Decode-failure mp3 fallback (Slice 14, §16 decision 2026-07-19):
+        // a server enforcing its own bitrate restriction may transcode to a
+        // format the Xbox cannot decode (Navidrome's default is Opus/Ogg).
+        // Such a track is retried once with format=mp3 — the server still
+        // applies its own bitrate cap to that transcode, so the restriction
+        // stays respected. _retriedSongs is checked on the media thread
+        // (ItemFailed) and cleared on the UI thread, hence the lock;
+        // _fallbackItems and _preferMp3Fallback are UI-thread only. Once a
+        // fallback item audibly plays, the session prefers mp3 for future
+        // items so a fully-transcoded queue does not hiccup on every track.
+        private readonly object _retryGate = new object();
+        private readonly HashSet<Song> _retriedSongs = new HashSet<Song>();
+        private readonly HashSet<MediaPlaybackItem> _fallbackItems =
+            new HashSet<MediaPlaybackItem>();
+        private bool _preferMp3Fallback;
+
         // §6.1 resume: one-shot seek applied when the first item after a
         // Resume() opens (a MediaPlaybackList position can only be set once
         // its media is open). Pinned to the track it was saved for, so a
@@ -85,6 +102,47 @@ namespace BoxSubMusic.App.Services
         public MediaPlaybackSession Session => Player.PlaybackSession;
 
         public bool IsPlaying => Session.PlaybackState == MediaPlaybackState.Playing;
+
+        /// <summary>
+        /// What the decoder is ACTUALLY playing right now — codec and, when
+        /// the stream declares one, bitrate — read from the current item's
+        /// audio track (§10 display fix, 2026-07-19): a server enforcing its
+        /// own bitrate restriction transcodes, so the Song's tag-derived
+        /// format/bitrate can describe a stream that is not the one being
+        /// delivered. Platform-sourced, so it is server-agnostic and also
+        /// reflects the mp3 decode-fallback. Returns false until the current
+        /// item has opened (callers fall back to the tag values; the next
+        /// Changed after the open refreshes them). UI thread.
+        /// </summary>
+        public bool TryGetDeliveredStreamInfo(out string format, out int? bitrateKbps)
+        {
+            format = null;
+            bitrateKbps = null;
+
+            MediaPlaybackItem item = _list?.CurrentItem;
+            if (item == null || item.AudioTracks.Count == 0)
+            {
+                return false;
+            }
+
+            int index = item.AudioTracks.SelectedIndex;
+            AudioEncodingProperties props =
+                item.AudioTracks[index >= 0 ? index : 0].GetEncodingProperties();
+            if (!string.IsNullOrEmpty(props.Subtype))
+            {
+                format = props.Subtype.ToUpperInvariant();
+            }
+
+            if (props.Bitrate > 0)
+            {
+                // Bits per second → kbit/s. VBR streams (e.g. Opus) may not
+                // declare one; the callers then show the codec alone rather
+                // than a number that would be a guess.
+                bitrateKbps = (int)(props.Bitrate / 1000);
+            }
+
+            return format != null || bitrateKbps.HasValue;
+        }
 
         private PlaybackService()
         {
@@ -565,6 +623,13 @@ namespace BoxSubMusic.App.Services
 
             _songToItem.Clear();
             _itemToSong.Clear();
+            _fallbackItems.Clear();
+            lock (_retryGate)
+            {
+                _retriedSongs.Clear();
+            }
+            // _preferMp3Fallback deliberately survives: the Xbox's decoder
+            // set does not change between queues within a session.
         }
 
         private void ApplyShuffleToList()
@@ -593,8 +658,17 @@ namespace BoxSubMusic.App.Services
 
         private MediaPlaybackItem CreateItem(SubsonicApiClient client, Song song)
         {
+            return CreateItem(client, song, _preferMp3Fallback ? "mp3" : null);
+        }
+
+        private MediaPlaybackItem CreateItem(SubsonicApiClient client, Song song, string format)
+        {
             var item = new MediaPlaybackItem(
-                MediaSource.CreateFromUri(client.GetStreamUri(song.Id)));
+                MediaSource.CreateFromUri(client.GetStreamUri(song.Id, format: format)));
+            if (format != null)
+            {
+                _fallbackItems.Add(item);
+            }
 
             // SMTC metadata (§11): shown by the system media flyout and on
             // whatever the console casts it to.
@@ -709,6 +783,32 @@ namespace BoxSubMusic.App.Services
 
         private void OnItemFailed(MediaPlaybackList sender, MediaPlaybackItemFailedEventArgs args)
         {
+            Song song = null;
+            if (args.Item != null)
+            {
+                _itemToSong.TryGetValue(args.Item, out song);
+            }
+
+            // Decode-failure mp3 fallback (§16 decision 2026-07-19): a
+            // stream the Xbox cannot DECODE — as opposed to not reach — is
+            // most likely the server's own transcode in a format this
+            // hardware lacks (a server-side bitrate restriction typically
+            // means Opus from Navidrome). Retry the track once with
+            // format=mp3; the server still applies its bitrate cap to that
+            // transcode. Not counted as a failure and not toasted — if the
+            // retry works nothing was lost, and if the mp3 item fails too
+            // it comes back here once more and takes the normal skip path.
+            MediaPlaybackItemErrorCode error = args.Error?.ErrorCode
+                ?? MediaPlaybackItemErrorCode.None;
+            bool decodeClass = error == MediaPlaybackItemErrorCode.DecodeError
+                || error == MediaPlaybackItemErrorCode.SourceNotSupportedError;
+            if (song != null && decodeClass && MarkRetried(song))
+            {
+                MediaPlaybackItem failedItem = args.Item;
+                _ = RunOnUiAsync(() => RetryWithMp3(song, failedItem));
+                return;
+            }
+
             // The list skips a failed item on its own; only guard against a
             // whole queue of failures (server unreachable) looping forever.
             // Slice 14 (§3/§15): neither the skip nor the stop may pass
@@ -723,15 +823,74 @@ namespace BoxSubMusic.App.Services
                 return;
             }
 
-            Song song = null;
-            if (args.Item != null)
-            {
-                _itemToSong.TryGetValue(args.Item, out song);
-            }
-
             Toast.Show(song != null
                 ? "Skipped “" + song.Title + "” — the track could not be played."
                 : "Skipped a track that could not be played.");
+        }
+
+        /// <summary>
+        /// Records that <paramref name="song"/> got its one fallback retry.
+        /// Returns false when it already had it. Media thread (ItemFailed);
+        /// the lock covers the UI thread's clear in <see cref="DetachList"/>.
+        /// </summary>
+        private bool MarkRetried(Song song)
+        {
+            lock (_retryGate)
+            {
+                return _retriedSongs.Add(song);
+            }
+        }
+
+        /// <summary>
+        /// Swaps the failed item for a format=mp3 one in place and moves
+        /// playback back to it (UI thread — it mutates the list and maps).
+        /// The list has usually auto-advanced past the failure by now, so
+        /// the successor may audibly start for an instant before the MoveTo
+        /// lands; accepted (same class as the JumpTo shuffle correction).
+        /// </summary>
+        private void RetryWithMp3(Song song, MediaPlaybackItem failedItem)
+        {
+            var client = AppSession.Client;
+            if (_list == null || client == null)
+            {
+                return;
+            }
+
+            int index = _list.Items.IndexOf(failedItem);
+            if (index < 0)
+            {
+                return; // the queue was rebuilt or stopped in the meantime
+            }
+
+            var item = CreateItem(client, song, "mp3");
+            _itemToSong.Remove(failedItem);
+            _songToItem[song] = item;
+            _itemToSong[item] = song;
+            _list.Items[index] = item;
+            if (Queue.ShuffleEnabled)
+            {
+                ApplyShuffleToList();
+            }
+
+            // Same undocumented-index-space dance as JumpTo: try the
+            // play-order index under shuffle, verify, correct once.
+            int moveIndex = Queue.ShuffleEnabled ? IndexOfInPlayOrder(song) : index;
+            if (moveIndex < 0)
+            {
+                return;
+            }
+
+            MediaPlaybackItem landed = _list.MoveTo((uint)moveIndex);
+            if (landed != item)
+            {
+                int itemsIndex = _list.Items.IndexOf(item);
+                if (itemsIndex >= 0)
+                {
+                    _list.MoveTo((uint)itemsIndex);
+                }
+            }
+
+            Player.Play();
         }
 
         private void OnPlaybackStateChanged(MediaPlaybackSession sender, object args)
@@ -741,6 +900,20 @@ namespace BoxSubMusic.App.Services
                 // A track opened and is audibly playing: the failure streak,
                 // if any, is over.
                 _consecutiveFailures = 0;
+
+                // If the playing item is an mp3-fallback one, the server's
+                // preferred transcode format is confirmed undecodable here:
+                // build future items as mp3 directly, so a fully-transcoded
+                // queue does not fail-and-retry on every track. UI thread
+                // (the flag and set are UI-owned).
+                _ = RunOnUiAsync(() =>
+                {
+                    if (!_preferMp3Fallback && _list?.CurrentItem != null
+                        && _fallbackItems.Contains(_list.CurrentItem))
+                    {
+                        _preferMp3Fallback = true;
+                    }
+                });
             }
             else if (sender.PlaybackState == MediaPlaybackState.Paused && _scrobbleSong != null)
             {

@@ -323,16 +323,30 @@ public sealed class SubsonicApiClient
 
     /// <summary>
     /// Builds an authenticated stream URL for a song, usable directly as a
-    /// MediaPlayer source (§10/§11). No format/maxBitRate overrides in v1:
-    /// the server's own player defaults decide the delivered stream. In
-    /// token mode each URL embeds a fresh salt+token pair.
+    /// MediaPlayer source (§10/§11). With no overrides (the default) the
+    /// server decides the delivered stream — including enforcing any
+    /// server-side bitrate restriction, which is the authoritative quality
+    /// control (§16 decision 2026-07-19: no client-side quality setting).
+    /// <paramref name="format"/> (core API 1.6.0) pins the transcode format
+    /// — the app uses it only as the decode-failure fallback (format=mp3),
+    /// never by default; the server still applies its own bitrate cap to
+    /// that transcode. <paramref name="maxBitRate"/> (core API 1.2.0) is
+    /// the protocol's client-side cap, exposed for completeness; the app
+    /// does not send it. In token mode each URL embeds a fresh salt+token
+    /// pair.
     /// </summary>
-    public Uri GetStreamUri(string songId)
+    public Uri GetStreamUri(string songId, int? maxBitRate = null, string? format = null)
     {
         if (string.IsNullOrWhiteSpace(songId))
             throw new ArgumentException("A song id is required.", nameof(songId));
+        if (maxBitRate.HasValue && maxBitRate.Value < 1)
+            throw new ArgumentOutOfRangeException(nameof(maxBitRate), maxBitRate, "Max bitrate must be positive.");
 
         var parameters = new List<KeyValuePair<string, string>> { Param("id", songId) };
+        if (maxBitRate.HasValue)
+            parameters.Add(Param("maxBitRate", maxBitRate.Value.ToString(CultureInfo.InvariantCulture)));
+        if (!string.IsNullOrWhiteSpace(format))
+            parameters.Add(Param("format", format!));
         return BuildRequestUri("stream", parameters);
     }
 

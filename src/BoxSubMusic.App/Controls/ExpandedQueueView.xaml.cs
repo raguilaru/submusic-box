@@ -164,11 +164,21 @@ namespace BoxSubMusic.App.Controls
 
             TitleText.Text = song.Title;
             ArtistAlbumText.Text = JoinWithDots(song.Artist, song.Album);
-            StreamInfoText.Text = JoinWithDots(
-                song.Format?.ToUpperInvariant(),
-                song.BitRate.HasValue
-                    ? song.BitRate.Value.ToString(CultureInfo.InvariantCulture) + " kbps"
-                    : null);
+            // Delivered-stream info over tag values, same rule as the bar
+            // (§10 display fix 2026-07-19).
+            string liveFormat;
+            int? liveKbps;
+            StreamInfoText.Text = _playback.TryGetDeliveredStreamInfo(out liveFormat, out liveKbps)
+                ? JoinWithDots(
+                    liveFormat,
+                    liveKbps.HasValue
+                        ? liveKbps.Value.ToString(CultureInfo.InvariantCulture) + " kbps"
+                        : null)
+                : JoinWithDots(
+                    song.Format?.ToUpperInvariant(),
+                    song.BitRate.HasValue
+                        ? song.BitRate.Value.ToString(CultureInfo.InvariantCulture) + " kbps"
+                        : null);
             UpdateArtwork(song);
 
             PlayPauseIcon.Glyph = _playback.IsPlaying ? PauseGlyph : PlayGlyph;

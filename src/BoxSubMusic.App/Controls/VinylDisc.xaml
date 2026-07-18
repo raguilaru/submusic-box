@@ -1,0 +1,25 @@
+<UserControl
+    x:Class="BoxSubMusic.App.Controls.VinylDisc"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    IsHitTestVisible="False"
+    IsTabStop="False">
+
+    <!-- Vinyl-record artwork placeholder (retro theme, 2026-07-19): replaces
+         the plain music-note glyph wherever ALBUM/track artwork can be
+         missing (the artist "people" and playlist placeholders keep their
+         glyphs). Drawn with plain Ellipses in a Viewbox so it scales to any
+         tile size; brushes come from the Retro* theme dictionaries (the
+         vinyl stays near-black in both themes, like the logo's record; the
+         label is the sleeve teal). -->
+    <Viewbox Stretch="Uniform">
+        <Grid Width="120" Height="120">
+            <Ellipse Width="120" Height="120" Fill="{ThemeResource RetroVinylBrush}" />
+            <Ellipse Width="104" Height="104" Stroke="{ThemeResource RetroVinylGrooveBrush}" StrokeThickness="1" />
+            <Ellipse Width="88" Height="88" Stroke="{ThemeResource RetroVinylGrooveBrush}" StrokeThickness="1" />
+            <Ellipse Width="72" Height="72" Stroke="{ThemeResource RetroVinylGrooveBrush}" StrokeThickness="1" />
+            <Ellipse Width="44" Height="44" Fill="{ThemeResource RetroVinylLabelBrush}" />
+            <Ellipse Width="9" Height="9" Fill="{ThemeResource RetroVinylHoleBrush}" />
+        </Grid>
+    </Viewbox>
+</UserControl>

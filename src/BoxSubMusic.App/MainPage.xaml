@@ -22,9 +22,19 @@
              200% scale disabled (2026-07-14), the NavigationView's system
              defaults (40 epx rows, ~14 epx text) read too small on a TV.
              Implicit style: setters layer on top of the default template. -->
+        <!-- Label vertical centering (2026-07-19): VerticalContentAlignment
+             centers the label's line box against the icon. An earlier round
+             also overrode the item's ContentTemplate to add
+             TextLineBounds="Tight" (to kill the line box's descender slack) —
+             but that setter blanked the icons on device (overriding a
+             NavigationViewItem's ContentTemplate disrupts the presenter's
+             item hosting), so it was reverted. The residual descender offset
+             is minor; correcting it needs a safer technique (a retemplate,
+             not a bare ContentTemplate swap) and is deferred. -->
         <Style TargetType="NavigationViewItem">
             <Setter Property="FontSize" Value="20" />
             <Setter Property="MinHeight" Value="56" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
     </Page.Resources>
 
@@ -50,13 +60,26 @@
          dictionaries) and this Border supplies the visual instead — radius
          12, matching the now-playing bar's floating look. Width follows the
          pane state (280 open / 48 compact) from PaneOpening/PaneClosing. -->
+    <!-- Retro surface (2026-07-19 UI round): the pane backdrop is the logo's
+         petrol sleeve teal (RetroSurfaceBrush, theme-aware) instead of the
+         neutral acrylic — same radius/geometry as before. -->
     <Border
         x:Name="PaneBackdrop"
         HorizontalAlignment="Left"
         Width="280"
         CornerRadius="12"
-        Background="{ThemeResource SystemControlChromeMediumLowAcrylicElementMediumBrush}" />
+        Background="{ThemeResource RetroSurfaceBrush}" />
 
+    <!-- Collapsed-rail centering (2026-07-19 — the REAL cause, found by
+         reading the 26100 SDK's NavigationViewItemPresenter template over
+         SSH): its icon column is HARDCODED to 48 epx regardless of pane
+         state, but NavigationView's own default CompactPaneLength is 40 —
+         an unrelated resource, never kept in sync with the template's own
+         column width. That 8-epx mismatch put every icon's true center
+         4 epx off the rail's actual center, on every row uniformly (read
+         as "unbalanced" rather than per-icon wobble). Setting the rail to
+         48 (below) makes it match the column exactly, so the icon's own
+         centering (EnlargeNavIcons) lands on the rail's true center. -->
     <NavigationView
         x:Name="NavView"
         KeyDown="NavView_KeyDown"
@@ -65,6 +88,7 @@
         IsPaneToggleButtonVisible="False"
         PaneDisplayMode="Left"
         OpenPaneLength="280"
+        CompactPaneLength="48"
         SelectionChanged="NavView_SelectionChanged"
         ItemInvoked="NavView_ItemInvoked"
         PaneOpening="NavView_PaneOpening"
@@ -111,38 +135,38 @@
                 SelectsOnInvoked="False"
                 AutomationProperties.Name="Expand or collapse the menu">
                 <NavigationViewItem.Icon>
-                    <FontIcon x:Name="PaneToggleIcon" FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xE8B6;" />
+                    <FontIcon x:Name="PaneToggleIcon" FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xE8B6;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItemSeparator />
             <NavigationViewItem Content="Search" Tag="search">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xF690;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xF690;" Foreground="{ThemeResource RetroAccentBrush}" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="HomeNavItem" Content="Home" Tag="home">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xF481;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xF481;" Foreground="{ThemeResource RetroAccentBrush}" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="ArtistsNavItem" Content="Artists" Tag="artists">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xF5A9;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xF5A9;" Foreground="{ThemeResource RetroAccentBrush}" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="AlbumsNavItem" Content="Albums" Tag="albums">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xE010;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xE010;" Foreground="{ThemeResource RetroAccentBrush}" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem Content="Songs" Tag="songs">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xE855;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xE855;" Foreground="{ThemeResource RetroAccentBrush}" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="PlaylistsNavItem" Content="Playlists" Tag="playlists">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xF4EE;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xF4EE;" Foreground="{ThemeResource RetroAccentBrush}" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
 
@@ -157,12 +181,12 @@
             <NavigationViewItemSeparator />
             <NavigationViewItem x:Name="SettingsNavItem" Content="Settings" Tag="settings">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xF6AA;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xF6AA;" Foreground="{ThemeResource RetroAccentBrush}" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
             <NavigationViewItem x:Name="AccountNavItem" Content="Account" Tag="account">
                 <NavigationViewItem.Icon>
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Glyph="&#xE929;" />
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xE929;" Foreground="{ThemeResource RetroAccentBrush}" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
         </NavigationView.MenuItems>

@@ -1,0 +1,67 @@
+<UserControl
+    x:Class="BoxSubMusic.App.Controls.SpinningVinyl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    IsHitTestVisible="False"
+    IsTabStop="False">
+
+    <!-- The current-track marker as a slowly spinning vinyl disc (retro
+         theme, 2026-07-19 — Rafael's request): spins while playback is
+         running, freezes when paused/stopped. Two hard-won details
+         (feedback round: "the vinyl doesn't move"):
+         - A bare vinyl disc is rotationally symmetric — concentric
+           grooves/label/hole — so its rotation is INVISIBLE at marker
+           size even when the animation runs. The cream label stripe
+           overlay breaks the symmetry and reads like a clock hand.
+         - The rotation targets the RenderTransform via the documented
+           independent-animation property path, AND sets
+           EnableDependentAnimation as a guarantee: if the platform ever
+           classifies it dependent it still runs (a 22-epx element is a
+           negligible UI-thread cost) instead of silently not starting.
+         The code-behind gates the storyboard on PlaybackService state AND
+         on this control's own visibility, so the many collapsed markers in
+         a long track list never run storyboards. -->
+    <Grid x:Name="DiscRoot" RenderTransformOrigin="0.5,0.5">
+        <Grid.RenderTransform>
+            <RotateTransform x:Name="SpinTransform" />
+        </Grid.RenderTransform>
+        <Grid.Resources>
+            <Storyboard x:Name="SpinStoryboard">
+                <DoubleAnimation
+                    Storyboard.TargetName="DiscRoot"
+                    Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                    From="0"
+                    To="360"
+                    Duration="0:0:2.4"
+                    RepeatBehavior="Forever"
+                    EnableDependentAnimation="True" />
+            </Storyboard>
+        </Grid.Resources>
+        <!-- Marker-tuned disc, drawn here rather than reusing VinylDisc
+             (feedback rounds 2–3: the placeholder's near-black record
+             vanished on dark rows, and a plain accent badge stopped reading
+             as a vinyl). Anatomy at marker size: dark record body with a
+             soft cream rim highlight (defines the edge on dark; the dark
+             body itself defines it on light), two brighter groove rings
+             (the vinyl signature), a small seafoam label with the rotating
+             on-accent stripe (the motion tell), and the spindle hole
+             punched through the stripe. All theme-safe brushes; the record
+             itself is theme-stable like the logo's. -->
+        <Viewbox Stretch="Uniform">
+            <Grid Width="120" Height="120">
+                <Ellipse Width="120" Height="120" Fill="{ThemeResource RetroVinylBrush}" />
+                <Ellipse Width="114" Height="114" Stroke="{ThemeResource RetroMarkerRimBrush}" StrokeThickness="5" />
+                <Ellipse Width="96" Height="96" Stroke="{ThemeResource RetroMarkerGrooveBrush}" StrokeThickness="3" />
+                <Ellipse Width="78" Height="78" Stroke="{ThemeResource RetroMarkerGrooveBrush}" StrokeThickness="3" />
+                <Ellipse Width="52" Height="52" Fill="{ThemeResource RetroAccentBrush}" />
+                <Rectangle
+                    Width="40"
+                    Height="10"
+                    RadiusX="5"
+                    RadiusY="5"
+                    Fill="{ThemeResource RetroOnAccentBrush}" />
+                <Ellipse Width="10" Height="10" Fill="{ThemeResource RetroVinylHoleBrush}" />
+            </Grid>
+        </Viewbox>
+    </Grid>
+</UserControl>

@@ -365,6 +365,15 @@ namespace BoxSubMusic.App
             }
         }
 
+        private void AlbumPlay_Click(object sender, RoutedEventArgs e)
+        {
+            var card = (sender as FrameworkElement)?.Tag as AlbumCard;
+            if (card != null)
+            {
+                _ = QueueActions.PlayAlbumAsync(card.Id);
+            }
+        }
+
         private void AlbumPlayNext_Click(object sender, RoutedEventArgs e)
         {
             var card = (sender as FrameworkElement)?.Tag as AlbumCard;

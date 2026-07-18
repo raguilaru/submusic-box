@@ -141,6 +141,15 @@
     <Compile Include="Controls\NowPlayingBar.xaml.cs">
       <DependentUpon>NowPlayingBar.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\RetroStripes.xaml.cs">
+      <DependentUpon>RetroStripes.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\VinylDisc.xaml.cs">
+      <DependentUpon>VinylDisc.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\SpinningVinyl.xaml.cs">
+      <DependentUpon>SpinningVinyl.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Controls\ToastHost.xaml.cs">
       <DependentUpon>ToastHost.xaml</DependentUpon>
     </Compile>
@@ -256,6 +265,18 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\ToastHost.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\RetroStripes.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\VinylDisc.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\SpinningVinyl.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

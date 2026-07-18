@@ -19,10 +19,12 @@ public class StreamAndScrobbleTests
     }
 
     [Fact]
-    public void GetStreamUri_NoTranscodingOverrides()
+    public void GetStreamUri_NoTranscodingOverridesByDefault()
     {
-        // v1 sends no format/maxBitRate: the server's player defaults decide
-        // (see docs/architecture/30-playback-architecture.md).
+        // The default sends no format/maxBitRate: the server decides the
+        // delivered stream, including any server-side bitrate restriction —
+        // the authoritative quality control (§16 decision 2026-07-19; see
+        // docs/architecture/30-playback-architecture.md).
         var client = TestHelpers.CreateClient(new FakeHttpMessageHandler(_ =>
             throw new InvalidOperationException("No HTTP expected")));
 
@@ -30,6 +32,43 @@ public class StreamAndScrobbleTests
 
         Assert.False(query.ContainsKey("format"));
         Assert.False(query.ContainsKey("maxBitRate"));
+    }
+
+    [Fact]
+    public void GetStreamUri_Format_SendsParam()
+    {
+        // The decode-failure fallback path (§16 decision 2026-07-19): pin
+        // format=mp3; the server still applies its own bitrate cap.
+        var client = TestHelpers.CreateClient(new FakeHttpMessageHandler(_ =>
+            throw new InvalidOperationException("No HTTP expected")));
+
+        var query = TestHelpers.QueryOf(client.GetStreamUri("tr-1", format: "mp3"));
+
+        Assert.Equal("mp3", query["format"]);
+        Assert.False(query.ContainsKey("maxBitRate"));
+    }
+
+    [Fact]
+    public void GetStreamUri_MaxBitRate_SendsParam()
+    {
+        // Protocol completeness (core API 1.2.0); the app itself never
+        // sends a client-side cap.
+        var client = TestHelpers.CreateClient(new FakeHttpMessageHandler(_ =>
+            throw new InvalidOperationException("No HTTP expected")));
+
+        var query = TestHelpers.QueryOf(client.GetStreamUri("tr-1", maxBitRate: 192));
+
+        Assert.Equal("192", query["maxBitRate"]);
+        Assert.False(query.ContainsKey("format"));
+    }
+
+    [Fact]
+    public void GetStreamUri_NonPositiveMaxBitRate_Throws()
+    {
+        var client = TestHelpers.CreateClient(new FakeHttpMessageHandler(_ =>
+            throw new InvalidOperationException("No HTTP expected")));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => client.GetStreamUri("tr-1", maxBitRate: 0));
     }
 
     [Fact]
