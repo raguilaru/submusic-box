@@ -71,13 +71,15 @@
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <!-- Artwork thumbnail with the vinyl-disc placeholder behind it. -->
-        <Grid Grid.Column="0" Width="84" Height="84" CornerRadius="8" VerticalAlignment="Center">
-            <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
-                <local:VinylDisc Margin="8" />
-            </Border>
-            <Image x:Name="ArtworkImage" Stretch="UniformToFill" />
-        </Grid>
+        <!-- Artwork as a spinning vinyl record: the album art is the record
+             label, and the disc rotates while the track plays (refinement
+             2026-07-22). Missing art falls back to the vinyl's blank label. -->
+        <local:SpinningAlbumArt
+            x:Name="ArtworkVinyl"
+            Grid.Column="0"
+            Width="84"
+            Height="84"
+            VerticalAlignment="Center" />
 
         <!-- Title / artist · album / format · bitrate (§10 metadata). -->
         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
