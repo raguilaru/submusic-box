@@ -6,9 +6,10 @@ namespace BoxSubMusic.App.Controls
     /// <summary>
     /// A monochrome controller-button badge for hint lines (2026-07-18):
     /// set <see cref="Label"/> to "A", "B", "X", "Y", "LB", "RB", "View", or
-    /// "Menu". Single letters render as an outlined circle, longer labels as
-    /// a pill, and "Menu" swaps the text for the hamburger glyph. Purely
-    /// decorative — never focusable.
+    /// "Menu". Single letters render as an outlined circle, LB/RB as a pill,
+    /// "Menu" swaps the text for the hamburger glyph, and "View" for the
+    /// two-panes symbol (the physical button carries neither a letter nor a
+    /// pill label). Purely decorative — never focusable.
     /// </summary>
     public sealed partial class ControllerGlyph : UserControl
     {
@@ -36,9 +37,12 @@ namespace BoxSubMusic.App.Controls
             var glyph = (ControllerGlyph)d;
             string label = e.NewValue as string ?? string.Empty;
             bool isMenu = label == "Menu";
+            bool isView = label == "View";
+            bool isDrawn = isMenu || isView;
             glyph.MenuIcon.Visibility = isMenu ? Visibility.Visible : Visibility.Collapsed;
-            glyph.LabelText.Visibility = isMenu ? Visibility.Collapsed : Visibility.Visible;
-            glyph.LabelText.Text = isMenu ? string.Empty : label;
+            glyph.ViewIcon.Visibility = isView ? Visibility.Visible : Visibility.Collapsed;
+            glyph.LabelText.Visibility = isDrawn ? Visibility.Collapsed : Visibility.Visible;
+            glyph.LabelText.Text = isDrawn ? string.Empty : label;
         }
     }
 }

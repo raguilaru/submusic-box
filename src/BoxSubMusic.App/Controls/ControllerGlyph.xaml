@@ -8,11 +8,14 @@
 
     <!-- One controller-button badge for hint lines (checkpoint #7 request,
          decision 2026-07-18): custom-drawn, MONOCHROME — an outlined circle
-         with the button letter (A/B/X/Y), a pill for LB/RB/View, a circle
-         with the hamburger glyph for the Menu button. Deliberately not the
-         Xbox brand colors (Rafael's call) and not a second icon font
-         (§13.3): shapes + text + one Fluent glyph, so it follows the theme
-         foreground and dims with the parent hint's Opacity. -->
+         with the button letter (A/B/X/Y), a pill for LB/RB, a circle with the
+         hamburger glyph for the Menu button, and the two-overlapping-panes
+         symbol for the View button (2026-07-22 — the physical View button has
+         no letter, so the literal word "View" read as a missing icon). Both
+         non-letter glyphs are drawn — shapes + text + one Fluent glyph, no
+         Xbox brand colors (Rafael's call) and no second icon font (§13.3) —
+         so it follows the theme foreground and dims with the parent hint's
+         Opacity. -->
     <Border
         x:Name="Shape"
         Height="26"
@@ -44,6 +47,36 @@
                 Visibility="Collapsed"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Center" />
+            <!-- View button: two overlapping rounded panes (the physical
+                 button's symbol), drawn as offset outlined rectangles so it
+                 stays monochrome + theme-following. -->
+            <Grid
+                x:Name="ViewIcon"
+                Width="16"
+                Height="13"
+                Visibility="Collapsed"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Center">
+                <Rectangle
+                    Width="10"
+                    Height="8"
+                    RadiusX="2"
+                    RadiusY="2"
+                    Stroke="{ThemeResource SystemControlForegroundBaseMediumHighBrush}"
+                    StrokeThickness="1.2"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top" />
+                <Rectangle
+                    Width="10"
+                    Height="8"
+                    RadiusX="2"
+                    RadiusY="2"
+                    Fill="{ThemeResource RetroSurfaceBrush}"
+                    Stroke="{ThemeResource SystemControlForegroundBaseMediumHighBrush}"
+                    StrokeThickness="1.2"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom" />
+            </Grid>
         </Grid>
     </Border>
 </UserControl>
