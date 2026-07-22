@@ -1193,8 +1193,7 @@ device:**
     as intentional at 10 ft in both themes (not as a rendering
     artifact).
 
-**Play-bar spinning vinyl artwork (2026-07-22, code-complete, NOT
-device-verified):**
+**Play-bar spinning vinyl artwork (2026-07-22) — CONSOLE-VERIFIED:**
 
 14. **Now-playing-bar artwork is a spinning vinyl record** (new
     `Controls/SpinningAlbumArt`): the album art is the record LABEL in
@@ -1202,11 +1201,10 @@ device-verified):**
     groove rings + spindle hole, Retro* brushes), and the whole disc
     ROTATES while the track plays (6 s/rev) and FREEZES in place on
     pause/stop. Same gating as the `SpinningVinyl` marker
-    (PlaybackService.Changed + IsPlaying + own visibility). Verify: the
-    art clearly rotates while playing and stops cleanly on pause (no
-    reset/jump); an artless track shows the blank teal label spinning;
-    reads well at 10 ft; the disc swaps art smoothly on track change
-    without a distracting flash; no scroll/perf cost (single instance).
+    (PlaybackService.Changed + IsPlaying + own visibility). **Verified
+    on device 2026-07-22:** the art rotates while playing and stops
+    cleanly on pause, the artless blank-label case, 10-ft readability,
+    and smooth art swap on track change all pass. (PR #8.)
 
 *(Future work: append console items here.)*
 
