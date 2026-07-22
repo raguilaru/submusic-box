@@ -596,6 +596,33 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   stays Segoe UI (no display font in this round). Dynamic input glyphs
   and further §13.1 items remain deferred.
 
+- 2026-07-22: **Lyrics display (OpenSubsonic `songLyrics` extension)**
+  (§3/§10/§13.1/§13.2; refinement feature, placement + behavior confirmed
+  with Rafael). (a) **Data:** `getLyricsBySongId` → the client's new
+  `GetLyricsBySongIdAsync` + `StructuredLyrics`/`LyricLine` models
+  (XDocument, reflection-free); line-level only (`enhanced`/`cueLine`
+  word-timing and multi-language selection out of scope for v1 — the app
+  prefers a synced entry, else the first, and treats an entry claiming
+  `synced` with no usable timestamps as plain text). (b) **Placement:** a
+  **Queue ⇄ Lyrics segmented toggle on the right pane** of the expanded
+  Now-Playing overlay — the left pane (artwork/transport/progress) is
+  unchanged; reuses the overlay focus trap and slide. (c) **Entry:** a
+  lyrics button on the now-playing bar opens the overlay straight to the
+  Lyrics tab (Y still opens Queue). (d) **Navigation is READ-ONLY** (no
+  in-track seek is introduced, `PlaybackService` gains none): synced
+  lyrics auto-highlight and auto-scroll to the current line; D-pad reads
+  ahead/back and pauses the follow (resumes on A / the "Jump to current
+  line" button / a few seconds idle); **A does not seek — it re-centers.**
+  Unsynced lyrics are a plain scrollable list with no highlight/timer.
+  (e) **Capability gate + degrade (§3):** with no `songLyrics` extension
+  the bar button and the Lyrics tab are hidden (the overlay stays
+  queue-only, "Queue" title). A supported server whose track has no
+  lyrics (or a fetch failure — lyrics are a display extra, not a §15
+  case) shows "No lyrics available for this track."; the loading state
+  shows "Loading lyrics…". Lyrics follow the current track (refetched on
+  song change; a one-entry cache avoids refetching on unrelated Changed
+  events). Timestamps are milliseconds; the entry's `offset` is applied.
+
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.

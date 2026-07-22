@@ -1019,6 +1019,45 @@ merged to main — v1's planned scope is COMPLETE.**)
   - Browse card artwork (200/56), detail headers (320), and the
     expanded-queue artwork carry the 1-epx tan parchment frame.
 
+- **2.21 Lyrics display (2026-07-22 — refinement feature, code-complete,
+  NOT yet device-verified):** OpenSubsonic `songLyrics`
+  (`getLyricsBySongId`) synced + unsynced lyrics in the now-playing
+  overlay. Placement/behavior confirmed with Rafael up front (§16
+  2026-07-22).
+  - Client: `GetLyricsBySongIdAsync` + `StructuredLyrics`/`LyricLine`
+    models (XDocument; `line` text = value, `start`/`offset` in ms).
+    Line-level only (no `enhanced`/`cueLine`, no language picker). 6 new
+    tests → **75 SubsonicClient** (synced ms timestamps, unsynced no
+    timestamps, multi-entry, empty/absent `lyricsList`, empty-id guard).
+  - App `Services/LyricsService`: capability gate
+    (`SupportsExtension("songLyrics")`) + per-song fetch with a one-entry
+    cache; prefers a synced entry, else the first; a fetch failure reads
+    as "no lyrics" (display extra, not §15).
+  - `NowPlayingBar`: new lyrics button (Fluent E180 book_open_microphone,
+    cmap-verified) + `LyricsRequested` event; **hidden when the server
+    lacks songLyrics** (§3 degrade-by-hiding), set on the Update path.
+  - `ExpandedQueueView`: right pane gains a **Queue ⇄ Lyrics segmented
+    toggle** (hidden when unsupported → plain "Queue" title). `LyricsList`
+    with large 10-ft type; synced = accent marker bar + bold + full
+    opacity on the active line, dimmed neighbors; the 500 ms position
+    timer also advances the highlight and auto-scrolls the active line to
+    **center** (ScrollViewer `ChangeView`, container found via a visual-
+    tree search). **Read-only nav (confirmed): A does NOT seek — it
+    re-centers + resumes follow.** D-pad through lines pauses auto-follow
+    (KeyDown on the list); a "Jump to current line" header button + A
+    resume it, as does ~4 s idle. Lyrics follow the current track
+    (reloaded on song change in Refresh, guarded on song id). States:
+    "Loading lyrics…", "No lyrics available for this track.". Row Left is
+    pinned to play/pause (reuses the queue-row XYFocus handler). Hints
+    swap by mode; the "A Jump to current line" badge shows only for synced
+    lyrics with lines.
+  - `MainPage`: `OpenLyricsOverlay` mirrors `OpenQueueOverlay`
+    (empty-queue guard + `NavView.IsEnabled=false` focus trap), opens on
+    the Lyrics tab; `NowPlaying.LyricsRequested` wired/unwired.
+  - Build green (x64 Debug over SSH; APPX0703 packaging is the known
+    command-line-only failure). Console-verify items appended to the
+    backlog (13a–13g below).
+
 **Verification state (2026-07-19, second pass):** checkpoint #12
 closed the original Slice 14 round (**all seven backlog items
 passed**); the same-day **decode-failure mp3 fallback is NOT yet
@@ -1192,6 +1231,34 @@ device:**
 12. **Parchment frames:** the 1-epx tan border on cards/headers reads
     as intentional at 10 ft in both themes (not as a rendering
     artifact).
+
+**Lyrics display (2.21, 2026-07-22) — unverified on device:**
+
+13a. **Bar button + entry:** the lyrics button appears on the now-playing
+     bar during playback (Navidrome supports songLyrics) and opens the
+     overlay straight to the Lyrics tab; Y still opens the Queue tab.
+13b. **Synced lyrics (main case):** on a track WITH synced lyrics
+     (e.g. an LRC-tagged song), the active line highlights (accent bar +
+     bold) and auto-scrolls to center in time with playback; pausing
+     freezes it on the right line; the line stays legible at 10 ft in
+     both themes.
+13c. **Read-only navigation:** D-pad up/down reads ahead/back (playback
+     does NOT move — confirm no seek); the follow pauses and the "Jump to
+     current line" button appears; A (or the button, or ~4 s idle)
+     re-centers and resumes the follow.
+13d. **Unsynced lyrics:** a track with plain (no-timestamp) lyrics shows
+     the full text, scrollable by D-pad, with no highlight and no
+     "A Jump to current line" hint.
+13e. **No lyrics:** a track the server has no lyrics for shows
+     "No lyrics available for this track." (brief "Loading lyrics…"
+     first); switching tracks updates it.
+13f. **Unsupported server:** on a server WITHOUT the songLyrics extension
+     the bar lyrics button and the overlay's Lyrics tab are both absent
+     (overlay is queue-only). (Test needs a non-songLyrics server or a
+     temporarily disabled extension — optional.)
+13g. **Song change while open:** advancing to the next track on the
+     Lyrics tab reloads that track's lyrics (or its no-lyrics message);
+     focus/scroll behave; the queue tab is unaffected.
 
 *(Future work: append console items here.)*
 

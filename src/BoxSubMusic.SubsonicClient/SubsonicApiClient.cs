@@ -370,6 +370,49 @@ public sealed class SubsonicApiClient
     }
 
     /// <summary>
+    /// getLyricsBySongId — structured lyrics for a track (OpenSubsonic
+    /// <c>songLyrics</c> extension). Returns every entry the server has for
+    /// the song (synced and/or unsynced, one per language); the caller picks
+    /// which to show. A song with no lyrics is not an error — the server
+    /// returns an empty &lt;lyricsList&gt; and this returns an empty list.
+    /// Gate calls on <see cref="ServerCapabilities.SupportsExtension"/>
+    /// ("songLyrics"); the app hides the lyrics UI when it is absent (§3).
+    /// </summary>
+    public async Task<IReadOnlyList<StructuredLyrics>> GetLyricsBySongIdAsync(
+        string id, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            throw new ArgumentException("A song id is required.", nameof(id));
+
+        var parameters = new List<KeyValuePair<string, string>> { Param("id", id) };
+        var root = await ExecuteAsync("getLyricsBySongId", parameters, cancellationToken).ConfigureAwait(false);
+
+        var list = SubsonicXml.Element(root, "lyricsList");
+        if (list == null)
+            return Array.Empty<StructuredLyrics>();
+
+        return SubsonicXml.Elements(list, "structuredLyrics")
+            .Select(MapStructuredLyrics)
+            .ToList();
+    }
+
+    private static StructuredLyrics MapStructuredLyrics(XElement element)
+    {
+        bool synced = string.Equals(SubsonicXml.Attr(element, "synced"), "true", StringComparison.OrdinalIgnoreCase);
+        var lines = SubsonicXml.Elements(element, "line")
+            .Select(line => new LyricLine(SubsonicXml.AttrInt(line, "start"), line.Value))
+            .ToList();
+
+        return new StructuredLyrics(
+            synced: synced,
+            lang: SubsonicXml.Attr(element, "lang"),
+            offsetMs: SubsonicXml.AttrInt(element, "offset") ?? 0,
+            displayArtist: SubsonicXml.Attr(element, "displayArtist"),
+            displayTitle: SubsonicXml.Attr(element, "displayTitle"),
+            lines: lines);
+    }
+
+    /// <summary>
     /// One explicit renegotiation attempt, driven by the API version the
     /// server reports in its error response:
     /// - pre-1.13 servers do not understand the t/s token params → retry with

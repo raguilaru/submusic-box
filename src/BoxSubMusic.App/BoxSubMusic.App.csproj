@@ -159,6 +159,7 @@
     <Compile Include="Models\AlbumCard.cs" />
     <Compile Include="Models\ArtistCard.cs" />
     <Compile Include="Models\IncrementalSource.cs" />
+    <Compile Include="Models\LyricLineRow.cs" />
     <Compile Include="Models\PlaylistCard.cs" />
     <Compile Include="Models\QueueRow.cs" />
     <Compile Include="Models\SongRow.cs" />
@@ -198,6 +199,7 @@
     </Compile>
     <Compile Include="Services\AppSession.cs" />
     <Compile Include="Services\ContentFocus.cs" />
+    <Compile Include="Services\LyricsService.cs" />
     <Compile Include="Services\QueueActions.cs" />
     <Compile Include="Services\CredentialStore.cs" />
     <Compile Include="Services\NavigationPreferences.cs" />

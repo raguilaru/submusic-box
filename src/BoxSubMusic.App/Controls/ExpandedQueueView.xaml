@@ -23,6 +23,16 @@
             <Setter Property="CornerRadius" Value="28" />
             <Setter Property="Background" Value="Transparent" />
         </Style>
+        <!-- Segmented Queue / Lyrics tabs on the right pane. Retro checked
+             visuals come from the App.xaml ToggleButton-checked overrides. -->
+        <Style x:Key="PaneTabToggle" TargetType="ToggleButton">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Padding" Value="18,8" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
     </UserControl.Resources>
 
     <Grid
@@ -223,9 +233,39 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Spacing="4">
-                        <TextBlock Text="Queue" FontSize="32" FontWeight="SemiBold" />
+                    <StackPanel Grid.Column="0" Spacing="6">
+                        <!-- Single-mode title, shown when the server has no
+                             songLyrics extension (the Lyrics tab is hidden). -->
+                        <TextBlock
+                            x:Name="HeaderTitleText"
+                            Text="Queue"
+                            FontSize="32"
+                            FontWeight="SemiBold" />
+                        <!-- Queue / Lyrics segmented tabs, shown when lyrics
+                             are supported. Exclusivity is enforced in code. -->
+                        <StackPanel
+                            x:Name="TabStrip"
+                            Orientation="Horizontal"
+                            Spacing="10"
+                            Visibility="Collapsed">
+                            <ToggleButton
+                                x:Name="QueueTabButton"
+                                Style="{StaticResource PaneTabToggle}"
+                                Content="Queue"
+                                IsChecked="True"
+                                Click="QueueTabButton_Click"
+                                XYFocusRight="{x:Bind LyricsTabButton}"
+                                AutomationProperties.Name="Queue tab" />
+                            <ToggleButton
+                                x:Name="LyricsTabButton"
+                                Style="{StaticResource PaneTabToggle}"
+                                Content="Lyrics"
+                                Click="LyricsTabButton_Click"
+                                XYFocusLeft="{x:Bind QueueTabButton}"
+                                AutomationProperties.Name="Lyrics tab" />
+                        </StackPanel>
                         <local:RetroStripes Width="110" HorizontalAlignment="Left" />
                         <TextBlock
                             x:Name="QueueContextText"
@@ -233,12 +273,26 @@
                             Opacity="0.7"
                             TextTrimming="CharacterEllipsis" />
                     </StackPanel>
+                    <!-- Re-center affordance in Lyrics mode: appears once the
+                         user has scrolled away from the current line. A on the
+                         list does the same. -->
+                    <Button
+                        x:Name="JumpToCurrentButton"
+                        Grid.Column="1"
+                        VerticalAlignment="Top"
+                        Padding="14,8"
+                        CornerRadius="18"
+                        FontSize="16"
+                        Visibility="Collapsed"
+                        Content="Jump to current line"
+                        Click="JumpToCurrentButton_Click"
+                        AutomationProperties.Name="Jump to current line" />
                     <!-- Collapse affordance: gamepad users have B/Y, but
                          keyboard/mouse need a visible exit (§13.1). Chevron
                          F2A4 verified against the shipped Regular TTF cmap. -->
                     <Button
                         x:Name="CollapseButton"
-                        Grid.Column="1"
+                        Grid.Column="2"
                         Style="{StaticResource OverlayTransportButton}"
                         VerticalAlignment="Top"
                         Click="CollapseButton_Click"
@@ -248,12 +302,14 @@
                     </Button>
                 </Grid>
 
+                <!-- Row 1 body: the Queue list and the Lyrics list occupy the
+                     same cell; the tab toggle swaps which one is visible. -->
+                <Grid Grid.Row="1">
                 <!-- Rows mirror the album track list's visual language:
                      position column swaps to the accent now-playing marker,
                      starred songs carry the small filled heart. -->
                 <ListView
                     x:Name="QueueList"
-                    Grid.Row="1"
                     SelectionMode="None"
                     IsItemClickEnabled="True"
                     ItemClick="QueueList_ItemClick"
@@ -367,14 +423,92 @@
                     </ListView.ItemTemplate>
                 </ListView>
 
+                <!-- Lyrics list (§songLyrics). Read-only: A/Enter re-centers on
+                     the current line, it does not seek. Synced lines auto-scroll
+                     and highlight; D-pad reads ahead/back and pauses the follow.
+                     The message shows the loading / no-lyrics states instead. -->
+                <Grid x:Name="LyricsPanel" Visibility="Collapsed">
+                    <ListView
+                        x:Name="LyricsList"
+                        SelectionMode="None"
+                        IsItemClickEnabled="True"
+                        ItemClick="LyricsList_ItemClick"
+                        KeyDown="LyricsList_KeyDown"
+                        ContainerContentChanging="QueueList_ContainerContentChanging"
+                        ScrollViewer.HorizontalScrollMode="Disabled"
+                        ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Padding" Value="8,7" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:LyricLineRow">
+                                <Grid Background="Transparent" ColumnSpacing="14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="14" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Accent marker bar on the active line —
+                                         the fixed gutter keeps text from jogging
+                                         as the highlight moves. Colour via
+                                         ThemeResource stays theme-correct. -->
+                                    <Rectangle
+                                        Grid.Column="0"
+                                        Width="4"
+                                        Height="26"
+                                        RadiusX="2"
+                                        RadiusY="2"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center"
+                                        Fill="{ThemeResource SystemControlForegroundAccentBrush}"
+                                        Visibility="{x:Bind MarkerVisibility, Mode=OneWay}" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Text="{x:Bind Text}"
+                                        FontSize="24"
+                                        TextWrapping="Wrap"
+                                        FontWeight="{x:Bind LineWeight, Mode=OneWay}"
+                                        Opacity="{x:Bind LineOpacity, Mode=OneWay}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <TextBlock
+                        x:Name="LyricsMessage"
+                        Visibility="Collapsed"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        MaxWidth="420"
+                        FontSize="20"
+                        Opacity="0.7"
+                        TextAlignment="Center"
+                        TextWrapping="Wrap" />
+                </Grid>
+                </Grid>
+
                 <!-- Controller hints as monochrome button badges (checkpoint
-                     #7 request, 2026-07-18 — replaces the static sentence). -->
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Opacity="0.7">
+                     #7 request, 2026-07-18 — replaces the static sentence).
+                     Swapped by pane mode: the queue is jump + menu, the lyrics
+                     tab is re-center only (read-only navigation). -->
+                <StackPanel x:Name="QueueHints" Grid.Row="2" Orientation="Horizontal" Spacing="8" Opacity="0.7">
                     <local:ControllerGlyph Label="A" />
                     <TextBlock Text="Jump to song" FontSize="15" VerticalAlignment="Center" />
                     <local:ControllerGlyph Label="Menu" Margin="16,0,0,0" />
                     <TextBlock Text="More options" FontSize="15" VerticalAlignment="Center" />
                     <local:ControllerGlyph Label="Y" Margin="16,0,0,0" />
+                    <local:ControllerGlyph Label="B" />
+                    <TextBlock Text="Close queue" FontSize="15" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel x:Name="LyricsHints" Grid.Row="2" Orientation="Horizontal" Spacing="8" Opacity="0.7" Visibility="Collapsed">
+                    <!-- Only meaningful for synced lyrics — hidden for
+                         unsynced/no-lyrics, where there is no current line. -->
+                    <StackPanel x:Name="LyricsJumpHint" Orientation="Horizontal" Spacing="8">
+                        <local:ControllerGlyph Label="A" />
+                        <TextBlock Text="Jump to current line" FontSize="15" VerticalAlignment="Center" Margin="0,0,16,0" />
+                    </StackPanel>
+                    <local:ControllerGlyph Label="Y" />
                     <local:ControllerGlyph Label="B" />
                     <TextBlock Text="Close queue" FontSize="15" VerticalAlignment="Center" />
                 </StackPanel>
