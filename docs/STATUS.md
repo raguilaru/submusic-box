@@ -1222,10 +1222,19 @@ over SSH; APPX0703 is the known command-line-only packaging failure).
 16. **Dedicated View jump-key to the play bar:** the **View button**
     toggles focus onto the bar's play/pause and back to where the user
     was (a second press returns). No-op when nothing is playing. A
-    subtle non-focusable **[View] Now playing** badge sits in the bar's
-    top-right corner as the on-bar indication. Verify: View from the
-    nav/content jumps to the bar in one press; View again returns focus;
-    the badge reads clearly at 10 ft without crowding the metadata/time.
+    subtle non-focusable **[View-icon] Now playing** badge sits in the
+    bar's top-right corner as the on-bar indication. The View badge is a
+    real drawn glyph — two overlapping panes, matching the physical
+    button (added to `ControllerGlyph` 2026-07-22; the earlier build
+    showed the literal word "View" because only "Menu" had a drawn glyph,
+    everything else fell back to text). Verify: View from the nav/content
+    jumps to the bar in one press; View again returns focus; the two-panes
+    icon reads correctly and the badge doesn't crowd the metadata/time.
+    Also: a small **(Y)** key badge is now overlaid on the bottom-right
+    corner of the queue button (hit-test-invisible, Viewbox-scaled) so the
+    global queue shortcut is discoverable on the control itself — verify
+    it reads at 10 ft, sits clear of the View label above, and doesn't
+    obscure the queue glyph or block the button.
 17. **LB/RB are now direct region jumps, not cycling:** LB → nav pane,
     RB → page content (single-target; the 3-way cycle existed only to
     reach the bar, which View now covers). The nav footer was slimmed to
