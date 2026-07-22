@@ -170,7 +170,7 @@ namespace BoxSubMusic.App.Controls
 
             _artworkSongId = song.Id;
             var client = AppSession.Client;
-            ArtworkImage.Source = song.CoverArtId == null || client == null
+            ArtworkVinyl.Source = song.CoverArtId == null || client == null
                 ? null
                 : new BitmapImage
                 {
