@@ -226,5 +226,26 @@
                 <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" FontSize="20" />
             </Button>
         </StackPanel>
+
+        <!-- Jump-here indicator (2026-07-22 request): the View button jumps
+             focus straight to this bar from anywhere in the shell. A subtle
+             non-focusable badge in the top-right corner advertises the
+             shortcut — it sits over the free space above the vertically-centred
+             time/utility clusters, so it crowds nothing. -->
+        <StackPanel
+            Grid.Column="3"
+            Grid.ColumnSpan="2"
+            Orientation="Horizontal"
+            Spacing="6"
+            Opacity="0.55"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Margin="0,-6,0,0">
+            <local:ControllerGlyph Label="View" />
+            <TextBlock
+                Text="Now playing"
+                FontSize="13"
+                VerticalAlignment="Center" />
+        </StackPanel>
     </Grid>
 </UserControl>
