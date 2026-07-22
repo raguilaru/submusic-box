@@ -55,10 +55,11 @@ namespace BoxSubMusic.App.Controls
         }
 
         /// <summary>True while the bar is revealed (a queue exists) — the
-        /// shell's LB/RB region cycle skips the bar otherwise.</summary>
+        /// shell's View jump-key is a no-op otherwise.</summary>
         public bool IsBarVisible => Root.Visibility == Visibility.Visible;
 
-        /// <summary>RB region-cycle target (2026-07-18): the primary control.</summary>
+        /// <summary>Focus target for the View jump-key (2026-07-22): the
+        /// primary control.</summary>
         public bool FocusPrimary()
         {
             return PlayPauseButton.Focus(FocusState.Keyboard);

@@ -1206,6 +1206,34 @@ device:**
     cleanly on pause, the artless blank-label case, 10-ft readability,
     and smooth art swap on track change all pass. (PR #8.)
 
+**Nav/play-bar shortcut + alignment round (2026-07-22, code-complete,
+NOT device-verified):** Rafael's two requests. Build green (x64 Debug
+over SSH; APPX0703 is the known command-line-only packaging failure).
+
+15. **Pane/bar bottom alignment:** the now-playing bar floats with a
+    16-epx bottom margin but the pane backdrop stretched to the full
+    content-area bottom, so the two floating cards ended 16 epx apart
+    (read as unbalanced). `PaneBackdrop` now carries `Margin="0,0,0,16"`
+    so both bottoms line up; the footer hint's bottom margin was raised
+    to 28 to clear the shortened backdrop's rounded corner. Verify the
+    pane and bar bottoms align and the footer hint isn't clipped.
+16. **Dedicated View jump-key to the play bar:** the **View button**
+    toggles focus onto the bar's play/pause and back to where the user
+    was (a second press returns). No-op when nothing is playing. A
+    subtle non-focusable **[View] Now playing** badge sits in the bar's
+    top-right corner as the on-bar indication. Verify: View from the
+    nav/content jumps to the bar in one press; View again returns focus;
+    the badge reads clearly at 10 ft without crowding the metadata/time.
+17. **LB/RB are now direct region jumps, not cycling:** LB → nav pane,
+    RB → page content (single-target; the 3-way cycle existed only to
+    reach the bar, which View now covers). The nav footer was slimmed to
+    a single **[LB] Menu** hint (the "direct to left nav" shortcut);
+    the old two-row LB/RB/Y hint block is gone. Verify LB always lands
+    on the nav pane and RB on the content from any region, and the
+    slimmed footer no longer looks cramped. (Y still toggles the queue
+    globally; its former footer hint was dropped — the bar's queue
+    button tooltip still reads "Queue (Y)".)
+
 *(Future work: append console items here.)*
 
 ## Known gaps / notes from this session
