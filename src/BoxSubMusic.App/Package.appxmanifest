@@ -10,7 +10,7 @@
   <Identity
     Name="ConsoleApps.SubMusicBox"
     Publisher="CN=AAEFF031-B87C-4F14-849C-C775D7E4D2DB"
-    Version="1.0.1.0" />
+    Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="75aa6876-ea64-4d0e-9df6-06a02419ac51" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
