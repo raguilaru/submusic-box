@@ -178,6 +178,20 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
 - Song context menus MAY additionally offer explicit queue edits — "Play next" (insert directly after the current track) and "Add to queue" (append) — added 2026-07-17 (§16). These are deliberate user edits, not Play actions, and do not weaken the replace-not-append rule above.
 - The same pair applies to whole containers — albums, artists (the §8 oldest-album-first pool), and playlists — from card context menus wherever those are displayed and as secondary buttons on the corresponding detail pages (added 2026-07-18, §16). The block is inserted/appended in its internal order.
 
+### 10.1 Lyrics (added 2026-07-22, §16)
+
+- The app MUST display lyrics for the current track when the server provides them, using the OpenSubsonic `songLyrics` extension (`getLyricsBySongId`).
+- Lyrics support MUST be gated on capability detection: when the connected server does not advertise the `songLyrics` extension, the lyrics UI (the bar's lyrics button and the overlay's Lyrics tab) MUST be hidden rather than shown broken (§3 explicit degrade).
+- Lyrics MUST be presented inside the now-playing experience:
+  - a lyrics control on the now-playing bar that opens the expanded overlay directly to a Lyrics view;
+  - a Lyrics view alongside the queue in the expanded overlay (the queue remains reachable — Y still opens it).
+- Synchronized lyrics (lines carrying timestamps) MUST auto-follow playback: the current line is highlighted and the view auto-scrolls to keep it visible.
+- The user MUST be able to navigate the lyrics with the controller (read the lines ahead/behind the current position). Navigation is read-only and MUST NOT change playback position (no in-track seek is introduced by this feature); an affordance MUST let the user return to and resume following the current line.
+- Unsynchronized lyrics (no timestamps) MUST display as readable, scrollable text without a highlight.
+- When the server supports lyrics but the current track has none, the app MUST show an explicit "no lyrics" state (not a blank or an error).
+- Lyrics MUST follow the current track, updating when playback moves to another song.
+- Word/syllable-level ("enhanced") lyrics and multi-language selection are out of scope for v1 (line-level lyrics only).
+
 ## 11. Background Playback
 
 - Background playback MUST use MediaPlayer + SystemMediaTransportControls.
@@ -595,6 +609,33 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   "parchment" frames on card artwork and detail headers. (d) Typography
   stays Segoe UI (no display font in this round). Dynamic input glyphs
   and further §13.1 items remain deferred.
+
+- 2026-07-22: **Lyrics display (OpenSubsonic `songLyrics` extension)**
+  (§3/§10/§13.1/§13.2; refinement feature, placement + behavior confirmed
+  with Rafael). (a) **Data:** `getLyricsBySongId` → the client's new
+  `GetLyricsBySongIdAsync` + `StructuredLyrics`/`LyricLine` models
+  (XDocument, reflection-free); line-level only (`enhanced`/`cueLine`
+  word-timing and multi-language selection out of scope for v1 — the app
+  prefers a synced entry, else the first, and treats an entry claiming
+  `synced` with no usable timestamps as plain text). (b) **Placement:** a
+  **Queue ⇄ Lyrics segmented toggle on the right pane** of the expanded
+  Now-Playing overlay — the left pane (artwork/transport/progress) is
+  unchanged; reuses the overlay focus trap and slide. (c) **Entry:** a
+  lyrics button on the now-playing bar opens the overlay straight to the
+  Lyrics tab (Y still opens Queue). (d) **Navigation is READ-ONLY** (no
+  in-track seek is introduced, `PlaybackService` gains none): synced
+  lyrics auto-highlight and auto-scroll to the current line; D-pad reads
+  ahead/back and pauses the follow (resumes on A / the "Jump to current
+  line" button / a few seconds idle); **A does not seek — it re-centers.**
+  Unsynced lyrics are a plain scrollable list with no highlight/timer.
+  (e) **Capability gate + degrade (§3):** with no `songLyrics` extension
+  the bar button and the Lyrics tab are hidden (the overlay stays
+  queue-only, "Queue" title). A supported server whose track has no
+  lyrics (or a fetch failure — lyrics are a display extra, not a §15
+  case) shows "No lyrics available for this track."; the loading state
+  shows "Loading lyrics…". Lyrics follow the current track (refetched on
+  song change; a one-entry cache avoids refetching on unrelated Changed
+  events). Timestamps are milliseconds; the entry's `offset` is applied.
 
 ## 17. Open Decisions / TODO
 

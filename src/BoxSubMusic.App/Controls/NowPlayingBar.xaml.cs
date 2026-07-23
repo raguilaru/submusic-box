@@ -46,6 +46,13 @@ namespace BoxSubMusic.App.Controls
         public event Action QueueExpandRequested;
 
         /// <summary>
+        /// The lyrics button was invoked — the shell opens the Now-Playing
+        /// overlay straight to the Lyrics tab. Only reachable when the server
+        /// advertises the songLyrics extension (the button is hidden otherwise).
+        /// </summary>
+        public event Action LyricsRequested;
+
+        /// <summary>
         /// Focus target for the shell when the expanded queue closes: the
         /// control the user used to open it.
         /// </summary>
@@ -150,6 +157,12 @@ namespace BoxSubMusic.App.Controls
 
             RepeatIcon.Glyph = queue.RepeatMode == RepeatMode.One ? RepeatOneGlyph : RepeatAllGlyph;
             RepeatIcon.Opacity = queue.RepeatMode == RepeatMode.Off ? 0.45 : 1.0;
+
+            // Lyrics affordance is gated on the songLyrics extension (§3):
+            // hidden when the server can't answer getLyricsBySongId at all.
+            LyricsButton.Visibility = LyricsService.IsSupported
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
             UpdatePosition();
             if (_playback.IsPlaying)
@@ -266,6 +279,11 @@ namespace BoxSubMusic.App.Controls
         private void QueueButton_Click(object sender, RoutedEventArgs e)
         {
             QueueExpandRequested?.Invoke();
+        }
+
+        private void LyricsButton_Click(object sender, RoutedEventArgs e)
+        {
+            LyricsRequested?.Invoke();
         }
 
         private async void FavoriteToggle_Changed(object sender, RoutedEventArgs e)

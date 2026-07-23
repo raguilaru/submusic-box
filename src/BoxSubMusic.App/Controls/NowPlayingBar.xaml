@@ -213,9 +213,24 @@
                 Checked="FavoriteToggle_Changed"
                 Unchecked="FavoriteToggle_Changed"
                 XYFocusLeft="{x:Bind RepeatButton}"
-                XYFocusRight="{x:Bind QueueButton}"
+                XYFocusRight="{x:Bind LyricsButton}"
                 ToolTipService.ToolTip="Favorite"
                 AutomationProperties.Name="Favorite" />
+            <!-- Lyrics (§13.3 book_open_microphone, cmap-verified U+E180):
+                 opens the Now-Playing overlay straight to the Lyrics tab.
+                 Collapsed when the server lacks the songLyrics extension
+                 (explicit degrade-by-hiding, §3) — set on the Update path. -->
+            <Button
+                x:Name="LyricsButton"
+                Style="{StaticResource TransportButton}"
+                Visibility="Collapsed"
+                Click="LyricsButton_Click"
+                XYFocusLeft="{x:Bind FavoriteToggle}"
+                XYFocusRight="{x:Bind QueueButton}"
+                ToolTipService.ToolTip="Lyrics"
+                AutomationProperties.Name="Show lyrics">
+                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE180;" FontSize="20" />
+            </Button>
             <!-- Queue button with an on-control (Y) key badge (2026-07-22
                  request): Y opens the queue globally, so co-locating the key
                  on its own button is the clearest mapping. The badge sits at
@@ -227,7 +242,7 @@
                     x:Name="QueueButton"
                     Style="{StaticResource TransportButton}"
                     Click="QueueButton_Click"
-                    XYFocusLeft="{x:Bind FavoriteToggle}"
+                    XYFocusLeft="{x:Bind LyricsButton}"
                     ToolTipService.ToolTip="Queue (Y)"
                     AutomationProperties.Name="Show queue">
                     <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" FontSize="20" />

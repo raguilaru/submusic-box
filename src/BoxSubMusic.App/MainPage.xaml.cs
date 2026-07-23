@@ -56,6 +56,7 @@ namespace BoxSubMusic.App
             // Slice 11 (§10): the bar's queue button and the global Y both
             // open the expanded queue overlay.
             NowPlaying.QueueExpandRequested += OpenQueueOverlay;
+            NowPlaying.LyricsRequested += OpenLyricsOverlay;
             QueueOverlay.Closed += OnQueueOverlayClosed;
             QueueOverlay.AlbumRequested += OnOverlayAlbumRequested;
             QueueOverlay.ArtistRequested += OnOverlayArtistRequested;
@@ -157,6 +158,7 @@ namespace BoxSubMusic.App
             SystemNavigationManager.GetForCurrentView().BackRequested -= OnBackRequested;
             ContentFrame.Navigated -= ContentFrame_Navigated;
             NowPlaying.QueueExpandRequested -= OpenQueueOverlay;
+            NowPlaying.LyricsRequested -= OpenLyricsOverlay;
             QueueOverlay.Closed -= OnQueueOverlayClosed;
             QueueOverlay.AlbumRequested -= OnOverlayAlbumRequested;
             QueueOverlay.ArtistRequested -= OnOverlayArtistRequested;
@@ -210,6 +212,19 @@ namespace BoxSubMusic.App
             // Focus trap: with the whole shell disabled underneath, XY focus
             // cannot leave the overlay (the PaneFooter lesson: never rely on
             // the engine skipping what merely *looks* unreachable).
+            NavView.IsEnabled = false;
+        }
+
+        private void OpenLyricsOverlay()
+        {
+            // Bar lyrics button: same overlay, opened straight to the Lyrics
+            // tab. Same empty-queue guard and focus trap as the queue path.
+            if (QueueOverlay.IsOpen || PlaybackService.Instance.Queue.IsEmpty)
+            {
+                return;
+            }
+
+            QueueOverlay.Open(showLyrics: true);
             NavView.IsEnabled = false;
         }
 

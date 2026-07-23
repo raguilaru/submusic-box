@@ -141,6 +141,21 @@ Pass if:
 - Expanded view is modal-only with no direct track jump.
 - New Play actions append rather than replace.
 
+## 8.1 Lyrics (§10.1)
+
+### Pass if:
+- When the server supports the `songLyrics` extension, lyrics are reachable from the now-playing experience (a bar lyrics control and a Lyrics view in the expanded overlay).
+- Synced lyrics highlight the current line and auto-scroll to follow playback.
+- The controller can navigate the lyrics (read ahead/behind) without moving playback, and can return to / resume following the current line.
+- Unsynced lyrics display as readable scrollable text with no highlight.
+- A track with no lyrics on a supporting server shows an explicit "no lyrics" state.
+- Lyrics update when the track changes.
+
+### Fail if:
+- The lyrics UI appears (broken/empty) on a server that does not support the extension.
+- Navigating the lyrics seeks or otherwise changes playback.
+- A missing-lyrics track shows a blank pane or an error instead of an explicit state.
+
 ## 9. Background playback
 
 ### Pass if:
