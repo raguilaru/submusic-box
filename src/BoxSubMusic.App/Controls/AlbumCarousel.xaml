@@ -102,7 +102,7 @@
                                         Tag="{x:Bind}"
                                         Click="AlbumPlayNext_Click">
                                         <MenuFlyoutItem.Icon>
-                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE861;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                     <MenuFlyoutItem

@@ -135,8 +135,10 @@
                                          (console finding 2026-07-14). -->
                                     <!-- Icons: Fluent Regular glyphs, all
                                          cmap-verified (§13.3) — play F606,
-                                         next F56A, list-add F7A8, heart F47A,
-                                         album E010. -->
+                                         play-next E861 (navigation_play: queue
+                                         lines + a play triangle, so it doesn't
+                                         read as skip like the bar's next F56A),
+                                         list-add F7A8, heart F47A, album E010. -->
                                     <MenuFlyout>
                                         <MenuFlyoutItem
                                             Text="Play"
@@ -151,7 +153,7 @@
                                             Tag="{x:Bind}"
                                             Click="PlayNext_Click">
                                             <MenuFlyoutItem.Icon>
-                                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE861;" />
                                             </MenuFlyoutItem.Icon>
                                         </MenuFlyoutItem>
                                         <MenuFlyoutItem

@@ -52,6 +52,22 @@
                     <SolidColorBrush x:Key="RetroStripeBrush3" Color="#FF7FADA9" />
                     <!-- Ink for content sitting ON a cream fill (play/pause). -->
                     <SolidColorBrush x:Key="RetroOnCreamBrush" Color="#FF1E1E1C" />
+                    <!-- Detail-view action buttons (Play/Shuffle/queue edits).
+                         Primary = the cream play/pause fill so the detail Play
+                         button reads as the same primary action as the bar's;
+                         tonal = a translucent seafoam chip with accent ink for
+                         Shuffle and the icon-only queue edits. Hover/pressed
+                         brushes keep the states on-palette instead of the
+                         generic grey chrome. -->
+                    <SolidColorBrush x:Key="RetroPrimaryFillBrush" Color="#FFE9DCC0" />
+                    <SolidColorBrush x:Key="RetroPrimaryFillHoverBrush" Color="#FFF2E9D3" />
+                    <SolidColorBrush x:Key="RetroPrimaryFillPressedBrush" Color="#FFD3C3A0" />
+                    <SolidColorBrush x:Key="RetroPrimaryInkBrush" Color="#FF1E1E1C" />
+                    <SolidColorBrush x:Key="RetroTonalFillBrush" Color="#267FADA9" />
+                    <SolidColorBrush x:Key="RetroTonalFillHoverBrush" Color="#3D7FADA9" />
+                    <SolidColorBrush x:Key="RetroTonalFillPressedBrush" Color="#547FADA9" />
+                    <SolidColorBrush x:Key="RetroTonalBorderBrush" Color="#667FADA9" />
+                    <SolidColorBrush x:Key="RetroTonalInkBrush" Color="#FFCDE3E0" />
                     <!-- Vinyl placeholder parts (VinylDisc/SpinningVinyl):
                          the record stays near-black in both themes, like the
                          logo's; only the label follows the accent teal. -->
@@ -101,6 +117,18 @@
                     <SolidColorBrush x:Key="RetroStripeBrush3" Color="#FF2F6B66" />
                     <!-- Light theme's "cream" is a dark tan, so its ink is pale. -->
                     <SolidColorBrush x:Key="RetroOnCreamBrush" Color="#FFF5EFE0" />
+                    <!-- Detail-view action buttons — same roles as dark, on the
+                         light palette: primary = the aged-tan play/pause fill
+                         with pale ink; tonal = translucent deep-teal chip. -->
+                    <SolidColorBrush x:Key="RetroPrimaryFillBrush" Color="#FF8A7550" />
+                    <SolidColorBrush x:Key="RetroPrimaryFillHoverBrush" Color="#FF9C8760" />
+                    <SolidColorBrush x:Key="RetroPrimaryFillPressedBrush" Color="#FF75623F" />
+                    <SolidColorBrush x:Key="RetroPrimaryInkBrush" Color="#FFF5EFE0" />
+                    <SolidColorBrush x:Key="RetroTonalFillBrush" Color="#222F6B66" />
+                    <SolidColorBrush x:Key="RetroTonalFillHoverBrush" Color="#382F6B66" />
+                    <SolidColorBrush x:Key="RetroTonalFillPressedBrush" Color="#4E2F6B66" />
+                    <SolidColorBrush x:Key="RetroTonalBorderBrush" Color="#802F6B66" />
+                    <SolidColorBrush x:Key="RetroTonalInkBrush" Color="#FF2F6B66" />
                     <SolidColorBrush x:Key="RetroVinylBrush" Color="#FF1B1B19" />
                     <SolidColorBrush x:Key="RetroVinylGrooveBrush" Color="#2EFFFFFF" />
                     <SolidColorBrush x:Key="RetroVinylLabelBrush" Color="#FF2F6B66" />
@@ -137,6 +165,131 @@
                  color-filled heart, and the Regular font ships no filled
                  glyphs. Same set, same MIT license file. -->
             <FontFamily x:Key="FluentIconFilledFont">ms-appx:///Assets/Fonts/FluentSystemIcons-Filled.ttf#FluentSystemIcons-Filled</FontFamily>
+
+            <!-- Detail-view action buttons (Play/Shuffle/Play next/Add to
+                 queue on album/artist/playlist detail): the stock Button
+                 chrome read as generic grey, off the retro palette. These two
+                 styles restyle the fill/states without touching the default
+                 focus visual (UseSystemFocusVisuals stays on, so the couch-
+                 visible focus rect the §2/§13.1 controller UX depends on is
+                 untouched). PointerOver/Pressed swap the fill to on-palette
+                 hover/pressed brushes; Disabled dims the whole surface so the
+                 artist-detail "fetching the pool" disable still reads. -->
+            <Style x:Key="RetroPrimaryButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{ThemeResource RetroPrimaryFillBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource RetroPrimaryInkBrush}" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="Padding" Value="28,12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FocusVisualMargin" Value="-3" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid x:Name="Root"
+                                  Background="{TemplateBinding Background}"
+                                  BorderBrush="{TemplateBinding BorderBrush}"
+                                  BorderThickness="{TemplateBinding BorderThickness}"
+                                  CornerRadius="{TemplateBinding CornerRadius}">
+                                <ContentPresenter
+                                    Padding="{TemplateBinding Padding}"
+                                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                    Content="{TemplateBinding Content}"
+                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                    ContentTransitions="{TemplateBinding ContentTransitions}"
+                                    AutomationProperties.AccessibilityView="Raw" />
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource RetroPrimaryFillHoverBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource RetroPrimaryFillPressedBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="Root" Storyboard.TargetProperty="Opacity" To="0.4" Duration="0" />
+                                            </Storyboard>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="RetroTonalButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{ThemeResource RetroTonalFillBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource RetroTonalInkBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource RetroTonalBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="Padding" Value="28,12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FocusVisualMargin" Value="-3" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid x:Name="Root"
+                                  Background="{TemplateBinding Background}"
+                                  BorderBrush="{TemplateBinding BorderBrush}"
+                                  BorderThickness="{TemplateBinding BorderThickness}"
+                                  CornerRadius="{TemplateBinding CornerRadius}">
+                                <ContentPresenter
+                                    Padding="{TemplateBinding Padding}"
+                                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                    Content="{TemplateBinding Content}"
+                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                    ContentTransitions="{TemplateBinding ContentTransitions}"
+                                    AutomationProperties.AccessibilityView="Raw" />
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource RetroTonalFillHoverBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource RetroTonalFillPressedBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="Root" Storyboard.TargetProperty="Opacity" To="0.4" Duration="0" />
+                                            </Storyboard>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
 
             <!-- Nav icon size: the old NavigationViewItemIconBoxMargin
                  override that lived here was removed 2026-07-19 — root cause
