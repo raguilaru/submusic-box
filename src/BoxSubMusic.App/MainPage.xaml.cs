@@ -467,7 +467,6 @@ namespace BoxSubMusic.App
             if (e.Content is SongsPage) return "songs";
             if (e.Content is SettingsPage) return "settings";
             if (e.Content is AccountPage) return "account";
-            if (e.Content is SectionPage) return e.Parameter as string;
             return null;
         }
 
@@ -551,8 +550,7 @@ namespace BoxSubMusic.App
 
         private void NavigateToSectionCore(string tag)
         {
-            Type pageType = PageTypeFor(tag);
-            ContentFrame.Navigate(pageType, pageType == typeof(SectionPage) ? tag : null);
+            ContentFrame.Navigate(PageTypeFor(tag));
         }
 
         private static Type PageTypeFor(string tag)
@@ -567,7 +565,10 @@ namespace BoxSubMusic.App
                 case "playlists": return typeof(PlaylistsPage);
                 case "settings": return typeof(SettingsPage);
                 case "account": return typeof(AccountPage);
-                default: return typeof(SectionPage);
+                // Every nav item carries a known tag, and NavigateToSection
+                // guards empty ones, so this is unreachable — Home is the
+                // safe default if a tag is ever added without a case.
+                default: return typeof(HomePage);
             }
         }
 
