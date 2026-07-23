@@ -293,25 +293,36 @@ namespace BoxSubMusic.App
                 && !e.KeyStatus.WasKeyDown
                 && !QueueOverlay.IsOpen)
             {
-                // Region cycling (checkpoint #7 request, decision 2026-07-18,
-                // evolving the verified checkpoint-#6 quick nav): LB/RB move
-                // between the shell's three regions — nav pane, page content,
-                // now-playing bar (skipped while hidden). From content, LB is
-                // still "go to nav" and RB reaches the bar. Inert while the
-                // overlay traps focus.
-                CycleRegion(forward: false);
+                // Direct region jumps (2026-07-22, superseding the 2026-07-18
+                // LB/RB cycling): LB goes straight to the nav pane, RB straight
+                // to the page content. Cycling only existed to reach the bar in
+                // ≤2 presses; the bar now has its own dedicated View jump-key
+                // (below), so the shoulders can be unambiguous single-target
+                // jumps. Inert while the overlay traps focus.
+                FocusRegion(ShellRegion.Nav);
                 e.Handled = true;
             }
             else if (e.Key == VirtualKey.GamepadRightShoulder
                 && !e.KeyStatus.WasKeyDown
                 && !QueueOverlay.IsOpen)
             {
-                CycleRegion(forward: true);
+                FocusRegion(ShellRegion.Content);
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.GamepadView
+                && !e.KeyStatus.WasKeyDown
+                && !QueueOverlay.IsOpen)
+            {
+                // Dedicated jump to the now-playing bar (2026-07-22 request):
+                // View toggles focus onto the bar's primary control and back to
+                // wherever the user was. A no-op when no queue is playing (the
+                // bar is hidden). Inert while the overlay traps focus.
+                ToggleBarFocus();
                 e.Handled = true;
             }
         }
 
-        // --- LB/RB region cycling (2026-07-18) --------------------------------
+        // --- Shell region focus (LB/RB/View jumps) ----------------------------
 
         private enum ShellRegion
         {
@@ -320,22 +331,32 @@ namespace BoxSubMusic.App
             Bar = 2,
         }
 
-        private void CycleRegion(bool forward)
+        // Where focus was before View jumped it into the bar, so a second
+        // View press returns there.
+        private DependencyObject _barReturnFocus;
+
+        private void ToggleBarFocus()
         {
-            int current = (int)CurrentRegion();
-            for (int step = 1; step <= 2; step++)
+            if (CurrentRegion() == ShellRegion.Bar)
             {
-                int next = forward ? (current + step) % 3 : (current + 3 - step) % 3;
-                if (next == (int)ShellRegion.Bar && !NowPlaying.IsBarVisible)
+                if (!(_barReturnFocus is Control control && control.Focus(FocusState.Keyboard)))
                 {
-                    continue;
+                    // The remembered element is gone (page changed) — fall back
+                    // to the page content.
+                    FocusRegion(ShellRegion.Content);
                 }
 
-                if (FocusRegion((ShellRegion)next))
-                {
-                    return;
-                }
+                _barReturnFocus = null;
+                return;
             }
+
+            if (!NowPlaying.IsBarVisible)
+            {
+                return;
+            }
+
+            _barReturnFocus = FocusManager.GetFocusedElement() as DependencyObject;
+            NowPlaying.FocusPrimary();
         }
 
         private ShellRegion CurrentRegion()

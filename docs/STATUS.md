@@ -1260,6 +1260,56 @@ device:**
      Lyrics tab reloads that track's lyrics (or its no-lyrics message);
      focus/scroll behave; the queue tab is unaffected.
 
+**Play-bar spinning vinyl artwork (2026-07-22) — CONSOLE-VERIFIED:**
+
+14. **Now-playing-bar artwork is a spinning vinyl record** (new
+    `Controls/SpinningAlbumArt`): the album art is the record LABEL in
+    the centre of a vinyl disc (near-black body + rim highlight + three
+    groove rings + spindle hole, Retro* brushes), and the whole disc
+    ROTATES while the track plays (6 s/rev) and FREEZES in place on
+    pause/stop. Same gating as the `SpinningVinyl` marker
+    (PlaybackService.Changed + IsPlaying + own visibility). **Verified
+    on device 2026-07-22:** the art rotates while playing and stops
+    cleanly on pause, the artless blank-label case, 10-ft readability,
+    and smooth art swap on track change all pass. (PR #8.)
+
+**Nav/play-bar shortcut + alignment round (2026-07-22, code-complete,
+NOT device-verified):** Rafael's two requests. Build green (x64 Debug
+over SSH; APPX0703 is the known command-line-only packaging failure).
+
+15. **Pane/bar bottom alignment:** the now-playing bar floats with a
+    16-epx bottom margin but the pane backdrop stretched to the full
+    content-area bottom, so the two floating cards ended 16 epx apart
+    (read as unbalanced). `PaneBackdrop` now carries `Margin="0,0,0,16"`
+    so both bottoms line up; the footer hint's bottom margin was raised
+    to 28 to clear the shortened backdrop's rounded corner. Verify the
+    pane and bar bottoms align and the footer hint isn't clipped.
+16. **Dedicated View jump-key to the play bar:** the **View button**
+    toggles focus onto the bar's play/pause and back to where the user
+    was (a second press returns). No-op when nothing is playing. A
+    subtle non-focusable **[View-icon] Now playing** badge sits in the
+    bar's top-right corner as the on-bar indication. The View badge is a
+    real drawn glyph — two overlapping panes, matching the physical
+    button (added to `ControllerGlyph` 2026-07-22; the earlier build
+    showed the literal word "View" because only "Menu" had a drawn glyph,
+    everything else fell back to text). Verify: View from the nav/content
+    jumps to the bar in one press; View again returns focus; the two-panes
+    icon reads correctly and the badge doesn't crowd the metadata/time.
+    Also: a small **(Y)** key badge is now overlaid on the bottom-right
+    corner of the queue button (hit-test-invisible, Viewbox-scaled) so the
+    global queue shortcut is discoverable on the control itself — verify
+    it reads at 10 ft, sits clear of the View label above, and doesn't
+    obscure the queue glyph or block the button.
+17. **LB/RB are now direct region jumps, not cycling:** LB → nav pane,
+    RB → page content (single-target; the 3-way cycle existed only to
+    reach the bar, which View now covers). The nav footer was slimmed to
+    a single **[LB] Menu** hint (the "direct to left nav" shortcut);
+    the old two-row LB/RB/Y hint block is gone. Verify LB always lands
+    on the nav pane and RB on the content from any region, and the
+    slimmed footer no longer looks cramped. (Y still toggles the queue
+    globally; its former footer hint was dropped — the bar's queue
+    button tooltip still reads "Queue (Y)".)
+
 *(Future work: append console items here.)*
 
 ## Known gaps / notes from this session

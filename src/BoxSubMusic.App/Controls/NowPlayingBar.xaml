@@ -71,13 +71,15 @@
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <!-- Artwork thumbnail with the vinyl-disc placeholder behind it. -->
-        <Grid Grid.Column="0" Width="84" Height="84" CornerRadius="8" VerticalAlignment="Center">
-            <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
-                <local:VinylDisc Margin="8" />
-            </Border>
-            <Image x:Name="ArtworkImage" Stretch="UniformToFill" />
-        </Grid>
+        <!-- Artwork as a spinning vinyl record: the album art is the record
+             label, and the disc rotates while the track plays (refinement
+             2026-07-22). Missing art falls back to the vinyl's blank label. -->
+        <local:SpinningAlbumArt
+            x:Name="ArtworkVinyl"
+            Grid.Column="0"
+            Width="84"
+            Height="84"
+            VerticalAlignment="Center" />
 
         <!-- Title / artist · album / format · bitrate (§10 metadata). -->
         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
@@ -229,15 +231,54 @@
                 AutomationProperties.Name="Show lyrics">
                 <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE180;" FontSize="20" />
             </Button>
-            <Button
-                x:Name="QueueButton"
-                Style="{StaticResource TransportButton}"
-                Click="QueueButton_Click"
-                XYFocusLeft="{x:Bind LyricsButton}"
-                ToolTipService.ToolTip="Queue (Y)"
-                AutomationProperties.Name="Show queue">
-                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" FontSize="20" />
-            </Button>
+            <!-- Queue button with an on-control (Y) key badge (2026-07-22
+                 request): Y opens the queue globally, so co-locating the key
+                 on its own button is the clearest mapping. The badge sits at
+                 the BOTTOM-right corner — clear of the View label in the top
+                 strip above — scaled down via a Viewbox and hit-test-invisible
+                 so it never intercepts the button's own input. -->
+            <Grid>
+                <Button
+                    x:Name="QueueButton"
+                    Style="{StaticResource TransportButton}"
+                    Click="QueueButton_Click"
+                    XYFocusLeft="{x:Bind LyricsButton}"
+                    ToolTipService.ToolTip="Queue (Y)"
+                    AutomationProperties.Name="Show queue">
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" FontSize="20" />
+                </Button>
+                <Viewbox
+                    Width="18"
+                    Height="18"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,-3,-3"
+                    Opacity="0.85"
+                    IsHitTestVisible="False">
+                    <local:ControllerGlyph Label="Y" />
+                </Viewbox>
+            </Grid>
+        </StackPanel>
+
+        <!-- Jump-here indicator (2026-07-22 request): the View button jumps
+             focus straight to this bar from anywhere in the shell. A subtle
+             non-focusable badge in the top-right corner advertises the
+             shortcut — it sits over the free space above the vertically-centred
+             time/utility clusters, so it crowds nothing. -->
+        <StackPanel
+            Grid.Column="3"
+            Grid.ColumnSpan="2"
+            Orientation="Horizontal"
+            Spacing="6"
+            Opacity="0.55"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Margin="0,-6,0,0">
+            <local:ControllerGlyph Label="View" />
+            <TextBlock
+                Text="Now playing"
+                FontSize="13"
+                VerticalAlignment="Center" />
         </StackPanel>
     </Grid>
 </UserControl>

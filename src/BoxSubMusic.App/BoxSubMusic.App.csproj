@@ -150,6 +150,9 @@
     <Compile Include="Controls\SpinningVinyl.xaml.cs">
       <DependentUpon>SpinningVinyl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\SpinningAlbumArt.xaml.cs">
+      <DependentUpon>SpinningAlbumArt.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Controls\ToastHost.xaml.cs">
       <DependentUpon>ToastHost.xaml</DependentUpon>
     </Compile>
@@ -279,6 +282,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\SpinningVinyl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\SpinningAlbumArt.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
