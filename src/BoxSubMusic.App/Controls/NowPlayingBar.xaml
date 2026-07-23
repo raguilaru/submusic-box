@@ -216,10 +216,11 @@
                 XYFocusRight="{x:Bind LyricsButton}"
                 ToolTipService.ToolTip="Favorite"
                 AutomationProperties.Name="Favorite" />
-            <!-- Lyrics (§13.3 book_open_microphone, cmap-verified U+E180):
-                 opens the Now-Playing overlay straight to the Lyrics tab.
-                 Collapsed when the server lacks the songLyrics extension
-                 (explicit degrade-by-hiding, §3) — set on the Update path. -->
+            <!-- Lyrics (§13.3 microphone, cmap-verified U+E7FA — a plain,
+                 larger mic reads clearly at bar size; the book+mic glyph was
+                 indistinct): opens the Now-Playing overlay straight to the
+                 Lyrics tab. Collapsed when the server lacks the songLyrics
+                 extension (explicit degrade-by-hiding, §3) — set on Update. -->
             <Button
                 x:Name="LyricsButton"
                 Style="{StaticResource TransportButton}"
@@ -229,7 +230,7 @@
                 XYFocusRight="{x:Bind QueueButton}"
                 ToolTipService.ToolTip="Lyrics"
                 AutomationProperties.Name="Show lyrics">
-                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE180;" FontSize="20" />
+                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE7FA;" FontSize="24" />
             </Button>
             <!-- Queue button with an on-control (Y) key badge (2026-07-22
                  request): Y opens the queue globally, so co-locating the key

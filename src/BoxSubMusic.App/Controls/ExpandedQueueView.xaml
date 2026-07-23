@@ -38,6 +38,7 @@
     <Grid
         x:Name="Root"
         Visibility="Collapsed"
+        KeyDown="Root_KeyDown"
         Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.RenderTransform>
             <TranslateTransform x:Name="RootTransform" />
@@ -244,12 +245,19 @@
                             FontSize="32"
                             FontWeight="SemiBold" />
                         <!-- Queue / Lyrics segmented tabs, shown when lyrics
-                             are supported. Exclusivity is enforced in code. -->
+                             are supported. Exclusivity is enforced in code.
+                             The LB/RB badges flank the pair (LB = left tab =
+                             Queue, RB = right tab = Lyrics): the shoulder
+                             buttons switch tabs from anywhere in the overlay
+                             (Root_KeyDown), so the mapping is advertised right
+                             on the titles. -->
                         <StackPanel
                             x:Name="TabStrip"
                             Orientation="Horizontal"
                             Spacing="10"
+                            VerticalAlignment="Center"
                             Visibility="Collapsed">
+                            <local:ControllerGlyph Label="LB" VerticalAlignment="Center" Opacity="0.65" />
                             <ToggleButton
                                 x:Name="QueueTabButton"
                                 Style="{StaticResource PaneTabToggle}"
@@ -257,14 +265,15 @@
                                 IsChecked="True"
                                 Click="QueueTabButton_Click"
                                 XYFocusRight="{x:Bind LyricsTabButton}"
-                                AutomationProperties.Name="Queue tab" />
+                                AutomationProperties.Name="Queue tab (LB)" />
                             <ToggleButton
                                 x:Name="LyricsTabButton"
                                 Style="{StaticResource PaneTabToggle}"
                                 Content="Lyrics"
                                 Click="LyricsTabButton_Click"
                                 XYFocusLeft="{x:Bind QueueTabButton}"
-                                AutomationProperties.Name="Lyrics tab" />
+                                AutomationProperties.Name="Lyrics tab (RB)" />
+                            <local:ControllerGlyph Label="RB" VerticalAlignment="Center" Opacity="0.65" />
                         </StackPanel>
                         <local:RetroStripes Width="110" HorizontalAlignment="Left" />
                         <TextBlock

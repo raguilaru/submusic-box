@@ -220,6 +220,29 @@ namespace BoxSubMusic.App.Controls
             SetPaneMode(PaneMode.Lyrics, moveFocus: true);
         }
 
+        private void Root_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            // LB/RB switch tabs from anywhere in the overlay (LB = Queue, the
+            // left tab; RB = Lyrics, the right tab). Only when both tabs exist;
+            // the shell's own LB/RB region jumps are already inert while the
+            // overlay is open, so there is no collision. Ignore auto-repeat.
+            if (!IsOpen || !_lyricsSupported || e.KeyStatus.WasKeyDown)
+            {
+                return;
+            }
+
+            if (e.Key == VirtualKey.GamepadLeftShoulder)
+            {
+                SetPaneMode(PaneMode.Queue, moveFocus: true);
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.GamepadRightShoulder)
+            {
+                SetPaneMode(PaneMode.Lyrics, moveFocus: true);
+                e.Handled = true;
+            }
+        }
+
         /// <summary>Slides the view back down; <see cref="Closed"/> fires
         /// when the animation completes.</summary>
         public void Close()
