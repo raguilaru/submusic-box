@@ -128,22 +128,30 @@
             <!-- Pane toggle as an ordinary first menu item (checkpoint #8
                  request, 2026-07-19): replaces the built-in Segoe MDL2
                  hamburger (hidden above — it was also a §13.3 icon-set
-                 violation) with the modern Fluent panel-contract/expand pair
-                 (E8B6/E8BA, cmap-verified; the glyph swaps with the pane
-                 state). A menu item — not a floated button and not
+                 violation). A menu item — not a floated button and not
                  PaneHeader — because ordinary items are the pattern the
                  gamepad focus engine is proven to handle (the 2026-07-14
                  PaneFooter lesson); SelectsOnInvoked=False keeps it out of
-                 the selection model, and ItemInvoked toggles the pane. -->
+                 the selection model, and ItemInvoked toggles the pane.
+                 Left-nav refinement (2026-07-23): the glyph is now the same
+                 chevron family as the queue/lyrics collapse affordance
+                 (chevron_left F2AB when open → collapse, chevron_right F2B1
+                 when compact → expand; both cmap-verified), enlarged past
+                 the section icons (EnlargeNavIcons special-cases it) and
+                 painted in the accent so it reads as a distinct control
+                 rather than a nav destination — a directional action glyph,
+                 not a noun. The separator that used to sit between it and
+                 Search is gone (it read as clunky); a small bottom margin
+                 gives it breathing room without a hard rule. -->
             <NavigationViewItem
                 x:Name="PaneToggleItem"
                 SelectsOnInvoked="False"
+                Margin="0,0,0,6"
                 AutomationProperties.Name="Expand or collapse the menu">
                 <NavigationViewItem.Icon>
-                    <FontIcon x:Name="PaneToggleIcon" FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xE8B6;" />
+                    <FontIcon x:Name="PaneToggleIcon" FontFamily="{StaticResource FluentIconFont}" FontSize="28" Width="28" Height="28" Glyph="&#xF2AB;" Foreground="{ThemeResource RetroAccentBrush}" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
-            <NavigationViewItemSeparator />
             <NavigationViewItem Content="Search" Tag="search">
                 <NavigationViewItem.Icon>
                     <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xF690;" Foreground="{ThemeResource RetroAccentBrush}" />
