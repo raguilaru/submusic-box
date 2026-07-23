@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -8,15 +8,15 @@
   IgnorableNamespaces="uap uap3 mp">
 
   <Identity
-    Name="8dbb9bf8-bae5-4a6a-abd0-bf4522537929"
-    Publisher="CN=Rafa"
+    Name="ConsoleApps.SubMusicBox"
+    Publisher="CN=AAEFF031-B87C-4F14-849C-C775D7E4D2DB"
     Version="1.0.1.0" />
 
-  <mp:PhoneIdentity PhoneProductId="8dbb9bf8-bae5-4a6a-abd0-bf4522537929" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="75aa6876-ea64-4d0e-9df6-06a02419ac51" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>SubMusic Box</DisplayName>
-    <PublisherDisplayName>Rafa</PublisherDisplayName>
+    <PublisherDisplayName>PolyApps</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
