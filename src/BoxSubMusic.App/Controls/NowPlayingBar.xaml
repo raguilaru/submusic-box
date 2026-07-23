@@ -232,54 +232,47 @@
                 AutomationProperties.Name="Show lyrics">
                 <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE7FA;" FontSize="24" />
             </Button>
-            <!-- Queue button with an on-control (Y) key badge (2026-07-22
-                 request): Y opens the queue globally, so co-locating the key
-                 on its own button is the clearest mapping. The badge sits at
-                 the BOTTOM-right corner — clear of the View label in the top
-                 strip above — scaled down via a Viewbox and hit-test-invisible
-                 so it never intercepts the button's own input. -->
-            <Grid>
-                <Button
-                    x:Name="QueueButton"
-                    Style="{StaticResource TransportButton}"
-                    Click="QueueButton_Click"
-                    XYFocusLeft="{x:Bind LyricsButton}"
-                    ToolTipService.ToolTip="Queue (Y)"
-                    AutomationProperties.Name="Show queue">
-                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" FontSize="20" />
-                </Button>
-                <Viewbox
-                    Width="18"
-                    Height="18"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Bottom"
-                    Margin="0,0,-3,-3"
-                    Opacity="0.85"
-                    IsHitTestVisible="False">
-                    <local:ControllerGlyph Label="Y" />
-                </Viewbox>
-            </Grid>
+            <!-- Queue button. Its Y-button shortcut is advertised as a
+                 labeled hint in the top-strip legend (below) rather than as a
+                 badge glued to the control — the on-control badge had no label
+                 and overlapped the glyph (2026-07-23 clarity pass). Tooltip
+                 still spells the mapping for mouse users. -->
+            <Button
+                x:Name="QueueButton"
+                Style="{StaticResource TransportButton}"
+                Click="QueueButton_Click"
+                XYFocusLeft="{x:Bind LyricsButton}"
+                ToolTipService.ToolTip="Queue (Y)"
+                AutomationProperties.Name="Show queue">
+                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF4EE;" FontSize="20" />
+            </Button>
         </StackPanel>
 
-        <!-- Jump-here indicator (2026-07-22 request): the View button jumps
-             focus straight to this bar from anywhere in the shell. A subtle
-             non-focusable badge in the top-right corner advertises the
-             shortcut — it sits over the free space above the vertically-centred
-             time/utility clusters, so it crowds nothing. -->
+        <!-- Controller-shortcut legend (2026-07-23 clarity pass): both of the
+             bar's controller shortcuts are advertised here as consistent
+             badge + label pairs (the app's established hint pattern), in the
+             free strip above the vertically-centred time/utility clusters so
+             they crowd nothing. Each hint sits roughly above the region it
+             targets — View → the bar/transport, Y → the queue button at the
+             far right. This replaces the old naked (Y) badge on the queue
+             button, which had no label and overlapped its glyph. -->
         <StackPanel
             Grid.Column="3"
             Grid.ColumnSpan="2"
             Orientation="Horizontal"
-            Spacing="6"
+            Spacing="18"
             Opacity="0.55"
             HorizontalAlignment="Right"
             VerticalAlignment="Top"
             Margin="0,-6,0,0">
-            <local:ControllerGlyph Label="View" />
-            <TextBlock
-                Text="Now playing"
-                FontSize="13"
-                VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <local:ControllerGlyph Label="View" />
+                <TextBlock Text="Now playing" FontSize="13" VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <local:ControllerGlyph Label="Y" />
+                <TextBlock Text="Queue" FontSize="13" VerticalAlignment="Center" />
+            </StackPanel>
         </StackPanel>
     </Grid>
 </UserControl>
