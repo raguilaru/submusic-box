@@ -74,13 +74,13 @@
                         <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,8,0,0">
                             <!-- §9: Play/Shuffle replace the queue with this
                                  album's tracks only (live since Slice 10). -->
-                            <Button x:Name="PlayButton" Padding="28,12" Click="PlayButton_Click">
+                            <Button x:Name="PlayButton" Style="{StaticResource RetroPrimaryButtonStyle}" Padding="28,12" Click="PlayButton_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" FontSize="20" />
                                     <TextBlock Text="Play" FontSize="20" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
-                            <Button x:Name="ShuffleButton" Padding="28,12" Click="ShuffleButton_Click">
+                            <Button x:Name="ShuffleButton" Style="{StaticResource RetroTonalButtonStyle}" Padding="28,12" Click="ShuffleButton_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xEF37;" FontSize="20" />
                                     <TextBlock Text="Shuffle" FontSize="20" VerticalAlignment="Center" />
@@ -93,14 +93,16 @@
                                  cmap-verified glyphs as the song menus. -->
                             <Button
                                 x:Name="PlayNextButton"
+                                Style="{StaticResource RetroTonalButtonStyle}"
                                 Padding="16,12"
                                 Click="PlayNextButton_Click"
                                 ToolTipService.ToolTip="Play next"
                                 AutomationProperties.Name="Play next">
-                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" FontSize="20" />
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE861;" FontSize="20" />
                             </Button>
                             <Button
                                 x:Name="AddToQueueButton"
+                                Style="{StaticResource RetroTonalButtonStyle}"
                                 Padding="16,12"
                                 Click="AddToQueueButton_Click"
                                 ToolTipService.ToolTip="Add to queue"
@@ -157,8 +159,11 @@
                                              "Go to artist". -->
                                         <!-- Icons: Fluent Regular glyphs, all
                                              cmap-verified (§13.3) — play F606,
-                                             next F56A, list-add F7A8, heart
-                                             F47A, person F5BE. -->
+                                             play-next E861 (navigation_play:
+                                             queue lines + a play triangle, so
+                                             it doesn't read as skip like the
+                                             bar's next F56A), list-add F7A8,
+                                             heart F47A, person F5BE. -->
                                         <MenuFlyout>
                                             <MenuFlyoutItem
                                                 Text="Play"
@@ -173,7 +178,7 @@
                                                 Tag="{x:Bind}"
                                                 Click="PlayNext_Click">
                                                 <MenuFlyoutItem.Icon>
-                                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE861;" />
                                                 </MenuFlyoutItem.Icon>
                                             </MenuFlyoutItem>
                                             <MenuFlyoutItem
@@ -289,6 +294,7 @@
                 TextAlignment="Center" />
             <Button
                 x:Name="RetryButton"
+                Style="{StaticResource RetroTonalButtonStyle}"
                 Content="Retry"
                 FontSize="20"
                 Padding="40,10"

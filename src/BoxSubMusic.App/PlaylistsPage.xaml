@@ -119,7 +119,7 @@
                                         Tag="{x:Bind}"
                                         Click="PlaylistPlayNext_Click">
                                         <MenuFlyoutItem.Icon>
-                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE861;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                     <MenuFlyoutItem
@@ -255,7 +255,7 @@
                                         Tag="{x:Bind}"
                                         Click="PlaylistPlayNext_Click">
                                         <MenuFlyoutItem.Icon>
-                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF56A;" />
+                                            <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE861;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                     <MenuFlyoutItem
