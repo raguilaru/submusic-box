@@ -52,9 +52,16 @@ namespace BoxSubMusic.App.Services
                     {
                         return ThemeMode.Light;
                     }
+                    if (stored == "automatic")
+                    {
+                        return ThemeMode.Automatic;
+                    }
                 }
 
-                return ThemeMode.Automatic;
+                // Default (no stored preference): Dark. Chosen over Automatic
+                // so a fresh install lands on the dark 10-ft theme regardless
+                // of the console's system theme.
+                return ThemeMode.Dark;
             }
             set
             {
