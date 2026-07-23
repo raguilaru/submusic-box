@@ -17,14 +17,21 @@ namespace BoxSubMusic.App
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        // Pane toggle glyphs (Fluent panel_left_contract / _expand,
-        // cmap-verified 2026-07-19 — §13.3).
-        private const string PaneContractGlyph = "\uE8B6";
-        private const string PaneExpandGlyph = "\uE8BA";
+        // Pane toggle glyphs (left-nav refinement 2026-07-23): the same
+        // chevron family as the queue/lyrics collapse button — chevron_left
+        // when the pane is open (collapse), chevron_right when compact
+        // (expand). Both cmap-verified against the shipped Regular TTF (§13.3).
+        private const string PaneContractGlyph = "\uF2AB";
+        private const string PaneExpandGlyph = "\uF2B1";
 
         // The template's icon Viewbox is enlarged from code (see
         // EnlargeNavIcons); retries cover containers not yet templated.
         private const int NavIconAttempts = 5;
+
+        // Section icons sit at 28 epx; the pane-toggle chevron is deliberately
+        // larger so it reads as a distinct control rather than a nav row.
+        private const double NavIconSize = 28;
+        private const double PaneToggleIconSize = 36;
 
         private string _currentSectionTag;
 
@@ -116,8 +123,14 @@ namespace BoxSubMusic.App
                         continue;
                     }
 
-                    iconBox.Width = 28;
-                    iconBox.Height = 28;
+                    // The pane-toggle chevron is enlarged past the section
+                    // icons so it stands out as a control (left-nav refinement
+                    // 2026-07-23).
+                    double size = ReferenceEquals(item, PaneToggleItem)
+                        ? PaneToggleIconSize
+                        : NavIconSize;
+                    iconBox.Width = size;
+                    iconBox.Height = size;
                     iconBox.Margin = new Thickness(0);
                     iconBox.HorizontalAlignment = HorizontalAlignment.Center;
                     iconBox.VerticalAlignment = VerticalAlignment.Center;
@@ -454,7 +467,6 @@ namespace BoxSubMusic.App
             if (e.Content is SongsPage) return "songs";
             if (e.Content is SettingsPage) return "settings";
             if (e.Content is AccountPage) return "account";
-            if (e.Content is SectionPage) return e.Parameter as string;
             return null;
         }
 
@@ -538,8 +550,7 @@ namespace BoxSubMusic.App
 
         private void NavigateToSectionCore(string tag)
         {
-            Type pageType = PageTypeFor(tag);
-            ContentFrame.Navigate(pageType, pageType == typeof(SectionPage) ? tag : null);
+            ContentFrame.Navigate(PageTypeFor(tag));
         }
 
         private static Type PageTypeFor(string tag)
@@ -554,7 +565,10 @@ namespace BoxSubMusic.App
                 case "playlists": return typeof(PlaylistsPage);
                 case "settings": return typeof(SettingsPage);
                 case "account": return typeof(AccountPage);
-                default: return typeof(SectionPage);
+                // Every nav item carries a known tag, and NavigateToSection
+                // guards empty ones, so this is unreachable — Home is the
+                // safe default if a tag is ever added without a case.
+                default: return typeof(HomePage);
             }
         }
 
