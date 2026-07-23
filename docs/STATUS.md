@@ -139,11 +139,20 @@ code-complete-but-not-yet-device-verified rounds.
 14. **Pane/bar bottom alignment:** pane backdrop (`Margin="0,0,0,16"`) and the
     floating bar bottoms line up; the footer hint isn't clipped.
 15. **View-button jump to the bar:** View from nav/content jumps focus to the
-    bar's play/pause in one press; View again returns focus; the two-panes View
-    badge reads correctly and doesn't crowd the metadata/time. A small **(Y)**
-    badge on the queue button reads at 10 ft and doesn't block the control.
+    bar's play/pause in one press; View again returns focus.
 16. **LB/RB direct region jumps:** LB always lands on the nav pane, RB on the
     content, from any region; the slimmed single-hint footer isn't cramped.
+
+**Play-bar shortcut-legend clarity pass (2026-07-23):**
+
+17. **Top-strip shortcut legend:** the bar's two controller shortcuts now read
+    as consistent labeled badge+text pairs in the top-right strip —
+    **View · Now playing** and **Y · Queue** — replacing the old naked **(Y)**
+    badge glued to the queue button (no label, overlapped its glyph). Confirm
+    at 10 ft: both hint pairs are legible in both themes, each sits roughly
+    above the region it targets (View over the transport, Y over the queue
+    button), and neither crowds the vertically-centred metadata/time/utility
+    clusters. The queue button's glyph is now unobstructed.
 
 *(Future work: append console items here.)*
 
