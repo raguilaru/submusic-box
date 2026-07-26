@@ -132,7 +132,17 @@ namespace BoxSubMusic.App
         private static PlaylistCard ToCard(Playlist playlist)
         {
             var subtitle = playlist.SongCount == 1 ? "1 song" : playlist.SongCount + " songs";
-            return new PlaylistCard(playlist.Id, playlist.Name, subtitle);
+            // Owner, comment, count and duration all come from getPlaylists'
+            // own attributes, so the richer list row (§7.4, 2026-07-27) costs no
+            // extra request.
+            return new PlaylistCard(
+                playlist.Id,
+                playlist.Name,
+                subtitle,
+                playlist.Owner,
+                playlist.Comment,
+                playlist.SongCount,
+                playlist.Duration);
         }
 
         /// <summary>

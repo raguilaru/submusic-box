@@ -56,8 +56,10 @@ planned slice. Since then, refinement rounds have landed on top:
   cost one request per row, so they moved to artist detail); artist detail's
   counts line gained total play time + the albums' year span and album detail
   gained genre; the "Artist" sort option's mic glyph became the person glyph
-  in both sort menus. Duration wording moved to Core `Browsing/DurationText`
-  (+7 tests). Not yet device-verified (backlog items 38–42).
+  in both sort menus. Playlists list rows carry owner + the playlist's own
+  description and tracks · total play time (no starred marker — playlists have
+  no favorite state). Duration wording moved to Core `Browsing/DurationText`
+  (+7 tests). Not yet device-verified (backlog items 38–43).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -309,6 +311,12 @@ code-complete-but-not-yet-device-verified rounds.
     the server had the data), and album detail's header shows genre between the
     year and the song count. Sanity-check one artist's total against its albums
     and confirm the line doesn't wrap awkwardly for a prolific artist.
+43. **Playlists list rows:** each row shows the composite artwork, the name,
+    "by \<owner\>" (plus the playlist's description when it has one) and
+    "N tracks · H hr M min" on the right. Confirm the description doesn't push
+    the name off the row on a long one (both trim), that a playlist with no
+    description shows just the owner, and that no starred marker appears
+    (playlists have no favorite state by design).
 
 *(Future work: append console items here.)*
 

@@ -239,8 +239,20 @@
                 </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:PlaylistCard">
-                        <StackPanel Orientation="Horizontal" Spacing="16">
-                            <StackPanel.ContextFlyout>
+                        <!-- Row shape matches the Albums/Artists lists (§7.4,
+                             2026-07-27): composite artwork + name/owner on the
+                             left, track count and total play time on the right,
+                             all of it from the getPlaylists response. There is
+                             no starred column — Subsonic star/unstar has no
+                             playlist form, so playlists have no favorite state
+                             anywhere in the app. -->
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuFlyoutItem
                                         Text="Play"
@@ -267,8 +279,8 @@
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                 </MenuFlyout>
-                            </StackPanel.ContextFlyout>
-                            <Grid Width="56" Height="56" CornerRadius="6" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
+                            </Grid.ContextFlyout>
+                            <Grid Grid.Column="0" Width="56" Height="56" CornerRadius="6" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
                                     <FontIcon
                                         FontFamily="{StaticResource FluentIconFont}"
@@ -335,11 +347,23 @@
                                     </Rectangle>
                                 </Grid>
                             </Grid>
-                            <StackPanel VerticalAlignment="Center">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind Name}" FontSize="22" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{x:Bind Subtitle}" FontSize="16" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    Text="{x:Bind OwnerLabel}"
+                                    Visibility="{x:Bind OwnerVisibility}"
+                                    FontSize="16"
+                                    Opacity="0.7"
+                                    TextTrimming="CharacterEllipsis" />
                             </StackPanel>
-                        </StackPanel>
+                            <TextBlock
+                                Grid.Column="2"
+                                Text="{x:Bind MetaLabel}"
+                                FontSize="18"
+                                Opacity="0.75"
+                                TextAlignment="Right"
+                                VerticalAlignment="Center" />
+                        </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
