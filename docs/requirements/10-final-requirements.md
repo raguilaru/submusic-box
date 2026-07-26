@@ -186,7 +186,8 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   - a lyrics control on the now-playing bar that opens the expanded overlay directly to a Lyrics view;
   - a Lyrics view alongside the queue in the expanded overlay (the queue remains reachable — Y still opens it).
 - Synchronized lyrics (lines carrying timestamps) MUST auto-follow playback: the current line is highlighted and the view auto-scrolls to keep it visible.
-- The user MUST be able to navigate the lyrics with the controller (read the lines ahead/behind the current position). Navigation is read-only and MUST NOT change playback position (no in-track seek is introduced by this feature); an affordance MUST let the user return to and resume following the current line.
+- The user MUST be able to navigate the lyrics with the controller (read the lines ahead/behind the current position). Moving the selection alone MUST NOT change playback position; an affordance MUST let the user return to and resume following the current line without moving playback.
+- Selecting a synchronized lyric line (A/Enter, or a click) MUST seek playback to that line's timestamp and resume following from there (revised 2026-07-26, §16 — this supersedes the strictly read-only rule of the original contract and is the one in-track seek the app performs). Lines with no reachable timestamp, unsynchronized lyrics, and streams the platform will not seek MUST fall back to the return-to-current-line behavior rather than doing nothing.
 - Unsynchronized lyrics (no timestamps) MUST display as readable, scrollable text without a highlight.
 - When the server supports lyrics but the current track has none, the app MUST show an explicit "no lyrics" state (not a blank or an error).
 - Lyrics MUST follow the current track, updating when playback moves to another song.
@@ -636,6 +637,35 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   shows "Loading lyrics…". Lyrics follow the current track (refetched on
   song change; a one-entry cache avoids refetching on unrelated Changed
   events). Timestamps are milliseconds; the entry's `offset` is applied.
+
+- 2026-07-26: **Selecting a synced lyric line SEEKS playback to it**
+  (§10.1; Rafael's request — supersedes clause (d) of the 2026-07-22
+  lyrics decision, whose read-only rule made A a pure re-center). A /
+  Enter / click on a line moves the current track to that line's
+  timestamp minus the entry's `offset`, resumes auto-follow, and paints
+  the destination line immediately (the session's position readback
+  settles a few ms after a seek, so the highlight is set explicitly
+  rather than derived). **Merely moving the D-pad selection still does
+  not seek** — reading ahead/back stays free, and the "Jump to current
+  line" button keeps its §10.1 role as the return affordance that
+  resumes following WITHOUT moving playback. Fallbacks (§15, never a
+  dead button): unsynced lyrics, a line with no reachable timestamp
+  (a blank spacer seeks to the nearest timed line above it; a line with
+  none above it does not), and a stream the platform reports as
+  non-seekable all fall back to re-centering.
+  Implementation: the app's first and only in-track seek —
+  `PlaybackService.SeekTo(TimeSpan)`, which clamps into the open stream
+  (and stops `SeekEndGuard` = 500 ms short of the end so the last line
+  cannot trip end-of-stream and skip the track), refuses when
+  `MediaPlaybackSession.CanSeek` is false, re-baselines the §6.1 resume
+  scalars (the ~10 s throttle would otherwise keep a stale position
+  after a short backward seek), and raises `Changed`. **This does NOT
+  introduce a general seek/scrubbing surface** — the now-playing bar's
+  and overlay's progress lines stay display-only (STATUS "Known gaps"),
+  because §10 asks for no scrubber. Accepted consequence: seeking past
+  the min(50 %, 4 min) scrobble threshold submits the play, as the
+  threshold is a position check, not a listened-time accumulator
+  (telemetry-class, consistent with the silent-scrobbling decision).
 
 ## 17. Open Decisions / TODO
 
