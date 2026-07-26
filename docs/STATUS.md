@@ -209,7 +209,10 @@ code-complete-but-not-yet-device-verified rounds.
     check mark tracks the current option, the button label updates, and Title /
     Artist / Album / Date Added visibly reorder the list. Default Order returns
     to the server's order. After a sort, focus lands back at the top of the list
-    (not stranded in a recycled row).
+    (not stranded in a recycled row). **Per-option icons** (list / Aa / mic /
+    album / calendar) render alongside the check mark — the OS template shows
+    both, but the icon sits in a 16-epx box, so confirm it reads at 10 ft and
+    that no option shows a blank or a box glyph.
 25. **Play All / Shuffle All:** both replace the queue and reveal the bar; Play
     All starts at the first row of the current sort; Shuffle All is randomized.
     Confirm the queue really holds the whole library (expanded queue is long),
@@ -238,9 +241,10 @@ code-complete-but-not-yet-device-verified rounds.
     row rather than yanking it into the results.
 32. **Sort menu at 10 ft:** the sort button names the active sort; opening it
     shows only that tab's options (2 for Artists, 2 for Albums, 5 for Songs)
-    with a legible checkmark on the current one. Confirm the flyout is
-    gamepad-reachable and that Down from the button enters the list. The Songs
-    tab's five options are the same `SongSorter` orderings the Songs page uses
+    with a legible checkmark AND a per-option icon on the current one (see
+    item 24 — same 16-epx caveat). Confirm the flyout is gamepad-reachable and
+    that Down from the button enters the list. The Songs tab's five options are
+    the same `SongSorter` orderings and the same glyphs the Songs page uses
     (item 24) — worth confirming the two pages agree on the same library.
 33. **Sorting is total, not partial:** with a large favorites set, changing
     the sort reorders EVERYTHING immediately and fetches nothing — scroll to

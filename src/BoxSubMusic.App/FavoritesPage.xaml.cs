@@ -16,6 +16,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Input;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
 namespace BoxSubMusic.App
@@ -26,9 +27,12 @@ namespace BoxSubMusic.App
     /// per-tab sort are remembered (<see cref="FavoritesPreferences"/>).
     ///
     /// One getStarred2 request fills all three tabs — the endpoint takes no
-    /// counts or offsets and returns the complete favorites set — so this is
-    /// the one browse-ish view with no incremental paging, and sorting is a
-    /// client-side reorder of everything rather than of "pages loaded so far".
+    /// counts or offsets and returns the complete favorites set — so this view
+    /// needs no paging at all, and sorting is a client-side reorder of
+    /// everything. The Songs view reaches the same guarantee the hard way, by
+    /// paging its whole library into memory, because its endpoint has no
+    /// all-at-once form; the song orderings themselves are shared with it via
+    /// Core's <see cref="SongSorter"/>.
     /// Servers older than API 1.8 get an explicit unsupported state (§3).
     /// </summary>
     public sealed partial class FavoritesPage : Page
@@ -277,40 +281,64 @@ namespace BoxSubMusic.App
 
         // --- Sorting ------------------------------------------------------------
 
-        /// <summary>One entry in the sort flyout: its label and its enum value.</summary>
+        // Sort-option glyphs: Fluent Regular, all cmap-verified against the
+        // shipped TTF (§13.3). SongsPage.xaml declares the same five song
+        // glyphs for the same five orderings — keep the two in step.
+        /// <summary>
+        /// The shipped Fluent Regular family (§13.3), resolved from App.xaml
+        /// once — these items are built in code, so the XAML StaticResource the
+        /// declared menus use is not available to them.
+        /// </summary>
+        private static readonly FontFamily IconFont =
+            (FontFamily)Application.Current.Resources["FluentIconFont"];
+
+        private const string ListGlyph = "\uECDA";      // text_bullet_list_ltr
+        private const string AlphaGlyph = "\uECEE";     // text_case_title ("Aa")
+        private const string MicGlyph = "\uE7FA";       // mic
+        private const string AlbumGlyph = "\uE010";     // album
+        private const string CalendarGlyph = "\uE24F";  // calendar_ltr
+
+        /// <summary>
+        /// One entry in the sort flyout: its label, the glyph that says what it
+        /// orders by, and its enum value. The OS toggle-item template shows the
+        /// icon and the check mark together (its CheckedWithIcon state), so the
+        /// glyph never costs the "which one is current" cue.
+        /// </summary>
         private struct SortOption
         {
-            public SortOption(string label, int value)
+            public SortOption(string label, string glyph, int value)
             {
                 Label = label;
+                Glyph = glyph;
                 Value = value;
             }
 
             public string Label { get; }
+            public string Glyph { get; }
             public int Value { get; }
         }
 
         private static readonly SortOption[] ArtistSortOptions =
         {
-            new SortOption("Alphabetical", (int)ArtistSort.Alphabetical),
-            new SortOption("Most Albums", (int)ArtistSort.MostAlbums),
+            new SortOption("Alphabetical", AlphaGlyph, (int)ArtistSort.Alphabetical),
+            new SortOption("Most Albums", AlbumGlyph, (int)ArtistSort.MostAlbums),
         };
 
         private static readonly SortOption[] AlbumSortOptions =
         {
-            new SortOption("Year", (int)AlbumSort.Year),
-            new SortOption("Alphabetical", (int)AlbumSort.Alphabetical),
+            new SortOption("Year", CalendarGlyph, (int)AlbumSort.Year),
+            new SortOption("Alphabetical", AlphaGlyph, (int)AlbumSort.Alphabetical),
         };
 
         // Labels come from SongSorter so this menu and the Songs view's can
         // never disagree about what an ordering is called.
         private static readonly SortOption[] SongSortOptions =
         {
-            new SortOption(SongSorter.Label(SongSort.DefaultOrder), (int)SongSort.DefaultOrder),
-            new SortOption(SongSorter.Label(SongSort.Title), (int)SongSort.Title),
-            new SortOption(SongSorter.Label(SongSort.Artist), (int)SongSort.Artist),
-            new SortOption(SongSorter.Label(SongSort.Album), (int)SongSort.Album),
-            new SortOption(SongSorter.Label(SongSort.DateAdded), (int)SongSort.DateAdded),
+            new SortOption(SongSorter.Label(SongSort.DefaultOrder), ListGlyph, (int)SongSort.DefaultOrder),
+            new SortOption(SongSorter.Label(SongSort.Title), AlphaGlyph, (int)SongSort.Title),
+            new SortOption(SongSorter.Label(SongSort.Artist), MicGlyph, (int)SongSort.Artist),
+            new SortOption(SongSorter.Label(SongSort.Album), AlbumGlyph, (int)SongSort.Album),
+            new SortOption(SongSorter.Label(SongSort.DateAdded), CalendarGlyph, (int)SongSort.DateAdded),
         };
 
         private SortOption[] OptionsForActiveTab()
@@ -353,6 +381,7 @@ namespace BoxSubMusic.App
                     IsChecked = option.Value == active,
                     Tag = option.Value,
                     IsEnabled = IsSortAvailable(option.Value),
+                    Icon = new FontIcon { FontFamily = IconFont, Glyph = option.Glyph },
                 };
                 item.Click += SortOption_Click;
                 _sortFlyout.Items.Add(item);
