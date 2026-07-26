@@ -465,6 +465,7 @@ namespace BoxSubMusic.App
             if (e.Content is ArtistsPage) return "artists";
             if (e.Content is AlbumsPage) return "albums";
             if (e.Content is SongsPage) return "songs";
+            if (e.Content is FavoritesPage) return "favorites";
             if (e.Content is SettingsPage) return "settings";
             if (e.Content is AccountPage) return "account";
             return null;
@@ -563,6 +564,7 @@ namespace BoxSubMusic.App
                 case "albums": return typeof(AlbumsPage);
                 case "songs": return typeof(SongsPage);
                 case "playlists": return typeof(PlaylistsPage);
+                case "favorites": return typeof(FavoritesPage);
                 case "settings": return typeof(SettingsPage);
                 case "account": return typeof(AccountPage);
                 // Every nav item carries a known tag, and NavigateToSection

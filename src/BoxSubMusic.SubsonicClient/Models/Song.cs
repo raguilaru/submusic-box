@@ -83,9 +83,10 @@ public sealed class Song
 
     /// <summary>
     /// When the server added the file to its library (the <c>created</c>
-    /// attribute of the Child element). Drives the Songs view's "Date Added"
-    /// sort; null when the server omits it, in which case that sort option
-    /// degrades explicitly rather than silently ordering by nothing (§3).
+    /// attribute of the Child element). Drives the "Date Added" sort on both
+    /// the Songs view and the Favorites Songs tab; null when the server omits
+    /// it, in which case that sort option degrades explicitly rather than
+    /// silently ordering by nothing (§3).
     /// </summary>
     public DateTimeOffset? Created { get; }
 }

@@ -250,6 +250,28 @@ public sealed class SubsonicApiClient
     }
 
     /// <summary>
+    /// getStarred2 — everything the signed-in user has starred, as ID3 entities
+    /// (the Favorites view's data source). The ID3 variant is deliberate: it
+    /// returns the same artist/album shapes as getArtists/getAlbumList2, so the
+    /// favorites cards behave exactly like their browse counterparts. There are
+    /// no count/offset parameters — the server returns the complete set in one
+    /// response, so the caller can sort over all of it. getStarred2 exists
+    /// since API 1.8, so callers gate on
+    /// <see cref="ServerCapabilities.ApiVersion"/> and degrade explicitly on
+    /// older servers (§3). Order within each scope is server-defined.
+    /// </summary>
+    public async Task<StarredResult> GetStarred2Async(CancellationToken cancellationToken = default)
+    {
+        var root = await ExecuteAsync("getStarred2", null, cancellationToken).ConfigureAwait(false);
+        var starred = SubsonicXml.Element(root, "starred2")
+            ?? throw new SubsonicConnectionException("The server response is missing the <starred2> element.");
+        return new StarredResult(
+            artists: SubsonicXml.Elements(starred, "artist").Select(MapArtist).ToList(),
+            albums: SubsonicXml.Elements(starred, "album").Select(MapAlbum).ToList(),
+            songs: SubsonicXml.Elements(starred, "song").Select(MapSong).ToList());
+    }
+
+    /// <summary>
     /// getPlaylists — the user's playlists (requirements §7.4). Returns
     /// summaries only; the track list (needed to compose tile artwork) comes
     /// from <see cref="GetPlaylistAsync"/> per playlist.

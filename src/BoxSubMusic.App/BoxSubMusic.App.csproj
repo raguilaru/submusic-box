@@ -196,6 +196,9 @@
     <Compile Include="PlaylistDetailPage.xaml.cs">
       <DependentUpon>PlaylistDetailPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="FavoritesPage.xaml.cs">
+      <DependentUpon>FavoritesPage.xaml</DependentUpon>
+    </Compile>
     <Compile Include="SettingsPage.xaml.cs">
       <DependentUpon>SettingsPage.xaml</DependentUpon>
     </Compile>
@@ -210,6 +213,7 @@
     <Compile Include="Services\LyricsService.cs" />
     <Compile Include="Services\QueueActions.cs" />
     <Compile Include="Services\CredentialStore.cs" />
+    <Compile Include="Services\FavoritesPreferences.cs" />
     <Compile Include="Services\NavigationPreferences.cs" />
     <Compile Include="Services\PlaybackService.cs" />
     <Compile Include="Services\Toast.cs" />
@@ -324,6 +328,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="PlaylistDetailPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="FavoritesPage.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

@@ -37,6 +37,16 @@ planned slice. Since then, refinement rounds have landed on top:
   read-only rule; reading with the D-pad still never moves playback, and
   "Jump to current line" stays the non-destructive way back. Not yet
   device-verified (backlog items 18–22).
+- **Favorites section** (2026-07-26) — a new left-nav destination
+  (`FavoritesPage`) listing the starred library via `getStarred2`, with
+  Artists/Albums/Songs tabs and per-tab sort options; tab and sorts persist
+  (`FavoritesPreferences`). No paging — getStarred2 returns the whole set in
+  one request, so sorting covers everything without the whole-library load the
+  Songs view needs. The Songs tab reuses `Core/Browsing/SongSorter`, so both
+  views order songs identically. Play All / Shuffle All act on the whole
+  active tab (bounded fan-out for the Artists/Albums tabs), and every result
+  carries a full context menu including "Remove from favorites". Not yet
+  device-verified (backlog items 30–37).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -45,7 +55,7 @@ planned slice. Since then, refinement rounds have landed on top:
 
 **Build/test state:** builds green (x64 Debug over SSH; the `APPX0703` appx
 packaging error is the known command-line-only failure — VS F5 packages fine).
-**85 Core + 76 SubsonicClient tests pass** (9 SubsonicClient live-server tests
+**85 Core + 80 SubsonicClient tests pass** (9 SubsonicClient live-server tests
 skip without `liveserver.local.txt`).
 
 **Git state:** `main` holds v1 (slices 00–14, PR #6) plus the merged refinement
@@ -216,6 +226,47 @@ code-complete-but-not-yet-device-verified rounds.
     the first row reaches Sort (not the nav pane), and LB/RB region jumps still
     behave with the new header row.
 
+**Favorites section (2026-07-26, §7.5):**
+
+30. **Nav + first open:** a Favorites item appears after Playlists with the
+    heart icon; opening it lands focus on the FIRST CARD of the active tab
+    (not the tab row), and Up from the cards reaches the tabs.
+31. **Tabs:** Artists/Albums/Songs each list the right starred content with
+    the browse card language / §7.3 columns; switching tabs is instant (no
+    spinner — one getStarred2 filled all three) and leaves focus on the tab
+    row rather than yanking it into the results.
+32. **Sort menu at 10 ft:** the sort button names the active sort; opening it
+    shows only that tab's options (2 for Artists, 2 for Albums, 5 for Songs)
+    with a legible checkmark on the current one. Confirm the flyout is
+    gamepad-reachable and that Down from the button enters the list. The Songs
+    tab's five options are the same `SongSorter` orderings the Songs page uses
+    (item 24) — worth confirming the two pages agree on the same library.
+33. **Sorting is total, not partial:** with a large favorites set, changing
+    the sort reorders EVERYTHING immediately and fetches nothing — scroll to
+    the bottom and confirm the last item belongs there under that order.
+    Check Albums "Year" (newest first, undated last) and Songs "Date Added"
+    (disabled outright if the server omits `created`, as on the Songs page).
+34. **Persistence:** pick a non-default tab and a non-default sort in each
+    tab, navigate away and back — both restored; relaunch the app — still
+    restored.
+35. **Song row behavior:** A plays the favorites in current sort order from
+    that row (bar reveals, queue shows "Favorites"); "Remove from favorites"
+    makes the row DISAPPEAR (and the list falls back to the empty state if it
+    was the last one); emptying a scope shows that scope's own message.
+36. **Play All / Shuffle All:** on Songs both are instant and the queue
+    matches the on-screen order exactly (Shuffle randomizes the whole pool,
+    first track included). On Albums and especially **Artists** this is the
+    round to watch: confirm both buttons AND the sort button disable behind
+    the ring while it gathers, that the wait is tolerable for the real
+    favorites library, and that the resulting queue order is artists → each
+    artist's albums oldest-first → disc/track. Switching tabs mid-gather must
+    still play the tab the button was pressed on. Unreachable server → toast,
+    no playback, buttons come back.
+37. **Card menus:** artist and album cards both offer Play / Play next / Add
+    to queue / Remove from favorites, and album cards also Go to artist
+    (disabled when the server sent no artist id). Removing a card makes it
+    vanish from the grid on all three tabs alike.
+
 *(Future work: append console items here.)*
 
 ## Known gaps / durable notes
@@ -291,6 +342,23 @@ revisiting the reasoning (many encode a hard-won console lesson).
   `FavoriteHeart`), not by painting the glyph — the shipped Fluent Regular font
   has no filled heart, and both hand-painting attempts made it invisible on
   console.
+- **Favorites is the one list that removes items on unstar** — everywhere else
+  a toggled row repaints its heart and stays. There the row still belongs in
+  the list; on Favorites the list *is* the starred set. All three tabs behave
+  alike (song rows, artist cards, album cards); unstarring elsewhere in the
+  app shows up here on the next navigation (this page refetches, unlike
+  Search).
+- **Favorites "Play All" on the Artists tab is the app's heaviest fan-out**:
+  a getArtist per favorite artist plus a getAlbum per album of every one of
+  them. It is bounded to 4 concurrent by flattening all artists' albums into
+  ONE list (nesting two bounded fan-outs would multiply their limits), so a
+  large favorites library trades wall-clock time for not hammering the
+  server. The actions and the sort control disable behind a ring while it
+  runs. Accepted for now — if it proves too slow on device the fallback is to
+  cap the pool or drop Play All from the Artists tab specifically.
+- **No per-card "Shuffle" in Favorites menus** — no card menu anywhere in the
+  app has one, and adding it on this page alone would be inconsistent. It is
+  an app-wide change if ever wanted.
 - **Search page is navigation-cached** (the one refetch-on-navigation exception),
   so starred markers on kept results can lag until the next search. While the
   query box has focus, LB/RB move the caret instead of jumping regions.

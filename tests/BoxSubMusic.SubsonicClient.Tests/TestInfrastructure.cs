@@ -109,6 +109,10 @@ public static class Canned
         $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\">" +
         $"<searchResult3>{songs}</searchResult3></subsonic-response>";
 
+    public static string Starred2(string entries) =>
+        $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\">" +
+        $"<starred2>{entries}</starred2></subsonic-response>";
+
     public static string Album(string albumAttrs, string songs) =>
         $"<subsonic-response{NsAttr} status=\"ok\" version=\"1.16.1\" type=\"navidrome\" serverVersion=\"0.62.0\" openSubsonic=\"true\">" +
         $"<album {albumAttrs}>{songs}</album></subsonic-response>";

@@ -182,6 +182,15 @@
                     <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xF4EE;" Foreground="{ThemeResource RetroAccentBrush}" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
+            <!-- Favorites (2026-07-26): last of the library sections, after
+                 the browse destinations it draws from. The heart is the same
+                 Fluent Regular codepoint the favorite toggles use (F47A), so
+                 the nav entry and the action that fills it read as one thing. -->
+            <NavigationViewItem x:Name="FavoritesNavItem" Content="Favorites" Tag="favorites">
+                <NavigationViewItem.Icon>
+                    <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xF47A;" Foreground="{ThemeResource RetroAccentBrush}" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
 
             <!-- §5: Settings, then Account, as the bottom of the nav order.
                  These lived in PaneFooter until 2026-07-14, but the OS
