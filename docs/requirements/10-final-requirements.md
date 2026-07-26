@@ -138,7 +138,9 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
 ### 7.5 Favorites (added 2026-07-26)
 
 - The Favorites view MUST show everything the signed-in user has starred,
-  split into three tabs: Artists, Albums, and Songs.
+  split into three tabs, in the order Artists, Albums, Songs.
+- **Songs MUST be the tab a first visit lands on** — the default is the third
+  tab, not the first.
 - Data MUST come from `getStarred2` (the ID3 variant, matching the world of
   getArtists/getAlbumList2). The endpoint takes no counts or offsets and
   returns the complete favorites set, so this view has no incremental paging.
@@ -728,7 +730,9 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   with an explicit
   unsupported state (§3), same as search3.
   (b) **Tabs are segmented ToggleButtons** in the content area (the Slice 13
-  scope-filter pattern), Artists first and default.
+  scope-filter pattern), reading Artists / Albums / Songs. **Songs is the
+  default tab** — deliberately not the first one: favorited songs are what
+  people come to this view for, so that is where a first visit lands.
   (c) **Sort is a button + MenuFlyout of ToggleMenuFlyoutItems**, generated
   per tab because the option sets differ (2/2/5 entries): a fixed inline row
   would be wrong for two tabs out of three. (The Songs view declares its five

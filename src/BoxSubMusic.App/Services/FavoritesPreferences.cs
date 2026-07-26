@@ -17,10 +17,15 @@ namespace BoxSubMusic.App.Services
         private const string AlbumSortKey = "favorites.sort.albums";
         private const string SongSortKey = "favorites.sort.songs";
 
-        /// <summary>Artists is the default tab until the user picks another.</summary>
+        /// <summary>
+        /// Songs is the default tab until the user picks another. Note this is
+        /// deliberately NOT the first tab: the tab strip reads
+        /// Artists / Albums / Songs, but favorited songs are the thing people
+        /// come here for, so that is where a first visit lands.
+        /// </summary>
         public static FavoritesTab Tab
         {
-            get { return (FavoritesTab)Get(TabKey, (int)FavoritesTab.Artists, 0, 2); }
+            get { return (FavoritesTab)Get(TabKey, (int)FavoritesTab.Songs, 0, 2); }
             set { Set(TabKey, (int)value); }
         }
 

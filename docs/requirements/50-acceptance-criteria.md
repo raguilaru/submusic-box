@@ -96,7 +96,8 @@ Pass if:
 
 ### Favorites (§7.5)
 Pass if:
-- The Favorites nav item opens a view with Artists, Albums and Songs tabs.
+- The Favorites nav item opens a view with Artists, Albums and Songs tabs, and
+  a first visit lands on **Songs** (the third tab, not the first).
 - Each tab lists the starred items of that scope, using the browse card
   language (artists/albums) and the §7.3 columns (songs).
 - The last selected tab is restored on return and after an app restart.

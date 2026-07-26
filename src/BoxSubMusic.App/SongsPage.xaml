@@ -54,12 +54,43 @@
                              check mark reads as the current sort and the type
                              is available on the app's UWP baseline. Mutual
                              exclusion is applied in ApplySort. -->
+                        <!-- Per-option icons (2026-07-26): the OS toggle-item
+                             template carries BOTH a check mark and an icon
+                             (its CheckedWithIcon state binds Icon into a
+                             16-epx IconRoot Viewbox — verified in the 26100
+                             generic.xaml), so the icon reads as "what this
+                             orders by" while the check still says "this is
+                             current". Glyphs are Fluent Regular, cmap-verified
+                             (§13.3): text_bullet_list_ltr ECDA,
+                             text_case_title ECEE, mic E7FA, album E010,
+                             calendar_ltr E24F. The Favorites Songs tab builds
+                             the same five options with the same glyphs. -->
                         <MenuFlyout>
-                            <ToggleMenuFlyoutItem x:Name="SortDefaultItem" Text="Default Order" IsChecked="True" Click="SortItem_Click" />
-                            <ToggleMenuFlyoutItem x:Name="SortTitleItem" Text="Title" Click="SortItem_Click" />
-                            <ToggleMenuFlyoutItem x:Name="SortArtistItem" Text="Artist" Click="SortItem_Click" />
-                            <ToggleMenuFlyoutItem x:Name="SortAlbumItem" Text="Album" Click="SortItem_Click" />
-                            <ToggleMenuFlyoutItem x:Name="SortDateAddedItem" Text="Date Added" Click="SortItem_Click" />
+                            <ToggleMenuFlyoutItem x:Name="SortDefaultItem" Text="Default Order" IsChecked="True" Click="SortItem_Click">
+                                <ToggleMenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xECDA;" />
+                                </ToggleMenuFlyoutItem.Icon>
+                            </ToggleMenuFlyoutItem>
+                            <ToggleMenuFlyoutItem x:Name="SortTitleItem" Text="Title" Click="SortItem_Click">
+                                <ToggleMenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xECEE;" />
+                                </ToggleMenuFlyoutItem.Icon>
+                            </ToggleMenuFlyoutItem>
+                            <ToggleMenuFlyoutItem x:Name="SortArtistItem" Text="Artist" Click="SortItem_Click">
+                                <ToggleMenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE7FA;" />
+                                </ToggleMenuFlyoutItem.Icon>
+                            </ToggleMenuFlyoutItem>
+                            <ToggleMenuFlyoutItem x:Name="SortAlbumItem" Text="Album" Click="SortItem_Click">
+                                <ToggleMenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE010;" />
+                                </ToggleMenuFlyoutItem.Icon>
+                            </ToggleMenuFlyoutItem>
+                            <ToggleMenuFlyoutItem x:Name="SortDateAddedItem" Text="Date Added" Click="SortItem_Click">
+                                <ToggleMenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE24F;" />
+                                </ToggleMenuFlyoutItem.Icon>
+                            </ToggleMenuFlyoutItem>
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>
