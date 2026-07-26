@@ -1,8 +1,9 @@
 # Current Status
 
-Last updated: 2026-07-26 (lyrics seek-to-line round; the file was condensed to a
-clean final-state summary on 2026-07-23 — the previous chronological
-pass-by-pass log lives in git history).
+Last updated: 2026-07-26 (Songs sorting + Play All / Shuffle All, on top of the
+lyrics seek-to-line round; the file was condensed to a clean final-state summary
+on 2026-07-23 — the previous chronological pass-by-pass log lives in git
+history).
 
 **SubMusic Box** (code name BoxSubMusic) — native Xbox Series X/S music app for
 Subsonic/OpenSubsonic servers. This file is the running project-state summary;
