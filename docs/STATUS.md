@@ -1,9 +1,9 @@
 # Current Status
 
-Last updated: 2026-07-26 (Songs sorting + Play All / Shuffle All, on top of the
-lyrics seek-to-line round; the file was condensed to a clean final-state summary
-on 2026-07-23 — the previous chronological pass-by-pass log lives in git
-history).
+Last updated: 2026-07-27 (browse list rows + view-toggle restyle, on top of the
+Favorites and Songs-sorting rounds; the file was condensed to a clean
+final-state summary on 2026-07-23 — the previous chronological pass-by-pass log
+lives in git history).
 
 **SubMusic Box** (code name BoxSubMusic) — native Xbox Series X/S music app for
 Subsonic/OpenSubsonic servers. This file is the running project-state summary;
@@ -47,6 +47,17 @@ planned slice. Since then, refinement rounds have landed on top:
   active tab (bounded fan-out for the Artists/Albums tabs), and every result
   carries a full context menu including "Remove from favorites". Not yet
   device-verified (backlog items 30–37).
+- **Browse list rows + view-toggle restyle** (2026-07-27) — the grid/list
+  toggle is now a retro tonal-teal pill reading as a segmented control (two
+  glyph segments, thumb under the current mode, mode name), still one
+  focusable stop; Albums list rows carry year · genre · tracks · total play
+  time plus a starred marker, Artists list rows the album count plus a
+  starred marker (getArtists carries nothing more — per-artist totals would
+  cost one request per row, so they moved to artist detail); artist detail's
+  counts line gained total play time + the albums' year span and album detail
+  gained genre; the "Artist" sort option's mic glyph became the person glyph
+  in both sort menus. Duration wording moved to Core `Browsing/DurationText`
+  (+7 tests). Not yet device-verified (backlog items 38–42).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -55,7 +66,7 @@ planned slice. Since then, refinement rounds have landed on top:
 
 **Build/test state:** builds green (x64 Debug over SSH; the `APPX0703` appx
 packaging error is the known command-line-only failure — VS F5 packages fine).
-**85 Core + 80 SubsonicClient tests pass** (9 SubsonicClient live-server tests
+**92 Core + 80 SubsonicClient tests pass** (9 SubsonicClient live-server tests
 skip without `liveserver.local.txt`).
 
 **Git state:** `main` holds v1 (slices 00–14, PR #6) plus the merged refinement
@@ -272,6 +283,33 @@ code-complete-but-not-yet-device-verified rounds.
     (disabled when the server sent no artist id). Removing a card makes it
     vanish from the grid on all three tabs alike.
 
+**Browse list rows + view-toggle restyle (2026-07-27):**
+
+38. **View toggle at 10 ft:** on Artists, Albums and Playlists the toggle reads
+    as a teal pill with two glyph segments — the thumb sits under the CURRENT
+    mode and the label names it ("Grid"/"List"). Confirm in both themes that
+    the pill no longer looks like a switched-on system control, that the
+    inactive glyph is visibly dimmer but still legible, and that the pill
+    doesn't change width as it flips (the header must not twitch).
+39. **Toggle states + focus:** pressing A flips the mode with no leftover
+    "pressed" fill (the state bug the template's Checked* states guard
+    against); the focus rectangle is still couch-visible; Up from the first
+    card still lands on the toggle and Down from the toggle re-enters the
+    active view.
+40. **Albums list rows:** each row shows year · genre · tracks · total play
+    time on the right, with a filled accent heart on favorites. Confirm the
+    right-hand line is legible at 10 ft, that a long album/artist name
+    ellipsizes instead of squeezing that line, and that an album missing
+    genre/year shows a shorter line with NO stray "·" separators or zeros.
+41. **Artists list rows:** name on the left, starred heart, album count on the
+    right — the same row geometry as Albums. (Song count / play time are
+    deliberately absent here; see the known-gaps note.)
+42. **Detail views:** artist detail's counts line reads
+    "N albums · N songs · H hr M min · 1994–2015" (each part present only when
+    the server had the data), and album detail's header shows genre between the
+    year and the song count. Sanity-check one artist's total against its albums
+    and confirm the line doesn't wrap awkwardly for a prolific artist.
+
 *(Future work: append console items here.)*
 
 ## Known gaps / durable notes
@@ -393,6 +431,13 @@ revisiting the reasoning (many encode a hard-won console lesson).
 
 **Browse / detail:**
 
+- **Artists list rows carry less than Albums rows, by design** (§7.1,
+  2026-07-27): getArtists returns only `albumCount` and `starred`, so an
+  artist's song count and total play time would cost one getArtist per visible
+  row — rejected on the same perf grounds that bounded the §8 fan-out. Those
+  totals live on the artist detail page, where the albums are already loaded.
+  Albums rows look richer only because getAlbumList2 happens to return
+  year/genre/songCount/duration for free.
 - **Songs order is server-defined by default** (search3 has no server-side
   sort); the Title/Artist/Album/Date Added options reorder client-side
   (§16 2026-07-26). Column widths are a first guess pending the 10-ft check.

@@ -142,7 +142,20 @@ namespace BoxSubMusic.App
             var artwork = album.CoverArtId == null
                 ? null
                 : AppSession.Client.GetCoverArtUri(album.CoverArtId, CoverArtSize);
-            return new AlbumCard(album.Id, album.Name, album.Artist ?? string.Empty, artwork);
+            // Year/genre/track count/duration all come from getAlbumList2's own
+            // attributes, so the richer list row (§7.2, 2026-07-27) costs no
+            // extra request.
+            return new AlbumCard(
+                album.Id,
+                album.Name,
+                album.Artist ?? string.Empty,
+                artwork,
+                album.Year,
+                album.ArtistId,
+                album.SongCount,
+                album.Duration,
+                album.Genre,
+                album.IsStarred);
         }
 
         private void Albums_LoadFailed(object sender, Exception ex)

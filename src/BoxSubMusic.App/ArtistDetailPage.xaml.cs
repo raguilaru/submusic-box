@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BoxSubMusic.App.Models;
 using BoxSubMusic.App.Services;
+using BoxSubMusic.Core.Browsing;
 using BoxSubMusic.Core.Playback;
 using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
@@ -135,7 +137,7 @@ namespace BoxSubMusic.App
             SetPlaybackButtonsEnabled(detail.Albums.Count > 0);
 
             ArtistNameText.Text = detail.Artist.Name;
-            CountsText.Text = FormatCounts(detail.Artist.AlbumCount, detail.SongCount);
+            CountsText.Text = FormatCounts(detail);
 
             ArtworkImage.Source = detail.Artist.CoverArtId == null
                 ? null
@@ -163,11 +165,41 @@ namespace BoxSubMusic.App
             NoAlbumsText.Visibility = cards.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private static string FormatCounts(int albumCount, int songCount)
+        /// <summary>
+        /// The §8 counts line, extended 2026-07-27 with the artist's total play
+        /// time and the span of years their albums cover. Both are summed from
+        /// the albums getArtist already returned, so the richer line costs no
+        /// extra request; each part is omitted when the server sent nothing to
+        /// compute it from, rather than shown as a zero (§3).
+        /// </summary>
+        private static string FormatCounts(ArtistDetail detail)
         {
-            string albums = albumCount == 1 ? "1 album" : albumCount + " albums";
-            string songs = songCount == 1 ? "1 song" : songCount + " songs";
-            return albums + "  ·  " + songs;
+            var parts = new StringBuilder();
+            int albumCount = detail.Artist.AlbumCount;
+            parts.Append(albumCount == 1 ? "1 album" : albumCount + " albums");
+            parts.Append("  ·  ").Append(
+                detail.SongCount == 1 ? "1 song" : detail.SongCount + " songs");
+
+            TimeSpan total = TimeSpan.FromSeconds(
+                detail.Albums.Sum(a => a.Duration.TotalSeconds));
+            if (total > TimeSpan.Zero)
+            {
+                parts.Append("  ·  ").Append(DurationText.Total(total));
+            }
+
+            var years = detail.Albums
+                .Where(a => a.Year.HasValue)
+                .Select(a => a.Year.Value)
+                .ToList();
+            if (years.Count > 0)
+            {
+                int first = years.Min();
+                int last = years.Max();
+                parts.Append("  ·  ").Append(
+                    first == last ? first.ToString() : first + "–" + last);
+            }
+
+            return parts.ToString();
         }
 
         // --- Playback (Slice 06b behavior, live since Slice 10) ---------------

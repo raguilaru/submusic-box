@@ -171,8 +171,21 @@
                 </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:ArtistCard">
-                        <StackPanel Orientation="Horizontal" Spacing="16">
-                            <StackPanel.ContextFlyout>
+                        <!-- Row shape matches the Albums list (§7.1/§7.2,
+                             2026-07-27): artwork + name on the left, the
+                             starred marker, then the count on the right.
+                             getArtists carries the album count and the starred
+                             flag and nothing more — song count and total play
+                             time would cost one getArtist per row, so they sit
+                             on the artist detail page instead. -->
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="28" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuFlyoutItem
                                         Text="Play"
@@ -199,8 +212,8 @@
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                 </MenuFlyout>
-                            </StackPanel.ContextFlyout>
-                            <Grid Width="56" Height="56" CornerRadius="6" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
+                            </Grid.ContextFlyout>
+                            <Grid Grid.Column="0" Width="56" Height="56" CornerRadius="6" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
                                     <FontIcon
                                         FontFamily="{StaticResource FluentIconFont}"
@@ -214,11 +227,30 @@
                                     </Image.Source>
                                 </Image>
                             </Grid>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind Name}" FontSize="22" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{x:Bind AlbumCountLabel}" FontSize="16" Opacity="0.7" />
-                            </StackPanel>
-                        </StackPanel>
+                            <TextBlock
+                                Grid.Column="1"
+                                Text="{x:Bind Name}"
+                                FontSize="22"
+                                TextTrimming="CharacterEllipsis"
+                                VerticalAlignment="Center" />
+                            <!-- Starred marker, same filled accent heart the
+                                 song lists use (checkpoint #4). -->
+                            <FontIcon
+                                Grid.Column="2"
+                                FontFamily="{StaticResource FluentIconFilledFont}"
+                                Glyph="&#xF47E;"
+                                FontSize="16"
+                                Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                Visibility="{x:Bind StarredVisibility}"
+                                VerticalAlignment="Center" />
+                            <TextBlock
+                                Grid.Column="3"
+                                Text="{x:Bind AlbumCountLabel}"
+                                FontSize="18"
+                                Opacity="0.75"
+                                TextAlignment="Right"
+                                VerticalAlignment="Center" />
+                        </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>

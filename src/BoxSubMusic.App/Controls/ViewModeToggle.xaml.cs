@@ -1,5 +1,6 @@
 using System;
 using Windows.UI.Xaml;
+using Windows.UI.Xaml.Automation;
 using Windows.UI.Xaml.Controls;
 
 namespace BoxSubMusic.App.Controls
@@ -17,6 +18,7 @@ namespace BoxSubMusic.App.Controls
         public ViewModeToggle()
         {
             InitializeComponent();
+            ApplyMode();
         }
 
         /// <summary>True when the alternate list mode is active.</summary>
@@ -51,12 +53,36 @@ namespace BoxSubMusic.App.Controls
 
         private void Toggle_Changed(object sender, RoutedEventArgs e)
         {
-            bool listMode = IsListMode;
-            // The toggle advertises the mode it is currently showing.
-            ModeLabel.Text = listMode ? "List" : "Grid";
-            // Verified Fluent codepoints: list U+F4EE, grid U+F463 (§13.3).
-            ModeIcon.Glyph = listMode ? "\uF4EE" : "\uF463";
+            ApplyMode();
             ModeChanged?.Invoke(this, e);
         }
+
+        /// <summary>
+        /// Repaints the segmented face for the current mode: the thumb sits
+        /// under the active glyph, the other glyph dims, and the label names
+        /// the mode. Only the thumb's column and two opacities change — the
+        /// brushes stay declarative in XAML, so both themes (and a live theme
+        /// switch) follow without code.
+        /// </summary>
+        private void ApplyMode()
+        {
+            bool listMode = IsListMode;
+            Grid.SetColumn(ActiveThumb, listMode ? 1 : 0);
+            GridGlyph.Opacity = listMode ? InactiveGlyphOpacity : 1.0;
+            ListGlyph.Opacity = listMode ? 1.0 : InactiveGlyphOpacity;
+
+            // The toggle advertises the mode it is currently showing.
+            string mode = listMode ? "List" : "Grid";
+            ModeLabel.Text = mode;
+            // The face is graphical, so spell the state out for narration.
+            AutomationProperties.SetName(Toggle, mode + " view. Select to switch.");
+        }
+
+        /// <summary>
+        /// Dimming for the mode that is not current: low enough to read as
+        /// inactive at 10 ft, high enough that its glyph stays legible so the
+        /// control still advertises what pressing it switches to.
+        /// </summary>
+        private const double InactiveGlyphOpacity = 0.45;
     }
 }

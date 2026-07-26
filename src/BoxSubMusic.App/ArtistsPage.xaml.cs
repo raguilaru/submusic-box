@@ -122,7 +122,11 @@ namespace BoxSubMusic.App
                 ? null
                 : AppSession.Client.GetCoverArtUri(artist.CoverArtId, CoverArtSize);
             var label = artist.AlbumCount == 1 ? "1 album" : artist.AlbumCount + " albums";
-            return new ArtistCard(artist.Id, artist.Name, label, artwork);
+            // getArtists carries the album count and the starred flag only; the
+            // song count and total play time would cost one getArtist per row,
+            // so they live on the detail page instead (decision 2026-07-27).
+            return new ArtistCard(
+                artist.Id, artist.Name, label, artwork, artist.AlbumCount, artist.IsStarred);
         }
 
         // --- View states -----------------------------------------------------

@@ -62,9 +62,13 @@
                              orders by" while the check still says "this is
                              current". Glyphs are Fluent Regular, cmap-verified
                              (§13.3): text_bullet_list_ltr ECDA,
-                             text_case_title ECEE, mic E7FA, album E010,
-                             calendar_ltr E24F. The Favorites Songs tab builds
-                             the same five options with the same glyphs. -->
+                             text_case_title ECEE, person F5BE, album E010,
+                             calendar_ltr E24F. Artist was a mic until
+                             2026-07-27 — a recording-input glyph, where the
+                             app's artist iconography is the person/people
+                             figure ("Go to artist", the Artists nav item).
+                             The Favorites Songs tab builds the same five
+                             options with the same glyphs. -->
                         <MenuFlyout>
                             <ToggleMenuFlyoutItem x:Name="SortDefaultItem" Text="Default Order" IsChecked="True" Click="SortItem_Click">
                                 <ToggleMenuFlyoutItem.Icon>
@@ -78,7 +82,7 @@
                             </ToggleMenuFlyoutItem>
                             <ToggleMenuFlyoutItem x:Name="SortArtistItem" Text="Artist" Click="SortItem_Click">
                                 <ToggleMenuFlyoutItem.Icon>
-                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE7FA;" />
+                                    <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF5BE;" />
                                 </ToggleMenuFlyoutItem.Icon>
                             </ToggleMenuFlyoutItem>
                             <ToggleMenuFlyoutItem x:Name="SortAlbumItem" Text="Album" Click="SortItem_Click">

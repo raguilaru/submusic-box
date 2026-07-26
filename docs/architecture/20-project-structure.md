@@ -60,6 +60,11 @@ they are committed here like any other source.
 ### BoxSubMusic.Core (.NET Standard class library)
 - Domain models (Album, Artist, Song, Playlist, Queue, ServerCapabilities)
 - View-model logic and playback/queue orchestration contracts (interfaces)
+- Browsing rules and display wording shared by more than one page —
+  `Browsing/SongSorter` (the §7.3 orderings and their labels),
+  `Browsing/DurationText` (track and total duration wording). Anything two
+  surfaces must agree on belongs here rather than in either page, so they
+  cannot drift and the behavior stays unit-tested.
 - No UWP or Windows-specific APIs — must be unit-testable on any host
 
 ### BoxSubMusic.SubsonicClient (.NET Standard class library)
