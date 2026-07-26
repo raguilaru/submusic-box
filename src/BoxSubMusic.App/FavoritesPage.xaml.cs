@@ -254,6 +254,20 @@ namespace BoxSubMusic.App
             ShowActiveTab(moveFocus: false);
         }
 
+        /// <summary>
+        /// The tab strip's button for the active tab — the focus target
+        /// whenever the content area has nothing focusable to offer.
+        /// </summary>
+        private Control ActiveTabButton()
+        {
+            switch (_tab)
+            {
+                case FavoritesTab.Albums: return AlbumsTabButton;
+                case FavoritesTab.Songs: return SongsTabButton;
+                default: return ArtistsTabButton;
+            }
+        }
+
         private void ApplyTabButtons()
         {
             ArtistsTabButton.IsChecked = _tab == FavoritesTab.Artists;
@@ -1002,26 +1016,22 @@ namespace BoxSubMusic.App
             HideScopeViews();
 
             UIElement view;
-            Control tabButton;
             int count;
             string emptyMessage;
             switch (_tab)
             {
                 case FavoritesTab.Albums:
                     view = AlbumsGrid;
-                    tabButton = AlbumsTabButton;
                     count = _albumView.Count;
                     emptyMessage = "No favorite albums yet. Star an album to see it here.";
                     break;
                 case FavoritesTab.Songs:
                     view = SongsPanel;
-                    tabButton = SongsTabButton;
                     count = _songView.Count;
                     emptyMessage = "No favorite songs yet. Star a song to see it here.";
                     break;
                 default:
                     view = ArtistsGrid;
-                    tabButton = ArtistsTabButton;
                     count = _artistView.Count;
                     emptyMessage = "No favorite artists yet. Star an artist to see them here.";
                     break;
@@ -1048,7 +1058,7 @@ namespace BoxSubMusic.App
                 // the way out. This also catches the case where the list was
                 // emptied by the last "Remove from favorites" — focus was on
                 // the row that just vanished with its now-collapsed list.
-                tabButton.Focus(FocusState.Keyboard);
+                ActiveTabButton().Focus(FocusState.Keyboard);
                 return;
             }
 
@@ -1097,7 +1107,7 @@ namespace BoxSubMusic.App
             }
             else
             {
-                ArtistsTabButton.Focus(FocusState.Keyboard);
+                ActiveTabButton().Focus(FocusState.Keyboard);
             }
         }
 

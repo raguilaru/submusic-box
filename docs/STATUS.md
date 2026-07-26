@@ -229,8 +229,9 @@ code-complete-but-not-yet-device-verified rounds.
 **Favorites section (2026-07-26, §7.5):**
 
 30. **Nav + first open:** a Favorites item appears after Playlists with the
-    heart icon; opening it lands focus on the FIRST CARD of the active tab
-    (not the tab row), and Up from the cards reaches the tabs.
+    heart icon; a first visit (nothing remembered yet) opens on the **Songs**
+    tab, not Artists. Focus lands in the list itself, not the tab row, and Up
+    from the content reaches the tabs.
 31. **Tabs:** Artists/Albums/Songs each list the right starred content with
     the browse card language / §7.3 columns; switching tabs is instant (no
     spinner — one getStarred2 filled all three) and leaves focus on the tab
