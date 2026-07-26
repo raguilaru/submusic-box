@@ -39,6 +39,8 @@ anything:
 ## Status
 
 Planned v1 scope (slices 00–14) is **complete and console-verified**, followed
-by refinement work (Search, retro visual theme, lyrics display, and UI/UX
-polish). See [docs/STATUS.md](docs/STATUS.md) for the detailed state and the
-on-device test backlog.
+by refinement work: Search, the retro visual theme, lyrics display (with
+seek-to-line), a Favorites section, Songs sorting with Play All / Shuffle All,
+and ongoing browse/UI polish. See [docs/STATUS.md](docs/STATUS.md) for the
+detailed state and the on-device test backlog — the newest refinement rounds are
+code-complete but not yet device-verified.
