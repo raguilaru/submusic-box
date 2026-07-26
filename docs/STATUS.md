@@ -446,6 +446,20 @@ revisiting the reasoning (many encode a hard-won console lesson).
   totals live on the artist detail page, where the albums are already loaded.
   Albums rows look richer only because getAlbumList2 happens to return
   year/genre/songCount/duration for free.
+  Measured on Navidrome 0.63.2 (2026-07-27): a warm getArtist is ~16–20 ms on
+  LAN, so per-row totals are ~2.5 s for 500 artists on LAN but ~19 s at a
+  150 ms RTT — the off-LAN case is what kills it. **If those totals are ever
+  wanted here, don't add the per-row fetch:** sum getAlbumList2 pages by
+  `artistId` instead (every album carries artistId + songCount + duration), which
+  costs ceil(albums / 500) requests regardless of artist count and reuses the
+  paging the Albums page already does. The sums would be album-artist sums —
+  the same grouping getArtists indexes by, so consistent with the albumCount
+  beside them — and rows would show instantly with the totals filling in behind.
+- **Playlist rows show owner + description, and never a heart** (§7.4,
+  2026-07-27): star/unstar has no playlist form, so an empty heart column would
+  imply a favorite state that does not exist. `created`/`changed` stay unparsed
+  in the client — a "last updated" caption was judged weak information for a
+  read-only browse list, not an oversight.
 - **Songs order is server-defined by default** (search3 has no server-side
   sort); the Title/Artist/Album/Date Added options reorder client-side
   (§16 2026-07-26). Column widths are a first guess pending the 10-ft check.
