@@ -146,14 +146,17 @@ Pass if:
 ### Pass if:
 - When the server supports the `songLyrics` extension, lyrics are reachable from the now-playing experience (a bar lyrics control and a Lyrics view in the expanded overlay).
 - Synced lyrics highlight the current line and auto-scroll to follow playback.
-- The controller can navigate the lyrics (read ahead/behind) without moving playback, and can return to / resume following the current line.
-- Unsynced lyrics display as readable scrollable text with no highlight.
+- The controller can move the selection through the lyrics (read ahead/behind) without that movement alone changing playback, and can return to / resume following the current line without moving playback.
+- Selecting a synced line (A/Enter/click) seeks playback to that line and following resumes from there.
+- Unsynced lyrics display as readable scrollable text with no highlight, and selecting a line falls back to returning to the current line rather than doing nothing.
 - A track with no lyrics on a supporting server shows an explicit "no lyrics" state.
 - Lyrics update when the track changes.
 
 ### Fail if:
 - The lyrics UI appears (broken/empty) on a server that does not support the extension.
-- Navigating the lyrics seeks or otherwise changes playback.
+- Merely moving the selection through the lyrics changes playback.
+- Selecting a synced line leaves playback where it was.
+- Selecting the last synced line skips to the next track instead of seeking.
 - A missing-lyrics track shows a blank pane or an error instead of an explicit state.
 
 ## 9. Background playback

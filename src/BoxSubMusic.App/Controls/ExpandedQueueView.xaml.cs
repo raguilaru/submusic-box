@@ -45,6 +45,10 @@ namespace BoxSubMusic.App.Controls
         // Seconds of no manual lyric navigation before auto-follow resumes.
         private const double LyricsIdleResumeSeconds = 4.0;
 
+        // Milliseconds past a lyric line's own start that a seek aims for, so
+        // the decoder's frame-boundary snapping cannot land before the line.
+        private const long LineSeekBiasMs = 60;
+
         private enum PaneMode
         {
             Queue,
@@ -654,9 +658,9 @@ namespace BoxSubMusic.App.Controls
 
         private void UpdateLyricsHints()
         {
-            // "A · Jump to current line" only makes sense for synced lyrics
-            // with lines — unsynced/no-lyrics leave just the close hints.
-            LyricsJumpHint.Visibility = _lyricsSynced && _lyricRows.Count > 0
+            // "A · Play from line" only makes sense for synced lyrics with
+            // lines — unsynced/no-lyrics leave just the close hints.
+            LyricsSeekHint.Visibility = _lyricsSynced && _lyricRows.Count > 0
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
@@ -677,24 +681,7 @@ namespace BoxSubMusic.App.Controls
             }
 
             long positionMs = (long)_playback.Session.Position.TotalMilliseconds + _lyricsOffsetMs;
-            int index = FindCurrentLine(positionMs);
-            if (index != _currentLyricIndex)
-            {
-                if (_currentLyricIndex >= 0 && _currentLyricIndex < _lyricRows.Count)
-                {
-                    _lyricRows[_currentLyricIndex].IsCurrent = false;
-                }
-
-                _currentLyricIndex = index;
-                if (index >= 0)
-                {
-                    _lyricRows[index].IsCurrent = true;
-                    if (_autoFollow)
-                    {
-                        CenterLyric(index);
-                    }
-                }
-            }
+            SetCurrentLyricIndex(FindCurrentLine(positionMs));
 
             // Resume auto-follow after a spell of no manual navigation.
             if (!_autoFollow &&
@@ -705,6 +692,34 @@ namespace BoxSubMusic.App.Controls
                 if (_currentLyricIndex >= 0)
                 {
                     CenterLyric(_currentLyricIndex);
+                }
+            }
+        }
+
+        /// <summary>Moves the highlight (and, while following, the scroll) to
+        /// <paramref name="index"/>; -1 clears it. Kept separate from
+        /// <see cref="UpdateLyricHighlight"/> so a seek can paint its target
+        /// line immediately instead of waiting for the position readback,
+        /// which settles a few milliseconds after the seek.</summary>
+        private void SetCurrentLyricIndex(int index)
+        {
+            if (index == _currentLyricIndex)
+            {
+                return;
+            }
+
+            if (_currentLyricIndex >= 0 && _currentLyricIndex < _lyricRows.Count)
+            {
+                _lyricRows[_currentLyricIndex].IsCurrent = false;
+            }
+
+            _currentLyricIndex = index;
+            if (index >= 0 && index < _lyricRows.Count)
+            {
+                _lyricRows[index].IsCurrent = true;
+                if (_autoFollow)
+                {
+                    CenterLyric(index);
                 }
             }
         }
@@ -829,10 +844,94 @@ namespace BoxSubMusic.App.Controls
 
         private void LyricsList_ItemClick(object sender, ItemClickEventArgs e)
         {
-            // Read-only navigation (confirmed decision): A does NOT seek — it
-            // re-centers on the current line and resumes auto-follow. On
-            // unsynced lyrics there is no current line, so A is inert.
-            RecenterOnCurrentLine();
+            // §10.1 (2026-07-26): on SYNCED lyrics A/Enter seeks playback to
+            // the picked line. Anything that cannot be seeked to — unsynced
+            // lyrics, a line with no reachable timestamp, a stream that will
+            // not seek — falls back to the previous read-only behaviour of
+            // re-centering on the current line, so A is never dead.
+            if (!(e.ClickedItem is LyricLineRow row) || !_lyricsSynced
+                || !SeekToLine(_lyricRows.IndexOf(row)))
+            {
+                RecenterOnCurrentLine();
+            }
+        }
+
+        /// <summary>
+        /// Seeks playback to the lyric line at <paramref name="index"/> and
+        /// resumes auto-follow. A line with no timestamp of its own (a blank
+        /// spacer between timed lines) seeks to the nearest timed line above
+        /// it. Returns false when there is no such line or the stream refused
+        /// the seek, in which case playback is untouched.
+        /// </summary>
+        private bool SeekToLine(int index)
+        {
+            if (_playback == null || index < 0 || index >= _lyricStartsMs.Count)
+            {
+                return false;
+            }
+
+            int? startMs = null;
+            int targetIndex = -1;
+            for (int i = index; i >= 0; i--)
+            {
+                if (_lyricStartsMs[i].HasValue)
+                {
+                    startMs = _lyricStartsMs[i];
+                    targetIndex = i;
+                    break;
+                }
+            }
+
+            if (!startMs.HasValue)
+            {
+                return false;
+            }
+
+            // The highlight compares (playback position + offset) against the
+            // line starts, so the position that lands ON this line is its
+            // start minus the entry's offset. A decoder snaps a seek to the
+            // nearest frame boundary (~26 ms for mp3), which can land just
+            // BEFORE the start and make the next tick highlight the previous
+            // line — so aim a hair past the start, never far enough to reach
+            // the following line.
+            long targetMs = startMs.Value + LineSeekBias(targetIndex);
+            long positionMs = targetMs - _lyricsOffsetMs;
+            if (!_playback.SeekTo(TimeSpan.FromMilliseconds(Math.Max(0, positionMs))))
+            {
+                return false;
+            }
+
+            _autoFollow = true;
+            UpdateJumpButton();
+
+            // Paint the destination now (the session's position readback
+            // settles a few ms after the seek) and centre it even when the
+            // index did not change — picking the already-current line is a
+            // legitimate "restart this line".
+            SetCurrentLyricIndex(targetIndex);
+            CenterLyric(targetIndex);
+            UpdatePosition();
+            return true;
+        }
+
+        /// <summary>How far past a line's own start to aim the seek: enough to
+        /// clear frame-boundary snapping, but capped at half the gap to the
+        /// next timed line so a rapid-fire lyric can never be overshot.</summary>
+        private long LineSeekBias(int index)
+        {
+            for (int i = index + 1; i < _lyricStartsMs.Count; i++)
+            {
+                int? next = _lyricStartsMs[i];
+                if (!next.HasValue)
+                {
+                    continue;
+                }
+
+                long gap = next.Value - _lyricStartsMs[index].Value;
+                return gap <= 0 ? 0 : Math.Min(LineSeekBiasMs, gap / 2);
+            }
+
+            return LineSeekBiasMs;
         }
 
         private void LyricsList_KeyDown(object sender, KeyRoutedEventArgs e)
@@ -868,6 +967,9 @@ namespace BoxSubMusic.App.Controls
             RecenterOnCurrentLine();
         }
 
+        /// <summary>The §10.1 return affordance: brings the view back to the
+        /// line playback is on and resumes auto-follow, WITHOUT moving
+        /// playback (that is what A on a line now does).</summary>
         private void RecenterOnCurrentLine()
         {
             if (!_lyricsSynced || _currentLyricIndex < 0)

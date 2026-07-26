@@ -35,6 +35,10 @@ namespace BoxSubMusic.App.Services
         // far in; earlier than this it goes to the previous track.
         private static readonly TimeSpan PreviousRestartThreshold = TimeSpan.FromSeconds(5);
 
+        // A seek is clamped this far short of the end so landing on the last
+        // lyric line cannot trip end-of-stream and advance the track instead.
+        private static readonly TimeSpan SeekEndGuard = TimeSpan.FromMilliseconds(500);
+
         private const int ThumbnailArtSize = 300;
 
         private static PlaybackService _instance;
@@ -455,6 +459,60 @@ namespace BoxSubMusic.App.Services
             }
 
             Player.Play();
+        }
+
+        /// <summary>
+        /// Moves the current track's playback position (§10.1, 2026-07-26:
+        /// picking a synced lyric line seeks to it — the app's only in-track
+        /// seek). The position is clamped into the open stream, so callers
+        /// can hand over a raw lyric timestamp. Returns false when the stream
+        /// will not seek (no open item, or a transcode delivered without a
+        /// known duration), leaving playback untouched so the caller can fall
+        /// back to a display-only action. UI thread.
+        /// </summary>
+        public bool SeekTo(TimeSpan position)
+        {
+            MediaPlaybackSession session = Session;
+            if (_list?.CurrentItem == null || !session.CanSeek)
+            {
+                return false;
+            }
+
+            TimeSpan duration = session.NaturalDuration;
+            if (duration <= TimeSpan.Zero)
+            {
+                return false;
+            }
+
+            TimeSpan max = duration - SeekEndGuard;
+            if (max < TimeSpan.Zero)
+            {
+                max = TimeSpan.Zero;
+            }
+
+            if (position < TimeSpan.Zero)
+            {
+                position = TimeSpan.Zero;
+            }
+            else if (position > max)
+            {
+                position = max;
+            }
+
+            session.Position = position;
+
+            // Re-baseline the §6.1 resume scalars now: OnPositionChanged's
+            // ~10 s throttle would otherwise leave a stale position behind a
+            // short backward seek. (_lastSavedPosition is media-thread owned
+            // and deliberately not touched from here; a large seek trips its
+            // own threshold and re-baselines it on the next tick.)
+            if (!Queue.IsEmpty)
+            {
+                ResumeStore.UpdatePosition(Queue.CurrentIndex, position.TotalSeconds);
+            }
+
+            Changed?.Invoke();
+            return true;
         }
 
         private int IndexOfInPlayOrder(Song song)

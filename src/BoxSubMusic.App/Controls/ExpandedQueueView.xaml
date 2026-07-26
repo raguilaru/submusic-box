@@ -282,9 +282,10 @@
                             Opacity="0.7"
                             TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                    <!-- Re-center affordance in Lyrics mode: appears once the
-                         user has scrolled away from the current line. A on the
-                         list does the same. -->
+                    <!-- Return affordance in Lyrics mode: appears once the user
+                         has read away from the current line, and brings the
+                         view back WITHOUT moving playback (A on a line seeks
+                         instead, so this stays the non-destructive way back). -->
                     <Button
                         x:Name="JumpToCurrentButton"
                         Grid.Column="1"
@@ -432,9 +433,11 @@
                     </ListView.ItemTemplate>
                 </ListView>
 
-                <!-- Lyrics list (§songLyrics). Read-only: A/Enter re-centers on
-                     the current line, it does not seek. Synced lines auto-scroll
-                     and highlight; D-pad reads ahead/back and pauses the follow.
+                <!-- Lyrics list (§songLyrics). Synced lines auto-scroll and
+                     highlight; D-pad reads ahead/back and pauses the follow,
+                     and A/Enter on a line seeks playback to it (§10.1,
+                     2026-07-26). Unsynced lyrics carry no times, so there A
+                     falls back to re-centering on the current line.
                      The message shows the loading / no-lyrics states instead. -->
                 <Grid x:Name="LyricsPanel" Visibility="Collapsed">
                     <ListView
@@ -500,7 +503,7 @@
                 <!-- Controller hints as monochrome button badges (checkpoint
                      #7 request, 2026-07-18 — replaces the static sentence).
                      Swapped by pane mode: the queue is jump + menu, the lyrics
-                     tab is re-center only (read-only navigation). -->
+                     tab is seek-to-line (synced lyrics only). -->
                 <StackPanel x:Name="QueueHints" Grid.Row="2" Orientation="Horizontal" Spacing="8" Opacity="0.7">
                     <local:ControllerGlyph Label="A" />
                     <TextBlock Text="Jump to song" FontSize="15" VerticalAlignment="Center" />
@@ -512,10 +515,11 @@
                 </StackPanel>
                 <StackPanel x:Name="LyricsHints" Grid.Row="2" Orientation="Horizontal" Spacing="8" Opacity="0.7" Visibility="Collapsed">
                     <!-- Only meaningful for synced lyrics — hidden for
-                         unsynced/no-lyrics, where there is no current line. -->
-                    <StackPanel x:Name="LyricsJumpHint" Orientation="Horizontal" Spacing="8">
+                         unsynced/no-lyrics, which carry no timestamps to
+                         seek to. -->
+                    <StackPanel x:Name="LyricsSeekHint" Orientation="Horizontal" Spacing="8">
                         <local:ControllerGlyph Label="A" />
-                        <TextBlock Text="Jump to current line" FontSize="15" VerticalAlignment="Center" Margin="0,0,16,0" />
+                        <TextBlock Text="Play from line" FontSize="15" VerticalAlignment="Center" Margin="0,0,16,0" />
                     </StackPanel>
                     <local:ControllerGlyph Label="Y" />
                     <local:ControllerGlyph Label="B" />

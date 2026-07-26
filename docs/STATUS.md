@@ -1,7 +1,8 @@
 # Current Status
 
-Last updated: 2026-07-23 (condensed to a clean final-state summary as the app
-concludes; the previous chronological pass-by-pass log lives in git history).
+Last updated: 2026-07-26 (lyrics seek-to-line round; the file was condensed to a
+clean final-state summary on 2026-07-23 — the previous chronological
+pass-by-pass log lives in git history).
 
 **SubMusic Box** (code name BoxSubMusic) — native Xbox Series X/S music app for
 Subsonic/OpenSubsonic servers. This file is the running project-state summary;
@@ -24,6 +25,11 @@ planned slice. Since then, refinement rounds have landed on top:
 - **Lyrics display** — OpenSubsonic `songLyrics` in the now-playing overlay
   (synced auto-follow + unsynced), capability-gated. Overlay Queue⇄Lyrics tab
   with LB/RB switching (PR #13). Not yet device-verified.
+- **Lyrics seek-to-line** (2026-07-26) — A/Enter on a synced lyric line now
+  seeks playback to it (`PlaybackService.SeekTo`), revising §10.1's original
+  read-only rule; reading with the D-pad still never moves playback, and
+  "Jump to current line" stays the non-destructive way back. Not yet
+  device-verified (backlog items 18–22).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -123,9 +129,10 @@ code-complete-but-not-yet-device-verified rounds.
      still opens Queue.
 13b. **Synced lyrics:** active line highlights + auto-scrolls to center in time
      with playback; pausing freezes it; legible at 10 ft in both themes.
-13c. **Read-only navigation:** D-pad reads ahead/back (playback does NOT
-     move — confirm no seek); follow pauses, "Jump to current line" appears; A /
-     the button / ~4 s idle re-centers and resumes.
+13c. **Reading navigation:** D-pad reads ahead/back and playback does NOT move
+     on selection alone; follow pauses, "Jump to current line" appears; the
+     button / ~4 s idle re-centers and resumes without moving playback.
+     (A now seeks — see item 18.)
 13d. **Unsynced lyrics:** plain text, scrollable, no highlight/hint.
 13e. **No lyrics:** shows "No lyrics available for this track." after a brief
      "Loading lyrics…"; updates on track change.
@@ -154,6 +161,26 @@ code-complete-but-not-yet-device-verified rounds.
     button), and neither crowds the vertically-centred metadata/time/utility
     clusters. The queue button's glyph is now unobstructed.
 
+**Lyrics seek-to-line (2026-07-26, §10.1 revision):**
+
+18. **A seeks to the picked line:** on synced lyrics, A/Enter (or a click) on a
+    line moves the track to that line's time and playback continues from there;
+    the highlight lands on the picked line with no visible bounce back to the
+    old line, the elapsed time updates at once, and auto-follow resumes.
+    Check both while playing and while paused (paused should reposition
+    silently, not start playing).
+19. **Reading still doesn't seek:** D-pad through several lines with playback
+    running — the audio must not move; only pressing A does.
+20. **Return affordance still non-destructive:** after reading away, the
+    "Jump to current line" button (and the ~4 s idle resume) brings the view
+    back WITHOUT moving playback.
+21. **Edge cases:** A on the LAST line seeks near the end and the track keeps
+    playing to its natural end (it must NOT skip to the next track); A on a
+    blank/untimed spacer line lands on the nearest timed line above it; A on
+    unsynced lyrics still just re-centers (no seek, not dead).
+22. **Hint copy:** the lyrics-tab footer badge reads **A · Play from line**
+    (was "Jump to current line"), legible at 10 ft in both themes.
+
 *(Future work: append console items here.)*
 
 ## Known gaps / durable notes
@@ -163,8 +190,16 @@ revisiting the reasoning (many encode a hard-won console lesson).
 
 **Playback / queue:**
 
-- **No seek** from either playback surface (not a §10 requirement; progress
-  lines are display-only; SMTC/system seek still works where offered).
+- **No scrubbing surface** on either playback surface (not a §10 requirement;
+  the progress lines stay display-only; SMTC/system seek still works where
+  offered). The one in-track seek the app performs is **picking a synced lyric
+  line** (§10.1, 2026-07-26) via `PlaybackService.SeekTo` — deliberately scoped
+  to that gesture; adding a scrubber is a separate decision. `SeekTo` clamps
+  500 ms short of the end (so the last lyric line cannot trip end-of-stream and
+  skip the track) and no-ops when `MediaPlaybackSession.CanSeek` is false, which
+  the lyrics list treats as "re-center instead". Accepted consequence: seeking
+  forward past the min(50 %, 4 min) mark submits the scrobble — that threshold
+  is a position check, not accumulated listening time.
 - **Resume position is ~10 s coarse** during playback (exact on
   pause/suspend/track change) — a crash loses at most that window. The queue
   refetches nothing at resume; a song deleted server-side since the last save

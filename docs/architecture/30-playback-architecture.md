@@ -414,3 +414,36 @@ per-track skip) and pays down the two deferred queue refinements:
   `SemaphoreSlim` gate caps the Playlists page's per-tile getPlaylist
   fetches — both at `QueueActions.MaxParallelFetches` = 4. Tiles still
   fill in individually as their fetches complete.
+
+## Lyrics seek-to-line: `PlaybackService.SeekTo` (added 2026-07-26)
+
+The §10.1 lyrics view stopped being strictly read-only (requirements §16,
+2026-07-26): A/Enter/click on a **synced** lyric line now moves playback to
+that line. This is the app's only in-track seek — the compact bar and the
+overlay's progress lines remain display-only, and no scrubber is introduced.
+
+- **`PlaybackService.SeekTo(TimeSpan) -> bool`** (UI thread) is the whole
+  engine-side surface. It refuses (returning false, playback untouched) when
+  there is no open item, when `MediaPlaybackSession.CanSeek` is false, or when
+  `NaturalDuration` is not yet known — so the caller can degrade instead of
+  guessing. Otherwise the position is clamped into
+  `[0, NaturalDuration - SeekEndGuard]`, with `SeekEndGuard` = 500 ms so a seek
+  to the last lyric line cannot trip end-of-stream and hand the queue an
+  unintended track advance. It then re-baselines the §6.1 resume scalars
+  (`OnPositionChanged`'s ~10 s throttle would otherwise keep a stale position
+  after a short backward seek; `_lastSavedPosition` stays media-thread-owned
+  and is left alone — a large seek trips its own threshold next tick) and
+  raises `Changed` so every surface repaints at once.
+- **`ExpandedQueueView.SeekToLine(index)`** resolves the target: the picked
+  line's `StartMs`, or — for a blank/untimed spacer — the nearest timed line
+  above it; nothing above means no seek. The playback position that lands ON a
+  line is `StartMs - offset`, mirroring the highlight's
+  `position + offset` comparison. On success it resumes auto-follow, clears the
+  idle timer, and paints the destination through the extracted
+  `SetCurrentLyricIndex` rather than waiting for `UpdateLyricHighlight` to
+  derive it — the session's position readback settles a few ms after a seek, so
+  deriving would briefly show the old line.
+- **Every refusal falls back to `RecenterOnCurrentLine`** (unsynced lyrics, no
+  reachable timestamp, non-seekable stream), so A is never a dead press. The
+  "Jump to current line" button keeps its §10.1 role as the *non-destructive*
+  return affordance; D-pad selection movement still never seeks.
