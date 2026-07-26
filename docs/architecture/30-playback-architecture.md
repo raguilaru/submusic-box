@@ -44,9 +44,14 @@ stay inert); seek/scrub in the compact bar (not required by §10).
    not UX). `scrobble` is core Subsonic API (since 1.5.0), no capability gate
    needed.
 4. **Songs row queue semantics:** A/Enter on a Songs row replaces the queue
-   with **all rows loaded so far** (the incremental collection at click time)
-   with the clicked song as the current track. No auto-fetching of further
-   pages into the queue.
+   with **the rows as currently shown**, the clicked song as the current
+   track. Revised 2026-07-26 (§16): the page now loads the whole library up
+   front so it can sort client-side, so this normally means every song, in
+   the active sort order. The original "all rows loaded so far" wording
+   (2026-07-15, when the page paged incrementally on scroll) still describes
+   what happens while that load is running. No page is ever auto-fetched
+   *because of* a play action. The same rule governs scoped Search results,
+   which do still page incrementally.
 
 ## Core: `BoxSubMusic.Core/Playback/`
 

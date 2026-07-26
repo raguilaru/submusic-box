@@ -122,6 +122,10 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   - length
   - format
   - bitrate
+- The view MUST offer a sort control with the options Default Order (the server's own order, the default), Title, Artist, Album, and Date Added (added 2026-07-26, §16).
+- The view MUST offer Play All and Shuffle All actions that replace the queue with the entire song library — Play All in the current sort order, Shuffle All randomized (§10 replace-not-append).
+- Because the Subsonic API cannot order songs, sorting is client-side over the fully loaded library; the sort and the two library actions MUST NOT operate on a partially loaded library, and MUST show why they are unavailable while it loads (§15).
+- A sort whose data the server does not provide (Date Added on a server that omits `created`) MUST degrade explicitly rather than silently ordering by nothing (§3).
 
 ### 7.4 Playlists
 - MUST support grid view by default.
@@ -714,26 +718,35 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   destination showing the starred library, with Artists/Albums/Songs tabs.
   (a) **Data: `getStarred2`** — the ID3 variant, so its artist/album entries
   are the same shapes the browse grids already render. It accepts no
-  count/offset parameters and answers with the complete favorites set in one
-  request, which is why this is the only browse-ish view with **no
-  incremental paging**: one fetch fills all three tabs, tab switching costs
-  no request, and sorting reorders the entire scope rather than "pages
-  loaded so far" (contrast the §16 2026-07-15 Songs-row caveat). API 1.8
-  gate with an explicit unsupported state (§3), same as search3.
+  count/offset parameters and answers with the complete favorites set in
+  **one request**, so this view needs no paging of any kind: one fetch fills
+  all three tabs, tab switching costs no request, and sorting reorders the
+  entire scope. Note the contrast with the Songs view (the same-day decision
+  further down this log), which reaches the same "sort tells the truth over
+  everything" guarantee the hard way — by paging the whole library into
+  memory — because its endpoint has no such all-at-once form. API 1.8 gate
+  with an explicit
+  unsupported state (§3), same as search3.
   (b) **Tabs are segmented ToggleButtons** in the content area (the Slice 13
   scope-filter pattern), Artists first and default.
   (c) **Sort is a button + MenuFlyout of ToggleMenuFlyoutItems**, generated
   per tab because the option sets differ (2/2/5 entries): a fixed inline row
-  would be wrong for two tabs out of three. MenuFlyout is the app's
-  console-verified flyout (the row/card context menus) and its checkmark
-  column reads as the current choice at 10 ft; the button's label always
-  names the active sort, so the order is readable without opening the menu.
-  Per-tab option sets and defaults are listed in §7.5. Album **Year** is
-  newest-first with undated albums last; song **Date Added** is the file's
-  library-added date descending — deliberately the `created` timestamp, not
-  the `starred` one, so it stays distinct from Default Order (servers
-  commonly return favorites most-recently-starred first). This required
-  adding an optional `Created` to the `Song` model.
+  would be wrong for two tabs out of three. (The Songs view declares its five
+  items statically for the same reason in reverse — its set never varies.)
+  MenuFlyout is the app's console-verified flyout (the row/card context
+  menus) and its checkmark column reads as the current choice at 10 ft; the
+  button's label always names the active sort, so the order is readable
+  without opening the menu. Per-tab option sets and defaults are listed in
+  §7.5. Album **Year** is newest-first with undated albums last.
+  **The Songs tab reuses `Core/Browsing/SongSorter`** — the same orderings
+  and the same `Label()` the Songs view uses, so the two pages can never
+  drift apart and the ordering stays unit-tested in Core. That also settles
+  song **Date Added** as the file's `created` timestamp rather than the
+  `starred` one: it matches the Songs view, and it keeps the option distinct
+  from Default Order (servers commonly return favorites
+  most-recently-starred first). `Song.Created` was added independently by
+  both this round and the Songs round on the same day, converging on the
+  identical optional-trailing-parameter shape.
   (d) **Tab AND per-tab sort persist** in LocalSettings
   (`FavoritesPreferences`). Rafael asked for the tab; the sort follows,
   because a remembered tab with a forgotten sort would be incoherent.
@@ -768,9 +781,45 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   circular — A on the card opens the ALBUM, the same reason song rows carry
   both navigation items). Removal now behaves identically on all three tabs:
   the item leaves the list once the server accepts. Deliberately NOT added:
-  a per-card "Shuffle" — no card menu anywhere in the app has one, and
+  a per-card "Shuffle" — no card menu anywhere in the app has one (the Songs
+  view's Shuffle All is a page-level action, not a card one), and
   introducing it on this page alone would be an inconsistency; it is an
   app-wide change if wanted.
+- 2026-07-26: **Songs gains sort options + Play All / Shuffle All**
+  (§7.3/§10; Rafael's request, options taken from a reference screenshot:
+  Default Order, Title, Artist, Album, Date Added). **The API cannot sort
+  songs** — search3 has no sort parameter and no other endpoint lists the
+  library in a chosen order — so ordering is client-side
+  (`Core/Browsing/SongSorter`, unit-tested). Two consequences, both
+  confirmed with Rafael: (a) **the page now loads the WHOLE library**
+  (500/request, the API cap) instead of the scroll-driven incremental
+  paging of the 2026-07-13 decision, because a client-side "Title A–Z"
+  over a partial library would be a lie; the first page shows immediately
+  and the rest streams in behind it, with the sort control and both
+  library actions **disabled and captioned "Loading all songs…"** until
+  every page is in (§15). (b) **Play All / Shuffle All cover the entire
+  library** — Play All in the current sort order, Shuffle All randomized
+  including the first track (§8 semantics) — matching the detail pages,
+  where Play/Shuffle always cover the whole container.
+  Ordering details: sorts are stable, so Default Order is a pure
+  pass-through and ties keep the server's order; Artist and Album both
+  fall through to disc/track so an artist's songs read in album order;
+  Date Added is newest first with undated songs last. Alphabetical
+  comparisons are culture-aware and case-insensitive.
+  Supporting decisions: `Song` gained **`Created`** (the core Subsonic
+  `created` attribute) to feed Date Added, and the Date Added option
+  **disables itself** when no loaded song carries one (§3 — never sort by
+  nothing). A/Enter on a row still replaces the queue with the rows as
+  shown, which now follows the sort and, once loaded, means the whole
+  library — the "rows loaded so far" cap of the 2026-07-15 decision now
+  applies only during the load. **Songs becomes the second
+  navigation-cached page** after Search (a deliberate second exception to
+  refetch-on-navigation): re-running a whole-library load on every B-back
+  from an album page would be untenable, and it inherits Search's
+  documented trade-off that starred markers on kept rows can lag. A later
+  page failing is now fatal to the load (inline error + Retry, reload from
+  the top) rather than merely ending the scroll, because a silently
+  truncated library would break what sort and Play All promise.
 
 ## 17. Open Decisions / TODO
 

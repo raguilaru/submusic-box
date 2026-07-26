@@ -1,8 +1,9 @@
 # Current Status
 
-Last updated: 2026-07-26 (lyrics seek-to-line round; the file was condensed to a
-clean final-state summary on 2026-07-23 — the previous chronological
-pass-by-pass log lives in git history).
+Last updated: 2026-07-26 (Songs sorting + Play All / Shuffle All, on top of the
+lyrics seek-to-line round; the file was condensed to a clean final-state summary
+on 2026-07-23 — the previous chronological pass-by-pass log lives in git
+history).
 
 **SubMusic Box** (code name BoxSubMusic) — native Xbox Series X/S music app for
 Subsonic/OpenSubsonic servers. This file is the running project-state summary;
@@ -25,6 +26,12 @@ planned slice. Since then, refinement rounds have landed on top:
 - **Lyrics display** — OpenSubsonic `songLyrics` in the now-playing overlay
   (synced auto-follow + unsynced), capability-gated. Overlay Queue⇄Lyrics tab
   with LB/RB switching (PR #13). Not yet device-verified.
+- **Songs sorting + Play All / Shuffle All** (2026-07-26) — sort options
+  (Default Order / Title / Artist / Album / Date Added) and whole-library
+  Play All / Shuffle All on the Songs view. The API cannot sort songs, so
+  ordering is client-side (`Core/Browsing/SongSorter`) over a now
+  fully-loaded library; see §16 and "Known gaps". Not yet device-verified
+  (backlog items 23–29).
 - **Lyrics seek-to-line** (2026-07-26) — A/Enter on a synced lyric line now
   seeks playback to it (`PlaybackService.SeekTo`), revising §10.1's original
   read-only rule; reading with the D-pad still never moves playback, and
@@ -33,11 +40,13 @@ planned slice. Since then, refinement rounds have landed on top:
 - **Favorites section** (2026-07-26) — a new left-nav destination
   (`FavoritesPage`) listing the starred library via `getStarred2`, with
   Artists/Albums/Songs tabs and per-tab sort options; tab and sorts persist
-  (`FavoritesPreferences`). No paging — getStarred2 returns the whole set, so
-  sorting covers everything. Play All / Shuffle All act on the whole active
-  tab (bounded fan-out for the Artists/Albums tabs), and every result carries
-  a full context menu including "Remove from favorites". Not yet
-  device-verified (backlog items 23–30).
+  (`FavoritesPreferences`). No paging — getStarred2 returns the whole set in
+  one request, so sorting covers everything without the whole-library load the
+  Songs view needs. The Songs tab reuses `Core/Browsing/SongSorter`, so both
+  views order songs identically. Play All / Shuffle All act on the whole
+  active tab (bounded fan-out for the Artists/Albums tabs), and every result
+  carries a full context menu including "Remove from favorites". Not yet
+  device-verified (backlog items 30–37).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -46,7 +55,7 @@ planned slice. Since then, refinement rounds have landed on top:
 
 **Build/test state:** builds green (x64 Debug over SSH; the `APPX0703` appx
 packaging error is the known command-line-only failure — VS F5 packages fine).
-**76 Core + 79 SubsonicClient tests pass** (9 SubsonicClient live-server tests
+**85 Core + 80 SubsonicClient tests pass** (9 SubsonicClient live-server tests
 skip without `liveserver.local.txt`).
 
 **Git state:** `main` holds v1 (slices 00–14, PR #6) plus the merged refinement
@@ -189,31 +198,62 @@ code-complete-but-not-yet-device-verified rounds.
 22. **Hint copy:** the lyrics-tab footer badge reads **A · Play from line**
     (was "Jump to current line"), legible at 10 ft in both themes.
 
+**Songs sorting + Play All / Shuffle All (2026-07-26, §7.3):**
+
+23. **Whole-library load:** opening Songs shows the first rows quickly, then
+    "Loading all songs…" with Sort / Play All / Shuffle All disabled; when it
+    clears, all three enable. Note how long the tail takes on the real library
+    and whether the app stays responsive (scrolling, playback) throughout —
+    this is the §11 memory/perf check for the new load.
+24. **Each sort is correct and reachable:** the Sort button opens with A, the
+    check mark tracks the current option, the button label updates, and Title /
+    Artist / Album / Date Added visibly reorder the list. Default Order returns
+    to the server's order. After a sort, focus lands back at the top of the list
+    (not stranded in a recycled row).
+25. **Play All / Shuffle All:** both replace the queue and reveal the bar; Play
+    All starts at the first row of the current sort; Shuffle All is randomized.
+    Confirm the queue really holds the whole library (expanded queue is long),
+    not just a page.
+26. **Row play follows the sort:** with a non-default sort active, A on a row
+    starts there and the up-next order matches what's on screen.
+27. **Date Added availability:** the option is enabled against Navidrome (which
+    sends `created`) and orders newest-first. If any test server omits it, the
+    option must be disabled rather than silently doing nothing.
+28. **Navigation cache:** Songs → a song's album (Go to album) → B back returns
+    to the same sorted list, at once, with no reload. Known trade-off to eyeball:
+    a star toggled on the album page won't repaint the kept Songs row.
+29. **Focus/layout at 10 ft:** the three header controls read clearly, Up from
+    the first row reaches Sort (not the nav pane), and LB/RB region jumps still
+    behave with the new header row.
+
 **Favorites section (2026-07-26, §7.5):**
 
-23. **Nav + first open:** a Favorites item appears after Playlists with the
+30. **Nav + first open:** a Favorites item appears after Playlists with the
     heart icon; opening it lands focus on the FIRST CARD of the active tab
     (not the tab row), and Up from the cards reaches the tabs.
-24. **Tabs:** Artists/Albums/Songs each list the right starred content with
+31. **Tabs:** Artists/Albums/Songs each list the right starred content with
     the browse card language / §7.3 columns; switching tabs is instant (no
     spinner — one getStarred2 filled all three) and leaves focus on the tab
     row rather than yanking it into the results.
-25. **Sort menu at 10 ft:** the sort button names the active sort; opening it
+32. **Sort menu at 10 ft:** the sort button names the active sort; opening it
     shows only that tab's options (2 for Artists, 2 for Albums, 5 for Songs)
     with a legible checkmark on the current one. Confirm the flyout is
-    gamepad-reachable and that Down from the button enters the list.
-26. **Sorting is total, not partial:** with a large favorites set, changing
+    gamepad-reachable and that Down from the button enters the list. The Songs
+    tab's five options are the same `SongSorter` orderings the Songs page uses
+    (item 24) — worth confirming the two pages agree on the same library.
+33. **Sorting is total, not partial:** with a large favorites set, changing
     the sort reorders EVERYTHING immediately and fetches nothing — scroll to
     the bottom and confirm the last item belongs there under that order.
-    Check Albums "Year" (newest first, undated last) and Songs "Date Added".
-27. **Persistence:** pick a non-default tab and a non-default sort in each
+    Check Albums "Year" (newest first, undated last) and Songs "Date Added"
+    (disabled outright if the server omits `created`, as on the Songs page).
+34. **Persistence:** pick a non-default tab and a non-default sort in each
     tab, navigate away and back — both restored; relaunch the app — still
     restored.
-28. **Song row behavior:** A plays the favorites in current sort order from
+35. **Song row behavior:** A plays the favorites in current sort order from
     that row (bar reveals, queue shows "Favorites"); "Remove from favorites"
     makes the row DISAPPEAR (and the list falls back to the empty state if it
     was the last one); emptying a scope shows that scope's own message.
-29. **Play All / Shuffle All:** on Songs both are instant and the queue
+36. **Play All / Shuffle All:** on Songs both are instant and the queue
     matches the on-screen order exactly (Shuffle randomizes the whole pool,
     first track included). On Albums and especially **Artists** this is the
     round to watch: confirm both buttons AND the sort button disable behind
@@ -222,7 +262,7 @@ code-complete-but-not-yet-device-verified rounds.
     artist's albums oldest-first → disc/track. Switching tabs mid-gather must
     still play the tab the button was pressed on. Unreachable server → toast,
     no playback, buttons come back.
-30. **Card menus:** artist and album cards both offer Play / Play next / Add
+37. **Card menus:** artist and album cards both offer Play / Play next / Add
     to queue / Remove from favorites, and album cards also Go to artist
     (disabled when the server sent no artist id). Removing a card makes it
     vanish from the grid on all three tabs alike.
@@ -270,8 +310,21 @@ revisiting the reasoning (many encode a hard-won console lesson).
   before the corrective one (verified fine at checkpoint #5).
 - **Repeat-one + SMTC:** manual next in repeat-one advances; only natural track
   end repeats.
-- **Songs-row / scoped-search queue is "rows loaded so far"** — reaching the end
-  does not fetch further pages (§16 2026-07-15).
+- **Scoped-search queue is "rows loaded so far"** — reaching the end does not
+  fetch further pages (§16 2026-07-15). **Songs no longer works this way**: it
+  loads the whole library up front (see below), so a row's A/Enter queues every
+  song in the current sort order.
+- **Songs loads the entire library into memory** (§16 2026-07-26) — the price of
+  client-side sorting, since the API cannot order songs. 500 rows per request,
+  first page shown immediately and the rest streamed in behind it; sort and
+  Play All / Shuffle All stay disabled with a visible caption until it finishes.
+  Consequences: a large library has a real load tail; the page is
+  **navigation-cached** (the second exception to refetch-on-navigation, after
+  Search) so B-back from an album page doesn't redo it, which means starred
+  markers on kept rows can lag; and a later page failing now drops the whole
+  view to the inline error + Retry rather than just ending the scroll, because
+  a silently truncated library would make the sort and Play All lie.
+  This is the §11 background-memory item to watch on the next console pass.
 - **Queue-edit clones:** a song added twice (or while already queued) is a cloned
   `Song`, so starring one copy repaints only that copy until the next refetch.
   Under shuffle, original-order edits land at the END (un-shuffling shows them
@@ -335,8 +388,9 @@ revisiting the reasoning (many encode a hard-won console lesson).
 
 **Browse / detail:**
 
-- **Songs order is server-defined** (search3 has no client sort); column widths
-  are a first guess pending the 10-ft check.
+- **Songs order is server-defined by default** (search3 has no server-side
+  sort); the Title/Artist/Album/Date Added options reorder client-side
+  (§16 2026-07-26). Column widths are a first guess pending the 10-ft check.
 - **Multi-disc albums render as one flat list** ordered disc→track; no disc
   headers yet.
 - **Playlists are read-only** (browse + detail/playback; no create/edit/delete).

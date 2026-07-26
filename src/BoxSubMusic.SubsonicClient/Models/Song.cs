@@ -74,18 +74,19 @@ public sealed class Song
     public string? ContentType { get; }
 
     /// <summary>
-    /// When the file was added to the library (the <c>created</c> attribute);
-    /// null when the server omits it. Optional because only the Favorites
-    /// view's "Date Added" sort needs it — every other construction site
-    /// predates it and leaves it unset.
-    /// </summary>
-    public DateTimeOffset? Created { get; }
-
-    /// <summary>
     /// Favorite flag: a <c>starred</c> timestamp is present only on
     /// favorites. Settable so a successful star/unstar can keep an already
     /// loaded instance honest (the now-playing bar re-reads it on every
     /// track change) without refetching.
     /// </summary>
     public bool IsStarred { get; set; }
+
+    /// <summary>
+    /// When the server added the file to its library (the <c>created</c>
+    /// attribute of the Child element). Drives the "Date Added" sort on both
+    /// the Songs view and the Favorites Songs tab; null when the server omits
+    /// it, in which case that sort option degrades explicitly rather than
+    /// silently ordering by nothing (§3).
+    /// </summary>
+    public DateTimeOffset? Created { get; }
 }

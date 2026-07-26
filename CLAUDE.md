@@ -81,6 +81,6 @@ See CLAUDE.local.md for the concrete, machine-local invocations (SSH alias, full
   Rafael drives F5; details in CLAUDE.local.md and docs/STATUS.md.
 
 # Open questions
-- Search result paging/virtualization policy is not yet locked (browse views settled on incremental loading 2026-07-13; search may follow).
+- Browse paging is no longer one policy: Albums and scoped Search results load incrementally (2026-07-13 / 2026-07-19), while Songs loads the whole library up front because client-side sorting cannot be honest over a partial one (2026-07-26, §16). Whether holding the full song library fits the §11 background-memory budget is open pending console verification.
 - Artwork fallback beyond server-provided metadata remains a risk item, not a committed feature.
 - Playlists are read-only for v1 (decided 2026-07-13, §16/§17); create/edit/delete deferred beyond v1.

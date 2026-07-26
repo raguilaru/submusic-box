@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BoxSubMusic.App.Models;
 using BoxSubMusic.App.Services;
+using BoxSubMusic.Core.Browsing;
 using BoxSubMusic.Core.Concurrency;
 using BoxSubMusic.Core.Playback;
 using BoxSubMusic.SubsonicClient;
@@ -113,6 +114,18 @@ namespace BoxSubMusic.App
                 _songs = starred.Songs.Select(ToRow).ToList();
 
                 _loaded = true;
+
+                // A persisted "Date Added" must not outlive a server that
+                // stopped sending `created` — it would order by nothing while
+                // claiming otherwise. Demote it once, visibly (the button
+                // relabels), and the rebuild below disables the option.
+                if (FavoritesPreferences.SongSort == SongSort.DateAdded
+                    && !HasDateAddedData())
+                {
+                    FavoritesPreferences.SongSort = SongSort.DefaultOrder;
+                }
+
+                RebuildSortMenu();
                 ApplySort();
                 ShowActiveTab(moveFocus: true);
             }
@@ -275,13 +288,15 @@ namespace BoxSubMusic.App
             new SortOption("Alphabetical", (int)AlbumSort.Alphabetical),
         };
 
+        // Labels come from SongSorter so this menu and the Songs view's can
+        // never disagree about what an ordering is called.
         private static readonly SortOption[] SongSortOptions =
         {
-            new SortOption("Default Order", (int)SongSort.Default),
-            new SortOption("Title", (int)SongSort.Title),
-            new SortOption("Artist", (int)SongSort.Artist),
-            new SortOption("Album", (int)SongSort.Album),
-            new SortOption("Date Added", (int)SongSort.DateAdded),
+            new SortOption(SongSorter.Label(SongSort.DefaultOrder), (int)SongSort.DefaultOrder),
+            new SortOption(SongSorter.Label(SongSort.Title), (int)SongSort.Title),
+            new SortOption(SongSorter.Label(SongSort.Artist), (int)SongSort.Artist),
+            new SortOption(SongSorter.Label(SongSort.Album), (int)SongSort.Album),
+            new SortOption(SongSorter.Label(SongSort.DateAdded), (int)SongSort.DateAdded),
         };
 
         private SortOption[] OptionsForActiveTab()
@@ -323,12 +338,41 @@ namespace BoxSubMusic.App
                     Text = option.Label,
                     IsChecked = option.Value == active,
                     Tag = option.Value,
+                    IsEnabled = IsSortAvailable(option.Value),
                 };
                 item.Click += SortOption_Click;
                 _sortFlyout.Items.Add(item);
             }
 
             SortLabel.Text = options.First(o => o.Value == active).Label;
+        }
+
+        /// <summary>
+        /// Whether an option can honour its own name with the data in hand.
+        /// Only "Date Added" can fail that test: a server that omits `created`
+        /// would leave it silently ordering by nothing, so it is disabled
+        /// instead (§3) — the same degrade the Songs view applies.
+        /// </summary>
+        private bool IsSortAvailable(int value)
+        {
+            if (_tab != FavoritesTab.Songs || value != (int)SongSort.DateAdded)
+            {
+                return true;
+            }
+
+            return HasDateAddedData();
+        }
+
+        /// <summary>
+        /// Tab-independent (unlike <see cref="IsSortAvailable"/>), so the
+        /// load-time demotion is decided by the data alone — the check must
+        /// hold even when the remembered tab is Artists or Albums. Before the
+        /// load there is nothing to judge by, so it reads as available and the
+        /// post-load rebuild settles it.
+        /// </summary>
+        private bool HasDateAddedData()
+        {
+            return !_loaded || _songs.Any(r => r.Song.Created.HasValue);
         }
 
         private void SortOption_Click(object sender, RoutedEventArgs e)
@@ -420,29 +464,9 @@ namespace BoxSubMusic.App
 
         private static IEnumerable<SongRow> SortSongs(List<SongRow> rows, SongSort sort)
         {
-            switch (sort)
-            {
-                case SongSort.Title:
-                    return rows.OrderBy(r => r.Title, StringComparer.CurrentCultureIgnoreCase);
-                case SongSort.Artist:
-                    return rows
-                        .OrderBy(r => r.Artist, StringComparer.CurrentCultureIgnoreCase)
-                        .ThenBy(r => r.Title, StringComparer.CurrentCultureIgnoreCase);
-                case SongSort.Album:
-                    // Within an album, the album's own order beats the title.
-                    return rows
-                        .OrderBy(r => r.Album, StringComparer.CurrentCultureIgnoreCase)
-                        .ThenBy(r => r.Song.DiscNumber ?? 1)
-                        .ThenBy(r => r.Song.Track ?? int.MaxValue);
-                case SongSort.DateAdded:
-                    // Most recently added to the library first; songs whose
-                    // server sent no date sort last.
-                    return rows
-                        .OrderByDescending(r => r.Song.Created.HasValue)
-                        .ThenByDescending(r => r.Song.Created ?? DateTimeOffset.MinValue);
-                default:
-                    return rows; // server order
-            }
+            // Core's orderings, shared with the Songs view (§7.3) — same
+            // stability guarantees, same tie-breaks, unit-tested there.
+            return SongSorter.Sort(rows, r => r.Song, sort);
         }
 
         private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> ordered)

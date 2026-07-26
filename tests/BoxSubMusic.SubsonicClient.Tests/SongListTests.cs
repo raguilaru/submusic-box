@@ -44,6 +44,26 @@ public class SongListTests
     }
 
     [Fact]
+    public async Task GetSongs_MapsCreated_AndTreatsAMissingOneAsUnknown()
+    {
+        // `created` drives the Songs view's "Date Added" sort; a server that
+        // omits it must map to null so that sort can degrade explicitly (§3).
+        var songs =
+            "<song id=\"s-1\" title=\"Dated\" duration=\"10\" created=\"2026-07-19T14:05:00.000Z\"/>" +
+            "<song id=\"s-2\" title=\"Undated\" duration=\"10\"/>";
+        var handler = new FakeHttpMessageHandler(_ =>
+            FakeHttpMessageHandler.Xml(Canned.SearchResult3(songs)));
+        var client = TestHelpers.CreateClient(handler);
+
+        var page = await client.GetSongsAsync();
+
+        Assert.Equal(
+            new DateTimeOffset(2026, 7, 19, 14, 5, 0, TimeSpan.Zero),
+            page[0].Created);
+        Assert.Null(page[1].Created);
+    }
+
+    [Fact]
     public async Task GetSongs_EmptyLibrary_ReturnsEmptyList()
     {
         var handler = new FakeHttpMessageHandler(_ =>

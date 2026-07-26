@@ -30,9 +30,79 @@
                 FontSize="48"
                 FontWeight="SemiBold" />
             <controls:RetroStripes Width="150" HorizontalAlignment="Left" Margin="0,8,0,0" />
+
+            <!-- Sort + whole-library playback. All three act on the ENTIRE
+                 library, so they stay disabled until the background load has
+                 pulled every page in (see SongsPage.LoadAsync) — "Title" must
+                 not mean "the first few hundred rows". Glyphs are Fluent
+                 Regular, cmap-verified against the shipped TTF (§13.3):
+                 arrow_sort F18B, chevron_down F2A4, play F606, shuffle EF37. -->
+            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,16,0,0">
+                <Button
+                    x:Name="SortButton"
+                    Style="{StaticResource RetroTonalButtonStyle}"
+                    Padding="20,12"
+                    IsEnabled="False"
+                    AutomationProperties.Name="Sort songs">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF18B;" FontSize="20" />
+                        <TextBlock x:Name="SortLabel" Text="Default Order" FontSize="20" VerticalAlignment="Center" />
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF2A4;" FontSize="14" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <!-- ToggleMenuFlyoutItem, not RadioMenuFlyoutItem: the
+                             check mark reads as the current sort and the type
+                             is available on the app's UWP baseline. Mutual
+                             exclusion is applied in ApplySort. -->
+                        <MenuFlyout>
+                            <ToggleMenuFlyoutItem x:Name="SortDefaultItem" Text="Default Order" IsChecked="True" Click="SortItem_Click" />
+                            <ToggleMenuFlyoutItem x:Name="SortTitleItem" Text="Title" Click="SortItem_Click" />
+                            <ToggleMenuFlyoutItem x:Name="SortArtistItem" Text="Artist" Click="SortItem_Click" />
+                            <ToggleMenuFlyoutItem x:Name="SortAlbumItem" Text="Album" Click="SortItem_Click" />
+                            <ToggleMenuFlyoutItem x:Name="SortDateAddedItem" Text="Date Added" Click="SortItem_Click" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <Button
+                    x:Name="PlayAllButton"
+                    Style="{StaticResource RetroPrimaryButtonStyle}"
+                    Padding="28,12"
+                    IsEnabled="False"
+                    Click="PlayAllButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" FontSize="20" />
+                        <TextBlock Text="Play All" FontSize="20" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    x:Name="ShuffleAllButton"
+                    Style="{StaticResource RetroTonalButtonStyle}"
+                    Padding="28,12"
+                    IsEnabled="False"
+                    Click="ShuffleAllButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xEF37;" FontSize="20" />
+                        <TextBlock Text="Shuffle All" FontSize="20" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Why the three controls above are still disabled. Rows are
+                     already visible and playable while this shows (§15: the
+                     wait is stated, never silent). -->
+                <TextBlock
+                    x:Name="LoadingAllText"
+                    Visibility="Collapsed"
+                    Text="Loading all songs…"
+                    FontSize="16"
+                    Opacity="0.7"
+                    VerticalAlignment="Center" />
+            </StackPanel>
+
             <!-- Controller hints as monochrome button badges (checkpoint #7
                  request, 2026-07-18 — replaces the static sentence). -->
-            <StackPanel Orientation="Horizontal" Spacing="8" Opacity="0.7" Margin="0,4,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="8" Opacity="0.7" Margin="0,12,0,0">
                 <controls:ControllerGlyph Label="A" />
                 <TextBlock Text="Play" FontSize="15" VerticalAlignment="Center" />
                 <controls:ControllerGlyph Label="Menu" Margin="16,0,0,0" />
@@ -115,7 +185,8 @@
                     SelectionMode="None"
                     IsItemClickEnabled="True"
                     ItemClick="SongsList_ItemClick"
-                    ContextRequested="SongsList_ContextRequested">
+                    ContextRequested="SongsList_ContextRequested"
+                    XYFocusUp="{x:Bind SortButton}">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="Padding" Value="12,10" />

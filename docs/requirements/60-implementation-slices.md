@@ -296,6 +296,11 @@ with an empty query (OpenSubsonic full-library contract), paged incrementally;
 non-OpenSubsonic servers get an explicit unsupported state. Implemented
 2026-07-13 with rows inert + visible note until Slice 10; "Go to album" in the
 context menu is live.
+**Extended 2026-07-26** (§16): sort options (Default Order / Title / Artist /
+Album / Date Added) and whole-library Play All / Shuffle All. The API cannot
+sort songs, so ordering is client-side via `Core/Browsing/SongSorter` — which
+replaced this slice's scroll-driven incremental paging with a full-library
+load, and made the page navigation-cached. Not yet device-verified.
 
 ### Deliverables
 - songs list

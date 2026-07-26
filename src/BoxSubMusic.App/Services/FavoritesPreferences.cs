@@ -1,3 +1,4 @@
+using BoxSubMusic.Core.Browsing;
 using Windows.Storage;
 
 namespace BoxSubMusic.App.Services
@@ -35,9 +36,15 @@ namespace BoxSubMusic.App.Services
             set { Set(AlbumSortKey, (int)value); }
         }
 
+        /// <summary>
+        /// The Songs tab reuses Core's <see cref="Core.Browsing.SongSort"/> —
+        /// the same orderings (and the same menu labels) the Songs view uses,
+        /// so the two pages cannot drift apart and the ordering stays
+        /// unit-tested in Core.
+        /// </summary>
         public static SongSort SongSort
         {
-            get { return (SongSort)Get(SongSortKey, (int)Services.SongSort.Default, 0, 4); }
+            get { return (SongSort)Get(SongSortKey, (int)Core.Browsing.SongSort.DefaultOrder, 0, 4); }
             set { Set(SongSortKey, (int)value); }
         }
 
@@ -82,18 +89,6 @@ namespace BoxSubMusic.App.Services
         Alphabetical = 1,
     }
 
-    /// <summary>
-    /// Sort options offered on the Songs tab. <see cref="Default"/> keeps the
-    /// server's own getStarred2 ordering; <see cref="DateAdded"/> uses the
-    /// file's library-added date, which is what keeps it distinct from that
-    /// default (servers commonly return favorites most-recently-starred first).
-    /// </summary>
-    internal enum SongSort
-    {
-        Default = 0,
-        Title = 1,
-        Artist = 2,
-        Album = 3,
-        DateAdded = 4,
-    }
+    // The Songs tab's sort options are Core's SongSort/SongSorter, shared with
+    // the Songs view — deliberately not duplicated here.
 }
