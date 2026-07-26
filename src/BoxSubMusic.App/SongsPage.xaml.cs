@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BoxSubMusic.App.Models;
 using BoxSubMusic.App.Services;
+using BoxSubMusic.Core.Browsing;
 using BoxSubMusic.Core.Playback;
 using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
@@ -20,29 +22,64 @@ namespace BoxSubMusic.App
     /// <summary>
     /// Songs browse (Slice 08, requirements §7.3): list-only with title,
     /// artist, album, length, format and bitrate. Songs come from search3
-    /// with an empty query — the OpenSubsonic full-library listing — in
-    /// incrementally loaded pages (decisions 2026-07-13); servers that are
-    /// not OpenSubsonic get an explicit unsupported state (§3), never a
-    /// wrong empty list. A/Enter on a row starts immediate playback (decision
-    /// 2026-07-13, live since Slice 10): the queue is replaced with all rows
-    /// loaded so far, positioned at the chosen song, and no further pages are
-    /// auto-fetched into the queue (§16 decision 2026-07-15). The Menu-button
-    /// context menu carries Play and "Go to album".
+    /// with an empty query — the OpenSubsonic full-library listing (decision
+    /// 2026-07-13); servers that are not OpenSubsonic get an explicit
+    /// unsupported state (§3), never a wrong empty list. A/Enter on a row
+    /// starts immediate playback (decision 2026-07-13, live since Slice 10);
+    /// the Menu-button context menu carries the secondary actions.
+    ///
+    /// Sorting and whole-library playback (2026-07-26) changed how the page
+    /// loads. The Subsonic API cannot sort songs — search3 has no sort
+    /// parameter — so ordering is client-side, which only tells the truth
+    /// over the WHOLE library. The page therefore pages the entire library
+    /// into memory (500/request, the API maximum) instead of the previous
+    /// scroll-driven incremental loading: the first page is shown as soon as
+    /// it arrives and the rest streams in behind it, with Sort/Play All/
+    /// Shuffle All disabled until every page is in. The list virtualizes, so
+    /// the cost is the held rows, not the rendering.
     /// </summary>
     public sealed partial class SongsPage : Page
     {
+        // The API caps one search3 request at 500; the whole-library load
+        // wants the fewest round trips it can get.
+        private const int LoadPageSize = 500;
+
         private CancellationTokenSource _cts;
-        private IncrementalSource<SongRow> _songs;
+
+        /// <summary>Every row, in the server's own order — the sort input.</summary>
+        private List<SongRow> _allRows;
+
+        /// <summary>The rows as currently shown: the queue order for playback.</summary>
+        private ObservableCollection<SongRow> _view;
+
+        private SongSort _sort = SongSort.DefaultOrder;
+        private bool _fullyLoaded;
 
         public SongsPage()
         {
             InitializeComponent();
+
+            // The whole-library load is far too expensive to repeat on every
+            // B-back from a song's album page. This makes Songs the second
+            // navigation-cached page after Search, and inherits Search's
+            // documented trade-off: starred markers on kept rows can lag
+            // until the page is reloaded.
+            NavigationCacheMode = NavigationCacheMode.Required;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
             _cts = new CancellationTokenSource();
+
+            // Cached instance coming back from a detail page: the library and
+            // the chosen sort are still here, so there is nothing to reload.
+            if (_fullyLoaded)
+            {
+                ContentFocus.MoveInto(SongsList);
+                return;
+            }
+
             _ = LoadAsync(_cts.Token);
         }
 
@@ -103,29 +140,50 @@ namespace BoxSubMusic.App
                 return;
             }
 
-            // A fresh source per (re)load: Retry after any failure starts
-            // over from page one, so the collection can never hold a gap.
-            var source = new IncrementalSource<SongRow>(FetchPageAsync);
-            source.LoadFailed += Songs_LoadFailed;
-            _songs = source;
+            // Fresh state per (re)load: Retry after any failure starts over
+            // from page one, so the library can never hold a gap — and a gap
+            // would be invisible once sorted.
+            _fullyLoaded = false;
+            _sort = SongSort.DefaultOrder;
+            _allRows = new List<SongRow>();
+            _view = new ObservableCollection<SongRow>();
+            SongsList.ItemsSource = _view;
+            ApplySortSelection(SongSort.DefaultOrder);
+            SetLibraryActionsEnabled(false);
 
             try
             {
-                int loaded = await source.LoadFirstPageAsync(cancellationToken);
+                // Page one decides the view state; the rest streams in behind
+                // it so the user is not staring at a ring while a large
+                // library downloads.
+                int first = await LoadPageAsync(0, cancellationToken);
                 if (cancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
 
-                SongsList.ItemsSource = source;
-                if (loaded == 0)
+                if (first == 0)
                 {
                     ShowEmpty();
+                    return;
                 }
-                else
+
+                ShowContent();
+
+                // A short page means the server has nothing left — the same
+                // end-of-list signal IncrementalSource uses.
+                int lastPage = first;
+                while (lastPage == LoadPageSize)
                 {
-                    ShowContent();
+                    lastPage = await LoadPageAsync(_allRows.Count, cancellationToken);
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
                 }
+
+                _fullyLoaded = true;
+                SetLibraryActionsEnabled(true);
             }
             catch (OperationCanceledException)
             {
@@ -135,13 +193,24 @@ namespace BoxSubMusic.App
             {
                 if (!cancellationToken.IsCancellationRequested)
                 {
-                    ShowConnectError(ex.Message);
+                    // A later page failing is fatal here in a way it was not
+                    // under scroll-driven paging: sorting and Play All promise
+                    // the whole library, and a silently truncated one would
+                    // break that promise invisibly. Surface the page-level
+                    // error with Retry, which reloads from the top (§3).
+                    ShowConnectError(_allRows.Count == 0
+                        ? ex.Message
+                        : "Couldn't load the rest of the library. " + ex.Message);
                 }
             }
         }
 
-        private static async Task<IReadOnlyList<SongRow>> FetchPageAsync(
-            int offset, int size, CancellationToken cancellationToken)
+        /// <summary>
+        /// Fetches one page into <see cref="_allRows"/> and, while the default
+        /// order is showing, straight into the bound view. Returns the number
+        /// of rows added.
+        /// </summary>
+        private async Task<int> LoadPageAsync(int offset, CancellationToken cancellationToken)
         {
             var client = AppSession.Client;
             if (client == null)
@@ -149,8 +218,24 @@ namespace BoxSubMusic.App
                 throw new SubsonicConnectionException("You are not signed in to a server.");
             }
 
-            IReadOnlyList<Song> page = await client.GetSongsAsync(size, offset, cancellationToken);
-            return page.Select(ToRow).ToList();
+            IReadOnlyList<Song> page = await client.GetSongsAsync(
+                LoadPageSize, offset, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return 0;
+            }
+
+            foreach (Song song in page)
+            {
+                var row = ToRow(song);
+                _allRows.Add(row);
+
+                // Safe to append blind: the sort controls stay disabled until
+                // the load finishes, so the view is still in server order.
+                _view.Add(row);
+            }
+
+            return page.Count;
         }
 
         private static SongRow ToRow(Song song)
@@ -176,21 +261,126 @@ namespace BoxSubMusic.App
                 : duration.ToString("m\\:ss", CultureInfo.InvariantCulture);
         }
 
-        private void Songs_LoadFailed(object sender, Exception ex)
+        // --- Sorting (2026-07-26, §7.3) --------------------------------------
+
+        private void SortItem_Click(object sender, RoutedEventArgs e)
         {
-            // A later page failed mid-scroll. Surface the same page-level
-            // error with Retry (which reloads from the top) rather than
-            // failing silently (§3). Losing the scroll position is a known
-            // v1 trade-off.
-            if (!ReferenceEquals(sender, _songs))
+            // Identify the sort by the item itself rather than parsing a Tag:
+            // no reflection, and the compiler catches a renamed item.
+            SongSort sort;
+            if (ReferenceEquals(sender, SortTitleItem))
+            {
+                sort = SongSort.Title;
+            }
+            else if (ReferenceEquals(sender, SortArtistItem))
+            {
+                sort = SongSort.Artist;
+            }
+            else if (ReferenceEquals(sender, SortAlbumItem))
+            {
+                sort = SongSort.Album;
+            }
+            else if (ReferenceEquals(sender, SortDateAddedItem))
+            {
+                sort = SongSort.DateAdded;
+            }
+            else
+            {
+                sort = SongSort.DefaultOrder;
+            }
+
+            ApplySort(sort);
+        }
+
+        private void ApplySort(SongSort sort)
+        {
+            _sort = sort;
+            ApplySortSelection(sort);
+
+            if (_allRows == null)
             {
                 return;
             }
 
-            ShowConnectError("Couldn't load more songs. " + ex.Message);
+            // Rebind a freshly built collection rather than clearing and
+            // refilling the existing one: a library-sized ObservableCollection
+            // would raise one CollectionChanged per row.
+            _view = new ObservableCollection<SongRow>(
+                SongSorter.Sort(_allRows, r => r.Song, sort));
+            SongsList.ItemsSource = _view;
+
+            // Focus is deliberately left alone: it was on the flyout item, so
+            // closing the menu returns it to the Sort button, which is where a
+            // user trying another sort wants it. Rebinding also scrolls the
+            // list back to the top, so Down lands on the new first row.
+        }
+
+        /// <summary>
+        /// Mirrors the chosen sort onto the menu (the items are independent
+        /// toggles, so mutual exclusion is applied here) and the button label.
+        /// </summary>
+        private void ApplySortSelection(SongSort sort)
+        {
+            SortDefaultItem.IsChecked = sort == SongSort.DefaultOrder;
+            SortTitleItem.IsChecked = sort == SongSort.Title;
+            SortArtistItem.IsChecked = sort == SongSort.Artist;
+            SortAlbumItem.IsChecked = sort == SongSort.Album;
+            SortDateAddedItem.IsChecked = sort == SongSort.DateAdded;
+            SortLabel.Text = SongSorter.Label(sort);
+        }
+
+        /// <summary>
+        /// Sort, Play All and Shuffle All all speak for the whole library, so
+        /// they stay disabled — with the reason on screen — until every page
+        /// is loaded (§15: degrade visibly, never silently).
+        /// </summary>
+        private void SetLibraryActionsEnabled(bool enabled)
+        {
+            SortButton.IsEnabled = enabled;
+            PlayAllButton.IsEnabled = enabled;
+            ShuffleAllButton.IsEnabled = enabled;
+            LoadingAllText.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
+
+            // A server that omits `created` cannot order by it; offering the
+            // option would silently sort by nothing (§3).
+            if (enabled)
+            {
+                SortDateAddedItem.IsEnabled =
+                    _allRows != null && _allRows.Any(r => r.Song.Created.HasValue);
+            }
         }
 
         // --- Playback (decision 2026-07-13, live since Slice 10) --------------
+
+        private void PlayAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            PlayLibrary(shuffle: false);
+        }
+
+        private void ShuffleAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            PlayLibrary(shuffle: true);
+        }
+
+        /// <summary>
+        /// §10 Play semantics for the whole library: replace the queue with
+        /// every song in the current sort order (Shuffle randomizes the pool
+        /// including the first track, §8).
+        /// </summary>
+        private void PlayLibrary(bool shuffle)
+        {
+            var view = _view;
+            if (view == null || view.Count == 0)
+            {
+                return;
+            }
+
+            PlaybackService.Instance.Play(
+                view.Select(r => r.Song).ToList(),
+                startIndex: 0,
+                shuffle: shuffle,
+                context: new QueueContext("Songs", null));
+        }
 
         private void SongsList_ItemClick(object sender, ItemClickEventArgs e)
         {
@@ -233,14 +423,16 @@ namespace BoxSubMusic.App
 
         private void StartPlayback(SongRow row)
         {
-            var source = _songs;
+            var source = _view;
             if (source == null)
             {
                 return;
             }
 
-            // Queue = every row loaded so far, positioned at the chosen song
-            // (§16 decision 2026-07-15). No further pages are pulled in.
+            // Queue = the rows as shown, positioned at the chosen song, so it
+            // follows the current sort. Once the library is fully loaded that
+            // is every song — the "rows loaded so far" limit of the 2026-07-15
+            // decision now only applies while the load is still running.
             var songs = new List<Song>(source.Count);
             int startIndex = -1;
             foreach (SongRow loaded in source)
@@ -345,6 +537,9 @@ namespace BoxSubMusic.App
             EmptyText.Visibility = Visibility.Visible;
             ConnectErrorPanel.Visibility = Visibility.Collapsed;
             SongsPanel.Visibility = Visibility.Collapsed;
+
+            // Nothing left to load; the disabled actions speak for themselves.
+            LoadingAllText.Visibility = Visibility.Collapsed;
         }
 
         private void ShowContent()
@@ -355,7 +550,10 @@ namespace BoxSubMusic.App
             SongsPanel.Visibility = Visibility.Visible;
 
             // Focus convention: loaded content owns focus (see ContentFocus).
-            ContentFocus.MoveInto(this);
+            // Target the list, not the page — otherwise first focus would land
+            // on the Sort button, where the browse pages deliberately put the
+            // first card instead of the view toggle (§16 2026-07-19).
+            ContentFocus.MoveInto(SongsList);
         }
 
         private void ShowConnectError(string message)
@@ -377,6 +575,7 @@ namespace BoxSubMusic.App
             SongsPanel.Visibility = Visibility.Collapsed;
             ConnectErrorPanel.Visibility = Visibility.Visible;
             ConnectErrorText.Text = message;
+            LoadingAllText.Visibility = Visibility.Collapsed;
             ConnectRetryButton.Visibility = retryable ? Visibility.Visible : Visibility.Collapsed;
 
             if (retryable)

@@ -81,6 +81,11 @@ Pass if:
 Pass if:
 - Songs view is list-only.
 - Columns include title, artist, album, length, format, bitrate.
+- A sort control offers Default Order, Title, Artist, Album, and Date Added, and the chosen sort is shown on the control.
+- Default Order reproduces the server's own order.
+- Play All replaces the queue with the whole library in the current sort order; Shuffle All replaces it with the whole library randomized.
+- While the library is still loading, the sort control and both library actions are disabled with a visible reason, and rows already loaded remain playable.
+- Date Added is unavailable (not silently meaningless) on a server that omits `created`.
 
 ### Playlists
 Pass if:
@@ -92,6 +97,7 @@ Pass if:
 ### Fail if:
 - Grid/list toggle is hidden in a submenu.
 - Songs view omits required metadata columns.
+- A Songs sort or Play All / Shuffle All acts on only part of the library while presenting itself as covering all of it.
 - Playlist artwork depends on a nonexistent server endpoint.
 
 ## 6. Artist detail
