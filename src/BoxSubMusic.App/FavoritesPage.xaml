@@ -1,0 +1,463 @@
+<Page
+    x:Class="BoxSubMusic.App.FavoritesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:BoxSubMusic.App.Models"
+    xmlns:controls="using:BoxSubMusic.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <!-- Favorites (§5 Favorites addition, decision 2026-07-26): everything the
+         user has starred, split into Artists / Albums / Songs tabs. One
+         getStarred2 request fills all three (that endpoint takes no
+         counts/offsets and returns the complete set), so switching tabs is
+         instant and sorting runs client-side over the whole scope rather than
+         over "pages loaded so far" — the one browse-ish view in the app that
+         needs no incremental paging.
+
+         The sort options differ per tab and each tab remembers its own choice,
+         as does the tab selection itself (FavoritesPreferences). Cards and rows
+         reuse the browse visual language (§7.1/§7.2/§7.3) and the standard
+         context menus; song rows play with the Songs-browse queue semantics
+         (§10 replace-not-append), pooled over the sorted favorites list.
+         Servers older than API 1.8 get an explicit unsupported state (§3). -->
+
+    <Page.Resources>
+        <!-- Song row: the §7.3 column set plus the starred marker. The favorite
+             item is the one that differs from other song lists — here it can
+             only ever REMOVE, and a successful removal drops the row out of the
+             list (a favorites list that keeps showing an unfavorited track
+             would be lying about what it is). -->
+        <DataTemplate x:Key="FavoriteSongRowTemplate" x:DataType="models:SongRow">
+            <Grid ColumnSpacing="16" Background="Transparent">
+                <Grid.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem
+                            Text="Play"
+                            Tag="{x:Bind}"
+                            Click="PlaySong_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
+                            Text="Play next"
+                            Tag="{x:Bind}"
+                            Click="PlayNext_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE861;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
+                            Text="Add to queue"
+                            Tag="{x:Bind}"
+                            Click="AddToQueue_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem
+                            Text="Remove from favorites"
+                            Tag="{x:Bind}"
+                            Click="RemoveFavorite_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF47A;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem
+                            Text="Go to album"
+                            Tag="{x:Bind}"
+                            IsEnabled="{x:Bind HasAlbumId}"
+                            Click="GoToAlbum_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE010;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
+                            Text="Go to artist"
+                            Tag="{x:Bind}"
+                            IsEnabled="{x:Bind HasArtistId}"
+                            Click="GoToArtist_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF5BE;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                    </MenuFlyout>
+                </Grid.ContextFlyout>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="180" />
+                    <ColumnDefinition Width="180" />
+                    <ColumnDefinition Width="70" />
+                    <ColumnDefinition Width="70" />
+                    <ColumnDefinition Width="90" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{x:Bind Title}" FontSize="18" TextTrimming="CharacterEllipsis" />
+                <FontIcon
+                    Grid.Column="1"
+                    FontFamily="{StaticResource FluentIconFilledFont}"
+                    Glyph="&#xF47E;"
+                    FontSize="16"
+                    Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                    Visibility="{x:Bind StarredVisibility, Mode=OneWay}"
+                    VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{x:Bind Artist}" FontSize="18" Opacity="0.8" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="3" Text="{x:Bind Album}" FontSize="18" Opacity="0.8" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="4" Text="{x:Bind DurationLabel}" FontSize="18" Opacity="0.7" TextAlignment="Right" />
+                <TextBlock Grid.Column="5" Text="{x:Bind Format}" FontSize="18" Opacity="0.7" />
+                <TextBlock Grid.Column="6" Text="{x:Bind BitRateLabel}" FontSize="18" Opacity="0.7" TextAlignment="Right" />
+            </Grid>
+        </DataTemplate>
+
+        <!-- Artist card, the Artists-browse visual language (§7.1). -->
+        <DataTemplate x:Key="FavoriteArtistCardTemplate" x:DataType="models:ArtistCard">
+            <StackPanel Width="200" Spacing="8">
+                <StackPanel.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem
+                            Text="Play"
+                            Tag="{x:Bind}"
+                            Click="ArtistPlay_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
+                            Text="Play next"
+                            Tag="{x:Bind}"
+                            Click="ArtistPlayNext_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE861;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
+                            Text="Add to queue"
+                            Tag="{x:Bind}"
+                            Click="ArtistAddToQueue_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutSeparator />
+                        <!-- The one menu item unique to this page: removing a
+                             favorite drops the card out of the list. -->
+                        <MenuFlyoutItem
+                            Text="Remove from favorites"
+                            Tag="{x:Bind}"
+                            Click="RemoveArtistFavorite_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF47A;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                    </MenuFlyout>
+                </StackPanel.ContextFlyout>
+                <Grid Width="200" Height="200" CornerRadius="8" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
+                    <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
+                        <FontIcon
+                            FontFamily="{StaticResource FluentIconFont}"
+                            Glyph="&#xF5A9;"
+                            FontSize="64"
+                            Opacity="0.4" />
+                    </Border>
+                    <Image Stretch="UniformToFill">
+                        <Image.Source>
+                            <BitmapImage UriSource="{x:Bind ArtworkUri}" DecodePixelWidth="400" />
+                        </Image.Source>
+                    </Image>
+                </Grid>
+                <TextBlock Text="{x:Bind Name}" FontSize="20" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{x:Bind AlbumCountLabel}" FontSize="16" Opacity="0.7" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- Album card, the Albums-browse visual language (§7.2). -->
+        <DataTemplate x:Key="FavoriteAlbumCardTemplate" x:DataType="models:AlbumCard">
+            <StackPanel Width="200" Spacing="8">
+                <StackPanel.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem
+                            Text="Play"
+                            Tag="{x:Bind}"
+                            Click="AlbumPlay_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
+                            Text="Play next"
+                            Tag="{x:Bind}"
+                            Click="AlbumPlayNext_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xE861;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
+                            Text="Add to queue"
+                            Tag="{x:Bind}"
+                            Click="AlbumAddToQueue_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF7A8;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem
+                            Text="Remove from favorites"
+                            Tag="{x:Bind}"
+                            Click="RemoveAlbumFavorite_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF47A;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutSeparator />
+                        <!-- Not circular: A on the card opens the ALBUM, so
+                             the artist is a genuinely different destination
+                             (the same reason song rows carry both). -->
+                        <MenuFlyoutItem
+                            Text="Go to artist"
+                            Tag="{x:Bind}"
+                            IsEnabled="{x:Bind HasArtistId}"
+                            Click="AlbumGoToArtist_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF5BE;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                    </MenuFlyout>
+                </StackPanel.ContextFlyout>
+                <Grid Width="200" Height="200" CornerRadius="8" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
+                    <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
+                        <controls:VinylDisc Margin="22" />
+                    </Border>
+                    <Image Stretch="UniformToFill">
+                        <Image.Source>
+                            <BitmapImage UriSource="{x:Bind ArtworkUri}" DecodePixelWidth="400" />
+                        </Image.Source>
+                    </Image>
+                </Grid>
+                <TextBlock Text="{x:Bind Name}" FontSize="20" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{x:Bind Artist}" FontSize="16" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid Padding="48,36,48,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,20" Spacing="4">
+            <TextBlock
+                Text="Favorites"
+                FontSize="48"
+                FontWeight="SemiBold" />
+            <controls:RetroStripes Width="150" HorizontalAlignment="Left" Margin="0,8,0,0" />
+        </StackPanel>
+
+        <!-- Tab row + sort. The tabs are the Search page's segmented
+             ToggleButtons (exclusivity managed in code — a RadioButton group
+             would read as a settings choice, not a view switch). Sort is a
+             button opening a MenuFlyout of ToggleMenuFlyoutItems: the option
+             set changes per tab, so a fixed inline row would either be wrong
+             for two tabs out of three or five items wide. MenuFlyout is the
+             console-verified flyout in this app (the row/card context menus),
+             and its checkmark column reads as the current choice at 10 ft. -->
+        <Grid Grid.Row="1" Margin="0,0,0,16">
+            <StackPanel
+                x:Name="TabPanel"
+                Orientation="Horizontal"
+                Spacing="8"
+                HorizontalAlignment="Left">
+                <ToggleButton x:Name="ArtistsTabButton" Content="Artists" FontSize="18" Padding="24,6" Click="Tab_Click" />
+                <ToggleButton x:Name="AlbumsTabButton" Content="Albums" FontSize="18" Padding="24,6" Click="Tab_Click" />
+                <ToggleButton x:Name="SongsTabButton" Content="Songs" FontSize="18" Padding="24,6" Click="Tab_Click" />
+            </StackPanel>
+
+            <!-- Sort + the whole-scope actions, right-aligned. Play All /
+                 Shuffle All are the §10 replace-the-queue actions over the
+                 ACTIVE TAB's contents in its current sort order — for Artists
+                 and Albums that means fetching each container's songs on
+                 demand, so the pair disables itself and shows the ring while
+                 it works (a favorites library of many artists is a real wait,
+                 and a dead-looking button would read as broken). -->
+            <StackPanel
+                Orientation="Horizontal"
+                Spacing="12"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center">
+                <Button
+                    x:Name="SortButton"
+                    VerticalAlignment="Center"
+                    Padding="20,6"
+                    FontSize="18">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF18B;" FontSize="18" VerticalAlignment="Center" />
+                        <TextBlock x:Name="SortLabel" FontSize="18" VerticalAlignment="Center" />
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF2A4;" FontSize="14" VerticalAlignment="Center" Opacity="0.7" />
+                    </StackPanel>
+                    <!-- The flyout is built in code (RebuildSortMenu): its items
+                         differ per tab, so there is nothing static to declare. -->
+                </Button>
+
+                <ProgressRing
+                    x:Name="ActionRing"
+                    IsActive="False"
+                    Width="24"
+                    Height="24"
+                    VerticalAlignment="Center" />
+
+                <Button
+                    x:Name="PlayAllButton"
+                    Style="{StaticResource RetroPrimaryButtonStyle}"
+                    Padding="24,8"
+                    VerticalAlignment="Center"
+                    Click="PlayAllButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" FontSize="18" />
+                        <TextBlock Text="Play All" FontSize="18" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button
+                    x:Name="ShuffleAllButton"
+                    Style="{StaticResource RetroTonalButtonStyle}"
+                    Padding="24,8"
+                    VerticalAlignment="Center"
+                    Click="ShuffleAllButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xEF37;" FontSize="18" />
+                        <TextBlock Text="Shuffle All" FontSize="18" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Content states share row 2; only one is visible at a time. -->
+        <Grid Grid.Row="2">
+            <ProgressRing
+                x:Name="LoadingRing"
+                IsActive="False"
+                Width="48"
+                Height="48"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+
+            <TextBlock
+                x:Name="EmptyText"
+                Visibility="Collapsed"
+                FontSize="24"
+                Opacity="0.7"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                TextWrapping="Wrap"
+                MaxWidth="820"
+                TextAlignment="Center" />
+
+            <StackPanel
+                x:Name="ConnectErrorPanel"
+                Visibility="Collapsed"
+                Spacing="16"
+                MaxWidth="820"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+                <TextBlock
+                    x:Name="ConnectErrorText"
+                    FontSize="22"
+                    TextWrapping="Wrap"
+                    HorizontalAlignment="Center"
+                    TextAlignment="Center" />
+                <Button
+                    x:Name="ConnectRetryButton"
+                    Content="Retry"
+                    FontSize="20"
+                    Padding="40,10"
+                    HorizontalAlignment="Center"
+                    Click="ConnectRetryButton_Click" />
+            </StackPanel>
+
+            <GridView
+                x:Name="ArtistsGrid"
+                XYFocusUp="{x:Bind ArtistsTabButton}"
+                Visibility="Collapsed"
+                SelectionMode="None"
+                IsItemClickEnabled="True"
+                ItemClick="Artist_ItemClick"
+                ContextRequested="List_ContextRequested"
+                ItemTemplate="{StaticResource FavoriteArtistCardTemplate}"
+                Padding="0,0,0,24">
+                <GridView.ItemContainerStyle>
+                    <Style TargetType="GridViewItem">
+                        <Setter Property="Margin" Value="0,0,20,20" />
+                        <Setter Property="Padding" Value="0" />
+                    </Style>
+                </GridView.ItemContainerStyle>
+            </GridView>
+
+            <GridView
+                x:Name="AlbumsGrid"
+                XYFocusUp="{x:Bind AlbumsTabButton}"
+                Visibility="Collapsed"
+                SelectionMode="None"
+                IsItemClickEnabled="True"
+                ItemClick="Album_ItemClick"
+                ContextRequested="List_ContextRequested"
+                ItemTemplate="{StaticResource FavoriteAlbumCardTemplate}"
+                Padding="0,0,0,24">
+                <GridView.ItemContainerStyle>
+                    <Style TargetType="GridViewItem">
+                        <Setter Property="Margin" Value="0,0,20,20" />
+                        <Setter Property="Padding" Value="0" />
+                    </Style>
+                </GridView.ItemContainerStyle>
+            </GridView>
+
+            <Grid x:Name="SongsPanel" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Column headers, mirroring the row template's grid; the
+                     28-epx column after Title is the starred marker. -->
+                <Grid Grid.Row="0" ColumnSpacing="16" Padding="12,0,12,10" Opacity="0.6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="90" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Title" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="2" Text="Artist" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="3" Text="Album" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="4" Text="Length" FontSize="16" FontWeight="SemiBold" TextAlignment="Right" />
+                    <TextBlock Grid.Column="5" Text="Format" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="6" Text="Bitrate" FontSize="16" FontWeight="SemiBold" TextAlignment="Right" />
+                </Grid>
+
+                <ListView
+                    x:Name="SongsList"
+                    Grid.Row="1"
+                    XYFocusUp="{x:Bind SongsTabButton}"
+                    SelectionMode="None"
+                    IsItemClickEnabled="True"
+                    ItemClick="SongsList_ItemClick"
+                    ContextRequested="List_ContextRequested"
+                    ItemTemplate="{StaticResource FavoriteSongRowTemplate}">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="Padding" Value="12,10" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                </ListView>
+            </Grid>
+        </Grid>
+    </Grid>
+</Page>

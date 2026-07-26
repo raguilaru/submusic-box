@@ -60,11 +60,16 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   4. Albums
   5. Songs
   6. Playlists
-  7. Settings
-  8. Account / server info at the bottom area
+  7. Favorites
+  8. Settings
+  9. Account / server info at the bottom area
 - Search filters MUST appear in the main content area once search is active, not in the left nav.
 - Search and Home MUST always remain visible and MUST NOT be hideable.
 - Artists, Albums, and Playlists MUST each be independently hideable from Settings.
+- Favorites (added 2026-07-26, §16) sits last of the library sections, after
+  the browse destinations it draws from. It is not hideable: the three
+  hideable sections are exactly those §12 names, and Favorites is reachable
+  content that no other section duplicates.
 
 ## 6. Home View
 
@@ -125,6 +130,43 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   - a composite of up to 4 distinct album covers when multiple albums exist
   - a single cover when all playlist tracks share one album
 - This artwork composition is a client responsibility and MUST NOT depend on a nonexistent Subsonic API endpoint.
+
+### 7.5 Favorites (added 2026-07-26)
+
+- The Favorites view MUST show everything the signed-in user has starred,
+  split into three tabs: Artists, Albums, and Songs.
+- Data MUST come from `getStarred2` (the ID3 variant, matching the world of
+  getArtists/getAlbumList2). The endpoint takes no counts or offsets and
+  returns the complete favorites set, so this view has no incremental paging.
+- The view MUST degrade explicitly (§3) on servers older than API 1.8, which
+  is where getStarred2 was introduced.
+- Artists and Albums MUST render with the browse-view card language
+  (§7.1/§7.2); Songs MUST render with the §7.3 column set.
+- The selected tab MUST persist locally across navigations and app restarts.
+- Each tab MUST offer sort options appropriate to its content, and each tab's
+  chosen sort MUST persist independently:
+  - Artists: Alphabetical (default), Most Albums
+  - Albums: Year (default), Alphabetical
+  - Songs: Default Order (default, the server's own ordering), Title, Artist,
+    Album, Date Added
+- Sorting MUST reorder the whole scope, not a partially loaded prefix of it.
+- Selecting a song MUST replace the queue with the favorite songs in their
+  current sort order, positioned at that song (§10 replace-not-append, the
+  §7.3 row semantics).
+- The view MUST provide **Play All** and **Shuffle All** actions covering the
+  whole active tab in its current sort order (§10 replace-not-append; Shuffle
+  randomizes the entire pool including the first track, per §8). On the
+  Artists and Albums tabs this requires fetching each container's songs, which
+  MUST be bounded-parallel (§16 2026-07-19) and MUST show progress and disable
+  the actions while it runs rather than appearing inert.
+- Every result MUST carry a context menu appropriate to its kind:
+  - songs: Play, Play next, Add to queue, Remove from favorites, Go to album,
+    Go to artist
+  - albums: Play, Play next, Add to queue, Remove from favorites, Go to artist
+  - artists: Play, Play next, Add to queue, Remove from favorites
+- Removing an item from favorites here MUST remove it from the list — a
+  favorites list showing an unfavorited item would contradict its own premise.
+- Each tab MUST have its own explicit empty state naming that scope.
 
 ## 8. Artist Detail View
 
@@ -666,6 +708,69 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   the min(50 %, 4 min) scrobble threshold submits the play, as the
   threshold is a position check, not a listened-time accumulator
   (telemetry-class, consistent with the silent-scrobbling decision).
+
+- 2026-07-26: **Favorites section** (§5/§7.5; Rafael's request, sort
+  options taken from a supplied reference screenshot). A new left-nav
+  destination showing the starred library, with Artists/Albums/Songs tabs.
+  (a) **Data: `getStarred2`** — the ID3 variant, so its artist/album entries
+  are the same shapes the browse grids already render. It accepts no
+  count/offset parameters and answers with the complete favorites set in one
+  request, which is why this is the only browse-ish view with **no
+  incremental paging**: one fetch fills all three tabs, tab switching costs
+  no request, and sorting reorders the entire scope rather than "pages
+  loaded so far" (contrast the §16 2026-07-15 Songs-row caveat). API 1.8
+  gate with an explicit unsupported state (§3), same as search3.
+  (b) **Tabs are segmented ToggleButtons** in the content area (the Slice 13
+  scope-filter pattern), Artists first and default.
+  (c) **Sort is a button + MenuFlyout of ToggleMenuFlyoutItems**, generated
+  per tab because the option sets differ (2/2/5 entries): a fixed inline row
+  would be wrong for two tabs out of three. MenuFlyout is the app's
+  console-verified flyout (the row/card context menus) and its checkmark
+  column reads as the current choice at 10 ft; the button's label always
+  names the active sort, so the order is readable without opening the menu.
+  Per-tab option sets and defaults are listed in §7.5. Album **Year** is
+  newest-first with undated albums last; song **Date Added** is the file's
+  library-added date descending — deliberately the `created` timestamp, not
+  the `starred` one, so it stays distinct from Default Order (servers
+  commonly return favorites most-recently-starred first). This required
+  adding an optional `Created` to the `Song` model.
+  (d) **Tab AND per-tab sort persist** in LocalSettings
+  (`FavoritesPreferences`). Rafael asked for the tab; the sort follows,
+  because a remembered tab with a forgotten sort would be incoherent.
+  (e) **Removing a favorite drops the row** from the list (after the server
+  accepts — the standard change-only-after-success rule), unlike every other
+  song list, which repaints the heart in place. There the row still belongs
+  in the list; here the list *is* the favorites set.
+  (f) Song rows play with the §7.3/§10 semantics (replace the queue with the
+  sorted favorites, positioned at the row) and carry the standard context
+  menu; artist/album cards carry the container Play / queue-edit menu.
+- 2026-07-26 (follow-up, same round): **Play All / Shuffle All + fuller
+  result menus on Favorites** (§7.5; Rafael's request).
+  (a) **Play All / Shuffle All act on the ACTIVE TAB**, in its current sort
+  order — §10 replace-the-queue, and Shuffle randomizes the whole pool
+  including the first track (§8). Songs is instant (the tracks are already
+  loaded); Albums costs one getAlbum per favorite album; Artists costs a
+  getArtist per artist *plus* a getAlbum per album of every one of them.
+  Rather than nesting two bounded fan-outs — whose limits would multiply —
+  the artist path fetches all artist details bounded, flattens every album
+  across all artists into one list, and fetches those at the SAME single
+  bound of 4 (`QueueActions.MaxParallelFetches`). Order survives end to end:
+  artists in the tab's sort order, each artist's albums oldest-first (§8),
+  each album's songs disc/track. **Accepted trade-off:** Play All on a large
+  Artists tab is a genuinely long operation, so the actions disable
+  themselves behind a progress ring while it runs (a dead-looking button
+  would read as broken) and the sort button disables too — reordering
+  mid-build would make the queue that lands disagree with the screen. The
+  built pool belongs to the tab the button was pressed on, so switching tabs
+  mid-build still plays what was asked for.
+  (b) **Result context menus are filled out**: artist cards and album cards
+  gain "Remove from favorites", and album cards gain "Go to artist" (not
+  circular — A on the card opens the ALBUM, the same reason song rows carry
+  both navigation items). Removal now behaves identically on all three tabs:
+  the item leaves the list once the server accepts. Deliberately NOT added:
+  a per-card "Shuffle" — no card menu anywhere in the app has one, and
+  introducing it on this page alone would be an inconsistency; it is an
+  app-wide change if wanted.
 
 ## 17. Open Decisions / TODO
 

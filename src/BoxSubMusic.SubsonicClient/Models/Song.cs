@@ -24,7 +24,8 @@ public sealed class Song
         string? format,
         int? bitRate,
         string? contentType,
-        bool isStarred)
+        bool isStarred,
+        DateTimeOffset? created = null)
     {
         Id = id ?? throw new ArgumentNullException(nameof(id));
         Title = title ?? throw new ArgumentNullException(nameof(title));
@@ -41,6 +42,7 @@ public sealed class Song
         BitRate = bitRate;
         ContentType = contentType;
         IsStarred = isStarred;
+        Created = created;
     }
 
     public string Id { get; }
@@ -70,6 +72,14 @@ public sealed class Song
     public int? BitRate { get; }
 
     public string? ContentType { get; }
+
+    /// <summary>
+    /// When the file was added to the library (the <c>created</c> attribute);
+    /// null when the server omits it. Optional because only the Favorites
+    /// view's "Date Added" sort needs it — every other construction site
+    /// predates it and leaves it unset.
+    /// </summary>
+    public DateTimeOffset? Created { get; }
 
     /// <summary>
     /// Favorite flag: a <c>starred</c> timestamp is present only on

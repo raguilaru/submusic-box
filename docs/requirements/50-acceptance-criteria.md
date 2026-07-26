@@ -89,10 +89,38 @@ Pass if:
 - Playlist artwork is generated client-side from constituent album art.
 - Single-album playlists collapse to a single-cover representation.
 
+### Favorites (§7.5)
+Pass if:
+- The Favorites nav item opens a view with Artists, Albums and Songs tabs.
+- Each tab lists the starred items of that scope, using the browse card
+  language (artists/albums) and the §7.3 columns (songs).
+- The last selected tab is restored on return and after an app restart.
+- The sort options offered change with the tab, and each tab's chosen sort is
+  restored independently.
+- Changing the sort reorders the whole scope immediately, with no refetch.
+- Selecting a song replaces the queue with the favorite songs in their current
+  sort order, positioned at that song.
+- Play All replaces the queue with the whole active tab in its current sort
+  order; Shuffle All does the same with the pool randomized.
+- While Play All / Shuffle All is gathering songs on the Artists or Albums
+  tab, both actions and the sort control are disabled and progress is visible.
+- Every result carries a context menu with at least Play, Play next, Add to
+  queue and Remove from favorites; songs additionally offer Go to album and
+  Go to artist, albums offer Go to artist.
+- Removing any item from favorites removes it from the list.
+- Each scope with no favorites shows its own explicit empty state.
+- A server older than API 1.8 shows an explicit unsupported state, not an
+  empty or broken list.
+
 ### Fail if:
 - Grid/list toggle is hidden in a submenu.
 - Songs view omits required metadata columns.
 - Playlist artwork depends on a nonexistent server endpoint.
+- Favorites sorts only the visible or partially loaded portion of a scope.
+- A tab or sort choice is forgotten between visits.
+- An item stays in the Favorites list after being unfavorited there.
+- Play All / Shuffle All covers only part of the active tab, or appears inert
+  while it is gathering songs.
 
 ## 6. Artist detail
 
