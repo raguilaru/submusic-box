@@ -100,6 +100,8 @@ Pass if:
 - Alternate list view exists.
 - Playlist artwork is generated client-side from constituent album art.
 - Single-album playlists collapse to a single-cover representation.
+- List rows show owner, the playlist's description when it has one, track count
+  and total play time, and no starred marker.
 
 ### Favorites (§7.5)
 Pass if:

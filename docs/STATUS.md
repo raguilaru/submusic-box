@@ -56,8 +56,10 @@ planned slice. Since then, refinement rounds have landed on top:
   cost one request per row, so they moved to artist detail); artist detail's
   counts line gained total play time + the albums' year span and album detail
   gained genre; the "Artist" sort option's mic glyph became the person glyph
-  in both sort menus. Duration wording moved to Core `Browsing/DurationText`
-  (+7 tests). Not yet device-verified (backlog items 38–42).
+  in both sort menus. Playlists list rows carry owner + the playlist's own
+  description and tracks · total play time (no starred marker — playlists have
+  no favorite state). Duration wording moved to Core `Browsing/DurationText`
+  (+7 tests). Not yet device-verified (backlog items 38–43).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -309,6 +311,12 @@ code-complete-but-not-yet-device-verified rounds.
     the server had the data), and album detail's header shows genre between the
     year and the song count. Sanity-check one artist's total against its albums
     and confirm the line doesn't wrap awkwardly for a prolific artist.
+43. **Playlists list rows:** each row shows the composite artwork, the name,
+    "by \<owner\>" (plus the playlist's description when it has one) and
+    "N tracks · H hr M min" on the right. Confirm the description doesn't push
+    the name off the row on a long one (both trim), that a playlist with no
+    description shows just the owner, and that no starred marker appears
+    (playlists have no favorite state by design).
 
 *(Future work: append console items here.)*
 
@@ -438,6 +446,20 @@ revisiting the reasoning (many encode a hard-won console lesson).
   totals live on the artist detail page, where the albums are already loaded.
   Albums rows look richer only because getAlbumList2 happens to return
   year/genre/songCount/duration for free.
+  Measured on Navidrome 0.63.2 (2026-07-27): a warm getArtist is ~16–20 ms on
+  LAN, so per-row totals are ~2.5 s for 500 artists on LAN but ~19 s at a
+  150 ms RTT — the off-LAN case is what kills it. **If those totals are ever
+  wanted here, don't add the per-row fetch:** sum getAlbumList2 pages by
+  `artistId` instead (every album carries artistId + songCount + duration), which
+  costs ceil(albums / 500) requests regardless of artist count and reuses the
+  paging the Albums page already does. The sums would be album-artist sums —
+  the same grouping getArtists indexes by, so consistent with the albumCount
+  beside them — and rows would show instantly with the totals filling in behind.
+- **Playlist rows show owner + description, and never a heart** (§7.4,
+  2026-07-27): star/unstar has no playlist form, so an empty heart column would
+  imply a favorite state that does not exist. `created`/`changed` stay unparsed
+  in the client — a "last updated" caption was judged weak information for a
+  read-only browse list, not an oversight.
 - **Songs order is server-defined by default** (search3 has no server-side
   sort); the Title/Artist/Album/Date Added options reorder client-side
   (§16 2026-07-26). Column widths are a first guess pending the 10-ft check.

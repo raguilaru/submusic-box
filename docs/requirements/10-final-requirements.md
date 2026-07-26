@@ -136,6 +136,7 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   - a composite of up to 4 distinct album covers when multiple albums exist
   - a single cover when all playlist tracks share one album
 - This artwork composition is a client responsibility and MUST NOT depend on a nonexistent Subsonic API endpoint.
+- List rows SHOULD carry the metadata the playlist listing already provides — owner, the playlist's own description, track count and total play time (added 2026-07-27, §16) — omitting any part the server did not send (§3). Playlists have no favorite state anywhere in the app (star/unstar has no playlist form), so their rows carry no starred marker.
 
 ### 7.5 Favorites (added 2026-07-26)
 
@@ -870,6 +871,28 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   that declare the five song orderings (the Songs view and the Favorites
   Songs tab), which stay in step by rule. The Favorites Albums tab has no
   artist-related ordering, so nothing there changed.
+- 2026-07-27 (follow-up, same round): **Playlist list rows join the pattern**
+  (§7.4; Rafael's request). getPlaylists already returns `owner`, `comment`,
+  `songCount` and `duration`, so the row shows owner + the playlist's own
+  description on its second line and track count + total play time on the
+  right — same three/four-column geometry as the Albums and Artists rows, no
+  extra request. The description earns its place because it is the one field
+  that says what a playlist is FOR; nothing else in the app surfaces it. No
+  starred column: star/unstar has no playlist form (2026-07-17), so playlists
+  have no favorite state to show. `changed`/`created` are deliberately NOT
+  shown — the client does not parse them today, and "updated 3 weeks ago" is
+  weak information on a read-only browse list; adding them would mean
+  extending the client's Playlist model for a caption.
+  **Artist row totals were measured and rejected in this form** (§7.1): against
+  Navidrome 0.63.2, getArtists returns `albumCount` and `starred` and no
+  song/duration totals, so per-row totals mean one getArtist per visible row
+  (~16–20 ms each warm on LAN, but N requests and RTT-bound off-LAN). If those
+  totals are ever wanted on the browse list, the cheap route is summing
+  getAlbumList2 pages by `artistId` — every album carries `artistId`,
+  `songCount` and `duration`, so the cost is ceil(albums / 500) requests
+  regardless of artist count, and the sums would be album-artist sums (which is
+  the same grouping getArtists itself indexes by). Not implemented: it puts a
+  library-wide pass on a page that is one request today.
 
 ## 17. Open Decisions / TODO
 

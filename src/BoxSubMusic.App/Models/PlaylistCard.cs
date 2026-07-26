@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using BoxSubMusic.Core.Browsing;
 using Windows.UI.Xaml;
 
 namespace BoxSubMusic.App.Models
@@ -29,18 +30,82 @@ namespace BoxSubMusic.App.Models
         private Visibility _singleVisibility = Visibility.Collapsed;
         private Visibility _compositeVisibility = Visibility.Collapsed;
 
-        public PlaylistCard(string id, string name, string subtitle)
+        public PlaylistCard(
+            string id, string name, string subtitle,
+            string owner = null, string comment = null,
+            int songCount = 0, TimeSpan? duration = null)
         {
             Id = id;
             Name = name;
             Subtitle = subtitle;
+            Owner = owner;
+            Comment = comment;
+            SongCount = songCount;
+            Duration = duration;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
         public string Id { get; }
         public string Name { get; }
+
+        /// <summary>The grid tile's one-line caption (the song count).</summary>
         public string Subtitle { get; }
+
+        /// <summary>Playlist owner, as getPlaylists reported it; may be null.</summary>
+        public string Owner { get; }
+
+        /// <summary>The playlist's own description, when it has one.</summary>
+        public string Comment { get; }
+
+        /// <summary>Track count from getPlaylists' <c>songCount</c>.</summary>
+        public int SongCount { get; }
+
+        /// <summary>Total play time from getPlaylists' <c>duration</c>.</summary>
+        public TimeSpan? Duration { get; }
+
+        /// <summary>
+        /// The list row's second line (§7.4, 2026-07-27): who owns the playlist
+        /// and, when it has one, its own description — the part that says what
+        /// the playlist is FOR, which no other field carries. Both come from
+        /// getPlaylists, so the richer row costs no extra request.
+        /// </summary>
+        public string OwnerLabel
+        {
+            get
+            {
+                string owner = string.IsNullOrWhiteSpace(Owner) ? null : "by " + Owner;
+                string comment = string.IsNullOrWhiteSpace(Comment) ? null : Comment;
+                if (owner != null && comment != null)
+                {
+                    return owner + "  ·  " + comment;
+                }
+
+                return owner ?? comment ?? string.Empty;
+            }
+        }
+
+        /// <summary>Hides the second line when the server gave neither part.</summary>
+        public Visibility OwnerVisibility
+        {
+            get { return OwnerLabel.Length == 0 ? Visibility.Collapsed : Visibility.Visible; }
+        }
+
+        /// <summary>
+        /// The list row's right-hand line: track count and total play time.
+        /// Play time is dropped when the server sent no duration rather than
+        /// reading as "1 min" for an unknown length (§3).
+        /// </summary>
+        public string MetaLabel
+        {
+            get
+            {
+                string tracks = SongCount == 1 ? "1 track" : SongCount + " tracks";
+                return Duration.HasValue && Duration.Value > TimeSpan.Zero
+                    ? tracks + "  ·  " + DurationText.Total(Duration.Value)
+                    : tracks;
+            }
+        }
 
         /// <summary>Full-tile cover used when the playlist shares one album.</summary>
         public Uri SingleCover { get => _singleCover; private set => Set(ref _singleCover, value); }
