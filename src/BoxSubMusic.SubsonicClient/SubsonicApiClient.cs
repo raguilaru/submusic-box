@@ -607,7 +607,8 @@ public sealed class SubsonicApiClient
             format: SubsonicXml.Attr(element, "suffix"),
             bitRate: SubsonicXml.AttrInt(element, "bitRate"),
             contentType: SubsonicXml.Attr(element, "contentType"),
-            isStarred: SubsonicXml.Attr(element, "starred") != null);
+            isStarred: SubsonicXml.Attr(element, "starred") != null,
+            created: SubsonicXml.AttrDate(element, "created"));
     }
 
     private static Playlist MapPlaylist(XElement element)

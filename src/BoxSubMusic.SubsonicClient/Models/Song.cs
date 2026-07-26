@@ -24,7 +24,8 @@ public sealed class Song
         string? format,
         int? bitRate,
         string? contentType,
-        bool isStarred)
+        bool isStarred,
+        DateTimeOffset? created = null)
     {
         Id = id ?? throw new ArgumentNullException(nameof(id));
         Title = title ?? throw new ArgumentNullException(nameof(title));
@@ -41,6 +42,7 @@ public sealed class Song
         BitRate = bitRate;
         ContentType = contentType;
         IsStarred = isStarred;
+        Created = created;
     }
 
     public string Id { get; }
@@ -78,4 +80,12 @@ public sealed class Song
     /// track change) without refetching.
     /// </summary>
     public bool IsStarred { get; set; }
+
+    /// <summary>
+    /// When the server added the file to its library (the <c>created</c>
+    /// attribute of the Child element). Drives the Songs view's "Date Added"
+    /// sort; null when the server omits it, in which case that sort option
+    /// degrades explicitly rather than silently ordering by nothing (§3).
+    /// </summary>
+    public DateTimeOffset? Created { get; }
 }

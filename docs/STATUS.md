@@ -25,6 +25,12 @@ planned slice. Since then, refinement rounds have landed on top:
 - **Lyrics display** — OpenSubsonic `songLyrics` in the now-playing overlay
   (synced auto-follow + unsynced), capability-gated. Overlay Queue⇄Lyrics tab
   with LB/RB switching (PR #13). Not yet device-verified.
+- **Songs sorting + Play All / Shuffle All** (2026-07-26) — sort options
+  (Default Order / Title / Artist / Album / Date Added) and whole-library
+  Play All / Shuffle All on the Songs view. The API cannot sort songs, so
+  ordering is client-side (`Core/Browsing/SongSorter`) over a now
+  fully-loaded library; see §16 and "Known gaps". Not yet device-verified
+  (backlog items 23–29).
 - **Lyrics seek-to-line** (2026-07-26) — A/Enter on a synced lyric line now
   seeks playback to it (`PlaybackService.SeekTo`), revising §10.1's original
   read-only rule; reading with the D-pad still never moves playback, and
@@ -38,7 +44,7 @@ planned slice. Since then, refinement rounds have landed on top:
 
 **Build/test state:** builds green (x64 Debug over SSH; the `APPX0703` appx
 packaging error is the known command-line-only failure — VS F5 packages fine).
-**76 Core + 75 SubsonicClient tests pass** (9 SubsonicClient live-server tests
+**85 Core + 76 SubsonicClient tests pass** (9 SubsonicClient live-server tests
 skip without `liveserver.local.txt`).
 
 **Git state:** `main` holds v1 (slices 00–14, PR #6) plus the merged refinement
@@ -181,6 +187,34 @@ code-complete-but-not-yet-device-verified rounds.
 22. **Hint copy:** the lyrics-tab footer badge reads **A · Play from line**
     (was "Jump to current line"), legible at 10 ft in both themes.
 
+**Songs sorting + Play All / Shuffle All (2026-07-26, §7.3):**
+
+23. **Whole-library load:** opening Songs shows the first rows quickly, then
+    "Loading all songs…" with Sort / Play All / Shuffle All disabled; when it
+    clears, all three enable. Note how long the tail takes on the real library
+    and whether the app stays responsive (scrolling, playback) throughout —
+    this is the §11 memory/perf check for the new load.
+24. **Each sort is correct and reachable:** the Sort button opens with A, the
+    check mark tracks the current option, the button label updates, and Title /
+    Artist / Album / Date Added visibly reorder the list. Default Order returns
+    to the server's order. After a sort, focus lands back at the top of the list
+    (not stranded in a recycled row).
+25. **Play All / Shuffle All:** both replace the queue and reveal the bar; Play
+    All starts at the first row of the current sort; Shuffle All is randomized.
+    Confirm the queue really holds the whole library (expanded queue is long),
+    not just a page.
+26. **Row play follows the sort:** with a non-default sort active, A on a row
+    starts there and the up-next order matches what's on screen.
+27. **Date Added availability:** the option is enabled against Navidrome (which
+    sends `created`) and orders newest-first. If any test server omits it, the
+    option must be disabled rather than silently doing nothing.
+28. **Navigation cache:** Songs → a song's album (Go to album) → B back returns
+    to the same sorted list, at once, with no reload. Known trade-off to eyeball:
+    a star toggled on the album page won't repaint the kept Songs row.
+29. **Focus/layout at 10 ft:** the three header controls read clearly, Up from
+    the first row reaches Sort (not the nav pane), and LB/RB region jumps still
+    behave with the new header row.
+
 *(Future work: append console items here.)*
 
 ## Known gaps / durable notes
@@ -224,8 +258,21 @@ revisiting the reasoning (many encode a hard-won console lesson).
   before the corrective one (verified fine at checkpoint #5).
 - **Repeat-one + SMTC:** manual next in repeat-one advances; only natural track
   end repeats.
-- **Songs-row / scoped-search queue is "rows loaded so far"** — reaching the end
-  does not fetch further pages (§16 2026-07-15).
+- **Scoped-search queue is "rows loaded so far"** — reaching the end does not
+  fetch further pages (§16 2026-07-15). **Songs no longer works this way**: it
+  loads the whole library up front (see below), so a row's A/Enter queues every
+  song in the current sort order.
+- **Songs loads the entire library into memory** (§16 2026-07-26) — the price of
+  client-side sorting, since the API cannot order songs. 500 rows per request,
+  first page shown immediately and the rest streamed in behind it; sort and
+  Play All / Shuffle All stay disabled with a visible caption until it finishes.
+  Consequences: a large library has a real load tail; the page is
+  **navigation-cached** (the second exception to refetch-on-navigation, after
+  Search) so B-back from an album page doesn't redo it, which means starred
+  markers on kept rows can lag; and a later page failing now drops the whole
+  view to the inline error + Retry rather than just ending the scroll, because
+  a silently truncated library would make the sort and Play All lie.
+  This is the §11 background-memory item to watch on the next console pass.
 - **Queue-edit clones:** a song added twice (or while already queued) is a cloned
   `Song`, so starring one copy repaints only that copy until the next refetch.
   Under shuffle, original-order edits land at the END (un-shuffling shows them
@@ -272,8 +319,9 @@ revisiting the reasoning (many encode a hard-won console lesson).
 
 **Browse / detail:**
 
-- **Songs order is server-defined** (search3 has no client sort); column widths
-  are a first guess pending the 10-ft check.
+- **Songs order is server-defined by default** (search3 has no server-side
+  sort); the Title/Artist/Album/Date Added options reorder client-side
+  (§16 2026-07-26). Column widths are a first guess pending the 10-ft check.
 - **Multi-disc albums render as one flat list** ordered disc→track; no disc
   headers yet.
 - **Playlists are read-only** (browse + detail/playback; no create/edit/delete).
