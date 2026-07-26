@@ -107,11 +107,13 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
 - MUST support grid view by default.
 - MUST support list view as an alternate mode.
 - Grid entries SHOULD show artist artwork when available.
+- List rows SHOULD carry the metadata the artist listing already provides — the album count and the favorite state (added 2026-07-27, §16). An artist's song count and total play time MUST NOT be fetched per row (one request per artist); they belong on the artist detail view (§8).
 
 ### 7.2 Albums
 - MUST support grid view by default.
 - MUST support list view as an alternate mode.
 - Grid entries SHOULD show album artwork.
+- List rows SHOULD carry the metadata the album listing already provides — release year, genre, track count, total play time, and the favorite state (added 2026-07-27, §16) — and MUST omit any part the server did not send rather than showing a zero (§3).
 
 ### 7.3 Songs
 - MUST be list-only.
@@ -181,6 +183,7 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
 - MUST show a toggleable favorite heart.
 - Favorite state MUST be persisted through Subsonic star/unstar behavior.
 - MUST show total album count and song count.
+- SHOULD also show total play time and the span of years the artist's albums cover (added 2026-07-27, §16), both computed from the albums the view already loaded; each MUST be omitted when the server provided no data for it (§3).
 - MUST provide Play and Shuffle actions.
 - Play MUST queue all songs for the artist in oldest-album-first order and replace the current queue.
 - Shuffle MUST queue the same song pool in randomized order and replace the current queue.
@@ -198,6 +201,7 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   - favorite heart
   - song count
   - total duration
+  - genre, when the server tagged one (added 2026-07-27, §16)
 - Play and Shuffle MUST replace the current queue with this album's tracks only.
 - The lower section MUST show the album track list in original disc/track order.
 - The currently playing track MUST be visually highlighted when applicable.
@@ -824,6 +828,48 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   page failing is now fatal to the load (inline error + Retry, reload from
   the top) rather than merely ending the scroll, because a silently
   truncated library would break what sort and Play All promise.
+
+- 2026-07-27: **Browse list rows carry real metadata, and the view-mode
+  toggle reads as a segmented control** (§7.1/§7.2/§8/§9/§13.2/§13.5;
+  Rafael's request).
+  (a) **The grid/list toggle is restyled onto the retro palette.** The stock
+  ToggleButton painted its CHECKED state with the accent fill, so list mode
+  looked like a switched-on setting while grid mode looked switched off —
+  wrong information design for two peer modes. It now draws as a tonal-teal
+  pill with the parchment card frame (the `RetroTonalButtonStyle` language),
+  holding two always-visible glyph segments with a thumb under the current
+  one plus the mode's name; the surface stays identical in every checked
+  state and only the thumb and the inactive glyph's opacity move.
+  It remains **one focusable ToggleButton** — one A-press flips the mode and
+  the console-verified focus story (`FocusTarget` / `FocusDownTarget`, Up from
+  the content lands here) keeps exactly one stop, which a real two-button
+  segmented control would have doubled. All eight ToggleButton common states
+  are declared in the template: an undeclared `Checked*` state leaves the
+  previous state's visuals applied, which would strand the pill in its
+  pressed fill after a gamepad press.
+  (b) **List rows show what the listing endpoint already returned** — free
+  data, no extra request, which is the whole constraint. Albums (getAlbumList2)
+  gain year · genre · track count · total play time on the right of the row
+  plus the starred marker; each part is omitted when absent rather than shown
+  as a zero (§3). **Artists are asymmetric on purpose:** getArtists carries
+  only `albumCount` and `starred`, so an artist's song count and play time
+  would cost one getArtist per row — rejected on the §11 perf grounds that
+  bounded the §8 fan-out — and those totals go on the artist detail page
+  instead, where the albums are already in hand. Both row shapes are the same
+  four-column grid so the two list views read as one family.
+  (c) **Detail views absorb the totals**: artist detail's counts line gains
+  total play time and the span of years its albums cover (summed from the
+  loaded albums); album detail's header gains genre. Same free-data rule.
+  (d) The duration wordings the detail headers had duplicated privately moved
+  to Core as `Browsing/DurationText` (`Track`, `Total`) so the new rows and
+  the old headers cannot drift, with the shapes now unit-tested.
+  (e) **The "Artist" sort option's icon is the person glyph** (F5BE), not the
+  mic (E7FA) it shipped with on 2026-07-26 — the app's artist iconography is
+  the person/people figure everywhere else ("Go to artist", the Artists nav
+  item), and a recording-input glyph read as "record". Changed in both places
+  that declare the five song orderings (the Songs view and the Favorites
+  Songs tab), which stay in step by rule. The Favorites Albums tab has no
+  artist-related ordering, so nothing there changed.
 
 ## 17. Open Decisions / TODO
 

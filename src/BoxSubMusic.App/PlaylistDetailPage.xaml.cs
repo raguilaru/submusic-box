@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BoxSubMusic.App.Models;
 using BoxSubMusic.App.Services;
+using BoxSubMusic.Core.Browsing;
 using BoxSubMusic.Core.Playback;
 using BoxSubMusic.Core.Playlists;
 using BoxSubMusic.SubsonicClient;
@@ -299,7 +300,7 @@ namespace BoxSubMusic.App
                 (index + 1).ToString(CultureInfo.InvariantCulture),
                 song.Title,
                 song.Artist ?? string.Empty,
-                FormatTrackDuration(song.Duration),
+                DurationText.Track(song.Duration),
                 song.ArtistId,
                 song.AlbumId,
                 song.IsStarred);
@@ -386,13 +387,6 @@ namespace BoxSubMusic.App
             }
         }
 
-        private static string FormatTrackDuration(TimeSpan duration)
-        {
-            return duration.TotalHours >= 1
-                ? string.Format(CultureInfo.InvariantCulture, "{0}:{1:mm\\:ss}", (int)duration.TotalHours, duration)
-                : duration.ToString("m\\:ss", CultureInfo.InvariantCulture);
-        }
-
         private static string FormatMeta(Playlist playlist, PlaylistDetail detail)
         {
             // The songs actually returned are authoritative for the counts;
@@ -402,18 +396,7 @@ namespace BoxSubMusic.App
                 ? TimeSpan.FromSeconds(detail.Songs.Sum(s => s.Duration.TotalSeconds))
                 : playlist.Duration;
             string songs = songCount == 1 ? "1 song" : songCount + " songs";
-            return songs + "  ·  " + FormatTotalDuration(total);
-        }
-
-        private static string FormatTotalDuration(TimeSpan duration)
-        {
-            int hours = (int)duration.TotalHours;
-            if (hours >= 1)
-            {
-                return string.Format(CultureInfo.InvariantCulture, "{0} hr {1} min", hours, duration.Minutes);
-            }
-
-            return string.Format(CultureInfo.InvariantCulture, "{0} min", Math.Max(1, duration.Minutes));
+            return songs + "  ·  " + DurationText.Total(total);
         }
 
         // --- View states -----------------------------------------------------

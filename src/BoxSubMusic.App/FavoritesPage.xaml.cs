@@ -294,7 +294,11 @@ namespace BoxSubMusic.App
 
         private const string ListGlyph = "\uECDA";      // text_bullet_list_ltr
         private const string AlphaGlyph = "\uECEE";     // text_case_title ("Aa")
-        private const string MicGlyph = "\uE7FA";       // mic
+        // Artist reads as the person figure, not a mic (2026-07-27): the app's
+        // artist iconography is person/people everywhere else ("Go to artist",
+        // the Artists nav item), and a recording-input glyph said "record",
+        // not "by artist".
+        private const string PersonGlyph = "\uF5BE";    // person
         private const string AlbumGlyph = "\uE010";     // album
         private const string CalendarGlyph = "\uE24F";  // calendar_ltr
 
@@ -336,7 +340,7 @@ namespace BoxSubMusic.App
         {
             new SortOption(SongSorter.Label(SongSort.DefaultOrder), ListGlyph, (int)SongSort.DefaultOrder),
             new SortOption(SongSorter.Label(SongSort.Title), AlphaGlyph, (int)SongSort.Title),
-            new SortOption(SongSorter.Label(SongSort.Artist), MicGlyph, (int)SongSort.Artist),
+            new SortOption(SongSorter.Label(SongSort.Artist), PersonGlyph, (int)SongSort.Artist),
             new SortOption(SongSorter.Label(SongSort.Album), AlbumGlyph, (int)SongSort.Album),
             new SortOption(SongSorter.Label(SongSort.DateAdded), CalendarGlyph, (int)SongSort.DateAdded),
         };

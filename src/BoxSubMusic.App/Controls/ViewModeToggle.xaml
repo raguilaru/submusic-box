@@ -6,25 +6,159 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
+    <UserControl.Resources>
+        <!-- Retro pill chrome for the toggle (2026-07-27). The stock
+             ToggleButton painted its CHECKED state with the accent fill, so
+             list mode looked like a switched-on setting while grid mode looked
+             off — the two are peer modes, not on/off. This template keeps one
+             on-palette surface in every state (tonal teal chip + the parchment
+             card frame, matching RetroTonalButtonStyle and the browse cards)
+             and lets the segments below say which mode is current.
+             All eight ToggleButton common states are declared: an undeclared
+             Checked* state leaves the previous state's visuals applied, which
+             would strand the pill in its pressed fill after a gamepad A press.
+             UseSystemFocusVisuals stays on — the couch-visible focus rect the
+             §2/§13.1 controller UX depends on is untouched. -->
+        <Style x:Key="ViewModePillStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="{ThemeResource RetroTonalFillBrush}" />
+            <Setter Property="Foreground" Value="{ThemeResource RetroTonalInkBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource RetroCardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="22" />
+            <Setter Property="Padding" Value="5" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="UseSystemFocusVisuals" Value="True" />
+            <Setter Property="FocusVisualMargin" Value="-3" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid x:Name="Root"
+                              Background="{TemplateBinding Background}"
+                              BorderBrush="{TemplateBinding BorderBrush}"
+                              BorderThickness="{TemplateBinding BorderThickness}"
+                              CornerRadius="{TemplateBinding CornerRadius}">
+                            <ContentPresenter
+                                Padding="{TemplateBinding Padding}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                ContentTransitions="{TemplateBinding ContentTransitions}"
+                                AutomationProperties.AccessibilityView="Raw" />
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver">
+                                        <Storyboard>
+                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource RetroTonalFillHoverBrush}" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <Storyboard>
+                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource RetroTonalFillPressedBrush}" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="Disabled">
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Root" Storyboard.TargetProperty="Opacity" To="0.4" Duration="0" />
+                                        </Storyboard>
+                                    </VisualState>
+                                    <!-- Checked = list mode. Same surface as
+                                         Normal by design (see above). -->
+                                    <VisualState x:Name="Checked" />
+                                    <VisualState x:Name="CheckedPointerOver">
+                                        <Storyboard>
+                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource RetroTonalFillHoverBrush}" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="CheckedPressed">
+                                        <Storyboard>
+                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource RetroTonalFillPressedBrush}" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="CheckedDisabled">
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Root" Storyboard.TargetProperty="Opacity" To="0.4" Duration="0" />
+                                        </Storyboard>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
     <!-- The one grid/list view-mode toggle (requirements §13.5): every browse
          view with dual modes uses this control, so the affordance looks and
          behaves identically everywhere. Unchecked = grid (the §7 default),
-         checked = list. The face advertises the CURRENT mode. -->
+         checked = list.
+
+         It reads as a segmented control — both modes are always on screen and
+         a thumb marks the current one — but it stays a SINGLE focusable
+         ToggleButton: one A-press flips the mode, and the console-verified
+         focus story (Up from the content lands here, FocusDownTarget points
+         back at the active view) keeps exactly one stop. -->
     <ToggleButton
         x:Name="Toggle"
-        MinWidth="140"
-        Padding="16,8"
+        Style="{StaticResource ViewModePillStyle}"
         Checked="Toggle_Changed"
         Unchecked="Toggle_Changed"
         ToolTipService.ToolTip="Switch between grid and list view">
-        <StackPanel Orientation="Horizontal" Spacing="10">
-            <!-- Verified Fluent codepoints: grid U+F463, list U+F4EE (§13.3). -->
-            <FontIcon
-                x:Name="ModeIcon"
-                FontFamily="{StaticResource FluentIconFont}"
-                FontSize="20"
-                Glyph="&#xF463;" />
-            <TextBlock x:Name="ModeLabel" Text="Grid" FontSize="18" VerticalAlignment="Center" />
+        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Grid Height="36">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="44" />
+                    <ColumnDefinition Width="44" />
+                </Grid.ColumnDefinitions>
+                <!-- The thumb moves between the two columns in code, so the
+                     glyph inks never change with state: both are the accent,
+                     and the inactive one simply dims. -->
+                <Border
+                    x:Name="ActiveThumb"
+                    Grid.Column="0"
+                    CornerRadius="18"
+                    Background="{ThemeResource RetroTonalFillPressedBrush}"
+                    BorderBrush="{ThemeResource RetroAccentBrush}"
+                    BorderThickness="1" />
+                <!-- Verified Fluent codepoints: grid U+F463, list U+F4EE (§13.3). -->
+                <FontIcon
+                    x:Name="GridGlyph"
+                    Grid.Column="0"
+                    FontFamily="{StaticResource FluentIconFont}"
+                    FontSize="20"
+                    Glyph="&#xF463;"
+                    Foreground="{ThemeResource RetroAccentBrush}" />
+                <FontIcon
+                    x:Name="ListGlyph"
+                    Grid.Column="1"
+                    FontFamily="{StaticResource FluentIconFont}"
+                    FontSize="20"
+                    Glyph="&#xF4EE;"
+                    Foreground="{ThemeResource RetroAccentBrush}"
+                    Opacity="0.45" />
+            </Grid>
+            <!-- The label names the CURRENT mode. MinWidth keeps the pill from
+                 resizing (and the header from twitching) as it flips. -->
+            <TextBlock
+                x:Name="ModeLabel"
+                Text="Grid"
+                FontSize="18"
+                FontWeight="SemiBold"
+                MinWidth="42"
+                Margin="2,0,10,0"
+                VerticalAlignment="Center" />
         </StackPanel>
     </ToggleButton>
 </UserControl>

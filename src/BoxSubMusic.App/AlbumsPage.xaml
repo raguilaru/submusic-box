@@ -164,8 +164,19 @@
                 </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:AlbumCard">
-                        <StackPanel Orientation="Horizontal" Spacing="16">
-                            <StackPanel.ContextFlyout>
+                        <!-- The list row carries more than the grid tile can
+                             (§7.2, 2026-07-27): artwork + name/artist on the
+                             left, the starred marker, then year · genre ·
+                             tracks · total play time on the right — all of it
+                             already in the getAlbumList2 response. -->
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="28" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuFlyoutItem
                                         Text="Play"
@@ -192,8 +203,8 @@
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                 </MenuFlyout>
-                            </StackPanel.ContextFlyout>
-                            <Grid Width="56" Height="56" CornerRadius="6" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
+                            </Grid.ContextFlyout>
+                            <Grid Grid.Column="0" Width="56" Height="56" CornerRadius="6" BorderBrush="{ThemeResource RetroCardBorderBrush}" BorderThickness="1">
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
                                     <controls:VinylDisc Margin="6" />
                                 </Border>
@@ -203,11 +214,29 @@
                                     </Image.Source>
                                 </Image>
                             </Grid>
-                            <StackPanel VerticalAlignment="Center">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind Name}" FontSize="22" TextTrimming="CharacterEllipsis" />
                                 <TextBlock Text="{x:Bind Artist}" FontSize="16" Opacity="0.7" TextTrimming="CharacterEllipsis" />
                             </StackPanel>
-                        </StackPanel>
+                            <!-- Starred marker, same filled accent heart the
+                                 song lists use (checkpoint #4). -->
+                            <FontIcon
+                                Grid.Column="2"
+                                FontFamily="{StaticResource FluentIconFilledFont}"
+                                Glyph="&#xF47E;"
+                                FontSize="16"
+                                Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
+                                Visibility="{x:Bind StarredVisibility}"
+                                VerticalAlignment="Center" />
+                            <TextBlock
+                                Grid.Column="3"
+                                Text="{x:Bind MetaLabel}"
+                                Visibility="{x:Bind MetaVisibility}"
+                                FontSize="18"
+                                Opacity="0.75"
+                                TextAlignment="Right"
+                                VerticalAlignment="Center" />
+                        </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>

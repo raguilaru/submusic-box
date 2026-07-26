@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BoxSubMusic.App.Models;
 using BoxSubMusic.App.Services;
+using BoxSubMusic.Core.Browsing;
 using BoxSubMusic.Core.Playback;
 using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
@@ -299,7 +300,7 @@ namespace BoxSubMusic.App
                 song.Track?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 song.Title,
                 artist,
-                FormatTrackDuration(song.Duration),
+                DurationText.Track(song.Duration),
                 song.ArtistId,
                 song.AlbumId,
                 song.IsStarred);
@@ -378,19 +379,19 @@ namespace BoxSubMusic.App
             }
         }
 
-        private static string FormatTrackDuration(TimeSpan duration)
-        {
-            return duration.TotalHours >= 1
-                ? string.Format(CultureInfo.InvariantCulture, "{0}:{1:mm\\:ss}", (int)duration.TotalHours, duration)
-                : duration.ToString("m\\:ss", CultureInfo.InvariantCulture);
-        }
-
         private static string FormatMeta(Album album, AlbumDetail detail)
         {
             var parts = new StringBuilder();
             if (album.Year.HasValue)
             {
                 parts.Append(album.Year.Value).Append("  ·  ");
+            }
+
+            // Genre (2026-07-27): free from the album the page was opened with,
+            // and the one piece of §9 metadata the header was still dropping.
+            if (!string.IsNullOrWhiteSpace(album.Genre))
+            {
+                parts.Append(album.Genre).Append("  ·  ");
             }
 
             // The songs actually returned are authoritative for the §9 counts;
@@ -401,19 +402,8 @@ namespace BoxSubMusic.App
             TimeSpan total = detail.Songs.Count > 0
                 ? TimeSpan.FromSeconds(detail.Songs.Sum(s => s.Duration.TotalSeconds))
                 : album.Duration;
-            parts.Append("  ·  ").Append(FormatTotalDuration(total));
+            parts.Append("  ·  ").Append(DurationText.Total(total));
             return parts.ToString();
-        }
-
-        private static string FormatTotalDuration(TimeSpan duration)
-        {
-            int hours = (int)duration.TotalHours;
-            if (hours >= 1)
-            {
-                return string.Format(CultureInfo.InvariantCulture, "{0} hr {1} min", hours, duration.Minutes);
-            }
-
-            return string.Format(CultureInfo.InvariantCulture, "{0} min", Math.Max(1, duration.Minutes));
         }
 
         // --- Favorite heart (§9) --------------------------------------------

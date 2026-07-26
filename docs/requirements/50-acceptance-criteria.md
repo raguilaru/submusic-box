@@ -69,13 +69,20 @@ A feature is accepted only if:
 Pass if:
 - Default view is grid.
 - Alternate list view exists.
-- View-mode toggle is clearly visible.
+- View-mode toggle is clearly visible, names the mode it is currently showing,
+  and reads as part of the app's own palette rather than as a switched-on
+  system control.
+- List rows show the album count and mark favorites.
 
 ### Albums
 Pass if:
 - Default view is grid.
 - Alternate list view exists.
-- View-mode toggle is clearly visible.
+- View-mode toggle is clearly visible (same criteria as Artists).
+- List rows show year, genre, track count and total play time where the server
+  provided them, and mark favorites.
+- A row whose album carries none of that metadata shows no empty separators or
+  zeros.
 
 ### Songs
 Pass if:
@@ -133,6 +140,8 @@ Pass if:
 
 ### Pass if:
 - Artist detail shows artwork, name, favorite toggle, album count, and song count.
+- The counts line also shows total play time and the years the albums span,
+  omitting either when the server sent nothing to compute it from.
 - Favorite toggle updates persisted star state correctly.
 - Play replaces the queue with artist songs in oldest-album-first order.
 - Shuffle replaces the queue with the same song pool in randomized order.
@@ -148,7 +157,7 @@ Pass if:
 
 ### Pass if:
 - Album detail visually mirrors artist detail where appropriate.
-- Artwork, title, artist, year, favorite toggle, song count, and total duration are visible.
+- Artwork, title, artist, year, favorite toggle, song count, and total duration are visible, plus genre when the server tagged one.
 - Play replaces queue with album tracks only.
 - Shuffle replaces queue with album tracks only in randomized order.
 - Track list is shown in original disc/track order.
