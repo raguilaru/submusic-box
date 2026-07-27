@@ -107,7 +107,9 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
 - MUST support grid view by default.
 - MUST support list view as an alternate mode.
 - Grid entries SHOULD show artist artwork when available.
-- List rows SHOULD carry the metadata the artist listing already provides — the album count and the favorite state (added 2026-07-27, §16). An artist's song count and total play time MUST NOT be fetched per row (one request per artist); they belong on the artist detail view (§8).
+- List rows SHOULD carry the metadata the artist listing already provides — the album count and the favorite state (added 2026-07-27, §16).
+- List rows SHOULD also show each artist's track count and total play time (added 2026-07-27, §16). getArtists does not carry them, and they MUST NOT be fetched per row (one request per artist); they MUST be summed from the album list, whose cost scales with albums rather than artists.
+- The summed figures MUST be applied only once the whole album list is in — a partial sum would understate an artist — and a failed or interrupted pass MUST leave the rows' album counts as they were rather than showing zeros.
 
 ### 7.2 Albums
 - MUST support grid view by default.
@@ -894,6 +896,34 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   regardless of artist count, and the sums would be album-artist sums (which is
   the same grouping getArtists itself indexes by). Not implemented: it puts a
   library-wide pass on a page that is one request today.
+- 2026-07-27 (follow-up): **Artist list totals implemented via the album-list
+  aggregate** (§7.1; Rafael's call after seeing the measurements above, which
+  this supersedes). `Core/Browsing/ArtistTotals` folds album pages into
+  per-artist album/track/duration sums; `ArtistsPage` runs one pass over
+  getAlbumList2 at the API's 500-item cap after the rows are already on screen,
+  then fills each row's right-hand line in place ("3 albums · 42 tracks ·
+  2 hr 51 min"). Cost is ceil(albums / 500) requests regardless of artist
+  count — the per-row getArtist alternative was rejected as RTT-bound
+  (measured ~19 s for 500 artists at a 150 ms RTT).
+  Design rules, all of them about not lying:
+  (a) **Totals are applied only when the WHOLE list is in.** A per-page
+  application would briefly show an artist's partial sum, and a wrong number is
+  worse than the album count the row already shows honestly.
+  (b) **A failure or a mid-pass navigation applies nothing** — rows keep their
+  album counts, which remain correct. No error state and no toast: the page the
+  user asked for loaded fine, and nothing they requested went missing, so this
+  is not a §15 silent degrade.
+  (c) **The sums are album-artist sums** (a guest appearance counts under the
+  album's artist) — the same grouping getArtists indexes by, so they agree with
+  the album count beside them and with artist detail, which sums the same albums.
+  (d) **Albums the server sent without an `artistId` are skipped** rather than
+  attributed to anyone.
+  (e) Only the running sums are held, not the album pages, so the memory cost is
+  one small entry per artist regardless of library size (§11).
+  Deliberately NOT included: sorting the Artists browse view by these figures
+  (the view has no sort control at all today — adding one is its own decision),
+  and totals on the Favorites Artists tab, which draws a different, usually much
+  smaller set from getStarred2 and would need its own pass.
 
 - 2026-07-27: **Favorites becomes hideable, and the Favorites tab row pins
   its own left/right focus** (§5/§12/§13.1; Rafael's request).

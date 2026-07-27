@@ -53,22 +53,23 @@ planned slice. Since then, refinement rounds have landed on top:
   glyph segments, thumb under the current mode, mode name), still one
   focusable stop; Albums list rows carry year · genre · tracks · total play
   time plus a starred marker, Artists list rows the album count plus a
-  starred marker (getArtists carries nothing more — per-artist totals would
-  cost one request per row, so they moved to artist detail); artist detail's
-  counts line gained total play time + the albums' year span and album detail
-  gained genre; the "Artist" sort option's mic glyph became the person glyph
-  in both sort menus. Playlists list rows carry owner + the playlist's own
-  description and tracks · total play time (no starred marker — playlists have
-  no favorite state). Duration wording moved to Core `Browsing/DurationText`
-  (+7 tests). Not yet device-verified (backlog items 38–43).
+  starred marker, plus track count and total play time summed from one
+  getAlbumList2 pass (`Core/Browsing/ArtistTotals`) that fills in behind the
+  rows — getArtists carries no such totals, and a getArtist per row is
+  RTT-bound. Playlists list rows carry owner + the playlist's own description
+  and tracks · total play time (no starred marker — playlists have no favorite
+  state). Artist detail's counts line gained total play time + the albums' year
+  span; album detail gained genre. The "Artist" sort option's mic glyph became
+  the person glyph in both sort menus. Shared logic moved to Core:
+  `Browsing/DurationText` (+7 tests) and `Browsing/ArtistTotals` (+8 tests).
+  Not yet device-verified (backlog items 38–43).
 - **Segmented-row focus + Show Favorites + overlay header spacing**
   (2026-07-27) — the Favorites tab row and Search's scope filters now pin their
   own left/right focus (Left from Favorites' Songs tab reached the nav pane
   instead of Albums; Search had the same unpinned shape); **Show Favorites**
   joins the Settings nav toggles, revising §5's original "Favorites is not
-  hideable" clause (see §16);
-  and the expanded overlay's Queue ⇄ Lyrics header got real spacing. Not yet
-  device-verified (backlog items 44–46).
+  hideable" clause (see §16); and the expanded overlay's Queue ⇄ Lyrics header
+  got real spacing. Not yet device-verified (backlog items 44–46).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -77,7 +78,7 @@ planned slice. Since then, refinement rounds have landed on top:
 
 **Build/test state:** builds green (x64 Debug over SSH; the `APPX0703` appx
 packaging error is the known command-line-only failure — VS F5 packages fine).
-**92 Core + 80 SubsonicClient tests pass** (9 SubsonicClient live-server tests
+**100 Core + 80 SubsonicClient tests pass** (9 SubsonicClient live-server tests
 skip without `liveserver.local.txt`).
 
 **Git state:** `main` holds v1 (slices 00–14, PR #6) plus the merged refinement
@@ -312,9 +313,16 @@ code-complete-but-not-yet-device-verified rounds.
     right-hand line is legible at 10 ft, that a long album/artist name
     ellipsizes instead of squeezing that line, and that an album missing
     genre/year shows a shorter line with NO stray "·" separators or zeros.
-41. **Artists list rows:** name on the left, starred heart, album count on the
-    right — the same row geometry as Albums. (Song count / play time are
-    deliberately absent here; see the known-gaps note.)
+41. **Artists list rows + totals fill-in:** name on the left, starred heart,
+    then "N albums" on the right, which becomes
+    "N albums · N tracks · H hr M min" once the album-list pass finishes. Watch
+    the fill-in on the REAL library: how long the pass takes, that the page
+    stays responsive (scrolling, playback) while it runs, that no row ever shows
+    a partial sum, and that leaving the page mid-pass leaves nothing half-baked
+    on return. Spot-check one artist's totals against its albums, and confirm a
+    compilation-heavy library doesn't produce obviously wrong sums (albums with
+    no artistId are skipped by design). With the server unreachable mid-pass the
+    rows must simply keep "N albums" — no error state, no toast.
 42. **Detail views:** artist detail's counts line reads
     "N albums · N songs · H hr M min · 1994–2015" (each part present only when
     the server had the data), and album detail's header shows genre between the
@@ -484,22 +492,32 @@ revisiting the reasoning (many encode a hard-won console lesson).
 
 **Browse / detail:**
 
-- **Artists list rows carry less than Albums rows, by design** (§7.1,
-  2026-07-27): getArtists returns only `albumCount` and `starred`, so an
-  artist's song count and total play time would cost one getArtist per visible
-  row — rejected on the same perf grounds that bounded the §8 fan-out. Those
-  totals live on the artist detail page, where the albums are already loaded.
-  Albums rows look richer only because getAlbumList2 happens to return
-  year/genre/songCount/duration for free.
-  Measured on Navidrome 0.63.2 (2026-07-27): a warm getArtist is ~16–20 ms on
-  LAN, so per-row totals are ~2.5 s for 500 artists on LAN but ~19 s at a
-  150 ms RTT — the off-LAN case is what kills it. **If those totals are ever
-  wanted here, don't add the per-row fetch:** sum getAlbumList2 pages by
-  `artistId` instead (every album carries artistId + songCount + duration), which
-  costs ceil(albums / 500) requests regardless of artist count and reuses the
-  paging the Albums page already does. The sums would be album-artist sums —
-  the same grouping getArtists indexes by, so consistent with the albumCount
-  beside them — and rows would show instantly with the totals filling in behind.
+- **Artist list totals come from the album list, never per artist** (§7.1,
+  2026-07-27): getArtists returns only `albumCount` and `starred`, so the rows'
+  track count and total play time are summed by `Core/Browsing/ArtistTotals`
+  from one getAlbumList2 pass (500/request) that runs after the rows are on
+  screen. Cost is ceil(albums / 500) requests regardless of artist count.
+  **Do not "simplify" this into a getArtist per row:** measured on Navidrome
+  0.63.2, a warm getArtist is ~16–20 ms on LAN (so ~2.5 s for 500 artists) but
+  ~19 s at a 150 ms RTT — the off-LAN case is what rules it out.
+  Accepted trade-offs, each deliberate:
+  - Totals appear only when the pass COMPLETES; a per-page fill would flash an
+    artist's partial sum, and a wrong number is worse than the album count the
+    row already shows honestly.
+  - A failure or a mid-pass navigation applies nothing and says nothing — the
+    rows keep their (correct) album counts. Not a §15 silent degrade: the page
+    the user asked for loaded, and nothing requested went missing.
+  - The figures are **album-artist sums** (a guest appearance counts under the
+    album's artist) — the grouping getArtists itself indexes by, so they agree
+    with the album count beside them and with artist detail's own sum. Albums
+    the server sent without an `artistId` are skipped, not attributed.
+  - Only the sums are retained, not the album pages, so memory is one small
+    entry per artist (§11) — but the pass does read the whole album list, which
+    is the thing to watch on a large library during the console pass.
+  - The Favorites Artists tab does NOT show totals: it draws a different,
+    usually much smaller set from getStarred2 and would need its own pass.
+  Albums rows still look richer without any of this, because getAlbumList2
+  happens to return year/genre/songCount/duration per album for free.
 - **Playlist rows show owner + description, and never a heart** (§7.4,
   2026-07-27): star/unstar has no playlist form, so an empty heart column would
   imply a favorite state that does not exist. `created`/`changed` stay unparsed

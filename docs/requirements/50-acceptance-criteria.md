@@ -76,6 +76,12 @@ Pass if:
   and reads as part of the app's own palette rather than as a switched-on
   system control.
 - List rows show the album count and mark favorites.
+- List rows also show each artist's track count and total play time, summed from
+  the album list rather than fetched per artist.
+- Those figures appear only once the whole album list has been read; a row never
+  shows a partial sum.
+- If that pass fails or the user navigates away mid-pass, rows still show their
+  album count — never a zero, and never an error state over a page that loaded.
 
 ### Albums
 Pass if:
