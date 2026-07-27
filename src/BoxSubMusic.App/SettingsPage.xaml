@@ -48,6 +48,17 @@
             Header="Show Playlists"
             FontSize="20"
             XYFocusUp="{x:Bind AlbumsToggle}"
+            XYFocusDown="{x:Bind FavoritesToggle}"
+            Toggled="Toggle_Toggled" />
+        <!-- Favorites (added 2026-07-27, §16): originally spec'd as
+             non-hideable, now toggleable like the other library sections at
+             Rafael's request. Search and Home remain fixed by construction —
+             they have no setting at all. -->
+        <ToggleSwitch
+            x:Name="FavoritesToggle"
+            Header="Show Favorites"
+            FontSize="20"
+            XYFocusUp="{x:Bind PlaylistsToggle}"
             XYFocusDown="{x:Bind ThemeAutomatic}"
             Toggled="Toggle_Toggled" />
 
@@ -82,7 +93,7 @@
             FontSize="20"
             Padding="8,0,0,0"
             VerticalContentAlignment="Center"
-            XYFocusUp="{x:Bind PlaylistsToggle}"
+            XYFocusUp="{x:Bind FavoritesToggle}"
             XYFocusDown="{x:Bind ThemeDark}"
             Checked="Theme_Checked" />
         <RadioButton

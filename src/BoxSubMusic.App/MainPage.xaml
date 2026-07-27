@@ -12,7 +12,7 @@
     <!--
     Slice 04 (requirements §5): the application shell. Persistent collapsible
     left nav in the fixed order Search, Home, Artists, Albums, Songs,
-    Playlists, then Settings and Account after a separator (moved out of
+    Playlists, Favorites, then Settings and Account after a separator (moved out of
     PaneFooter 2026-07-14 — see the note below). The built-in NavigationView
     settings item is disabled because its gear glyph is Segoe MDL2 — mixing
     icon sets violates §13.3 (Fluent UI System Icons only).
@@ -185,7 +185,9 @@
             <!-- Favorites (2026-07-26): last of the library sections, after
                  the browse destinations it draws from. The heart is the same
                  Fluent Regular codepoint the favorite toggles use (F47A), so
-                 the nav entry and the action that fills it read as one thing. -->
+                 the nav entry and the action that fills it read as one thing.
+                 Hideable from Settings since 2026-07-27 (§12), like the other
+                 library sections. -->
             <NavigationViewItem x:Name="FavoritesNavItem" Content="Favorites" Tag="favorites">
                 <NavigationViewItem.Icon>
                     <FontIcon FontFamily="{StaticResource FluentIconFont}" FontSize="24" Width="24" Height="24" Glyph="&#xF47A;" Foreground="{ThemeResource RetroAccentBrush}" />

@@ -4,16 +4,18 @@ using Windows.Storage;
 namespace BoxSubMusic.App.Services
 {
     /// <summary>
-    /// Nav-visibility preferences (requirements §5/§12): Artists, Albums and
-    /// Playlists are independently hideable; Search and Home deliberately have
-    /// no setting at all, so they cannot be hidden by construction. Simple
-    /// values live in LocalSettings (decision 2026-07-09, §16).
+    /// Nav-visibility preferences (requirements §5/§12): Artists, Albums,
+    /// Playlists and Favorites are independently hideable; Search and Home
+    /// deliberately have no setting at all, so they cannot be hidden by
+    /// construction. Simple values live in LocalSettings (decision
+    /// 2026-07-09, §16).
     /// </summary>
     internal static class NavigationPreferences
     {
         private const string ShowArtistsKey = "nav.showArtists";
         private const string ShowAlbumsKey = "nav.showAlbums";
         private const string ShowPlaylistsKey = "nav.showPlaylists";
+        private const string ShowFavoritesKey = "nav.showFavorites";
 
         /// <summary>Raised after any visibility preference changes (same session).</summary>
         public static event Action Changed;
@@ -34,6 +36,18 @@ namespace BoxSubMusic.App.Services
         {
             get { return Get(ShowPlaylistsKey); }
             set { Set(ShowPlaylistsKey, value); }
+        }
+
+        /// <summary>
+        /// Favorites visibility (added 2026-07-27, §16 — Favorites was
+        /// originally spec'd as non-hideable). Hiding it only removes the
+        /// nav destination; the starred state it shows is unaffected, and
+        /// every other surface's favorite hearts keep working.
+        /// </summary>
+        public static bool ShowFavorites
+        {
+            get { return Get(ShowFavoritesKey); }
+            set { Set(ShowFavoritesKey, value); }
         }
 
         private static bool Get(string key)

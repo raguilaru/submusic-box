@@ -65,11 +65,11 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   9. Account / server info at the bottom area
 - Search filters MUST appear in the main content area once search is active, not in the left nav.
 - Search and Home MUST always remain visible and MUST NOT be hideable.
-- Artists, Albums, and Playlists MUST each be independently hideable from Settings.
+- Artists, Albums, Playlists, and Favorites MUST each be independently hideable from Settings.
 - Favorites (added 2026-07-26, §16) sits last of the library sections, after
-  the browse destinations it draws from. It is not hideable: the three
-  hideable sections are exactly those §12 names, and Favorites is reachable
-  content that no other section duplicates.
+  the browse destinations it draws from. It became hideable on 2026-07-27
+  (§16), joining the other library sections; hiding it removes only the nav
+  destination, never any starred state.
 
 ## 6. Home View
 
@@ -266,6 +266,7 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   - Artists
   - Albums
   - Playlists
+  - Favorites (added 2026-07-27, §16)
 - Search and Home MUST NOT be hideable.
 
 ## 13. Cross-Cutting Requirements
@@ -893,6 +894,39 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   regardless of artist count, and the sums would be album-artist sums (which is
   the same grouping getArtists itself indexes by). Not implemented: it puts a
   library-wide pass on a page that is one request today.
+
+- 2026-07-27: **Favorites becomes hideable, and the Favorites tab row pins
+  its own left/right focus** (§5/§12/§13.1; Rafael's request).
+  (a) **"Show Favorites" joins the Settings nav toggles**, superseding the
+  2026-07-26 clause that declared Favorites non-hideable. The reasoning
+  recorded then — that Favorites is content no other section duplicates — is
+  true of Songs too, which also has no toggle, so it never was the line
+  between hideable and fixed; the real line is §12's own rule that **Search
+  and Home** are the fixed pair, and everything else is the user's choice.
+  The setting is the existing `NavigationPreferences` shape
+  (`nav.showFavorites` in LocalSettings, default visible, `Changed` →
+  `ApplyNavVisibility`), so it inherits the established behavior including
+  the documented quirk that hiding the section you are currently viewing
+  leaves its content on screen until the next selection. Hiding removes the
+  destination only: starred state, the favorite hearts on every other
+  surface, and `getStarred2` are untouched.
+  (b) **Segmented rows pin XYFocusLeft/Right between their own buttons.** Left
+  from the Favorites Songs tab was leaving the tab row for the nav pane instead
+  of stepping to Albums — the same XY-engine behavior already pinned around on
+  the now-playing bar's transport chain (2026-07-15) and the browse views'
+  XYFocusUp (2026-07-15). Only the FIRST button falls through to the nav, which
+  is the §13.1 convention that Left reaches the pane. Applied to **both**
+  segmented rows in the app — the Favorites tabs and Search's scope filters
+  (§5), which are the same unpinned shape — so the pattern is the rule for any
+  future one rather than a one-page patch. On Favorites, the Songs tab's Right
+  is deliberately left unpinned so it can still reach the sort / Play All /
+  Shuffle All cluster, which disables itself during a fan-out — a pin into a
+  disabled control would strand focus.
+  (c) The expanded overlay's **Queue ⇄ Lyrics header gained spacing**
+  (§13.2): tab padding 18,8 → 26,10, strip spacing 10 → 18, title-stack
+  spacing 6 → 12, header column spacing 16 → 24. At the shipped values the
+  LB/RB badges, the two tab labels, the stripe motif and the context line
+  read as one crowded block at 10 ft.
 
 ## 17. Open Decisions / TODO
 

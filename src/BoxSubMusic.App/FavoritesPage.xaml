@@ -273,9 +273,24 @@
                 Orientation="Horizontal"
                 Spacing="8"
                 HorizontalAlignment="Left">
-                <ToggleButton x:Name="ArtistsTabButton" Content="Artists" FontSize="18" Padding="24,6" Click="Tab_Click" />
-                <ToggleButton x:Name="AlbumsTabButton" Content="Albums" FontSize="18" Padding="24,6" Click="Tab_Click" />
-                <ToggleButton x:Name="SongsTabButton" Content="Songs" FontSize="18" Padding="24,6" Click="Tab_Click" />
+                <!-- Explicit left/right pins between the tabs (console finding
+                     2026-07-27, the same class as the bar's transport chain and
+                     the browse views' XYFocusUp pins): Left from Songs left the
+                     tab row for the nav pane instead of stepping to Albums.
+                     Only the FIRST tab is meant to fall through to the nav —
+                     that is the §13.1 "Left reaches the nav" convention — so
+                     Albums and Songs pin leftward and Artists deliberately
+                     does not. Right is pinned for the same reason; Songs' Right
+                     is left free so it can reach the sort/action cluster (which
+                     disables itself while a fan-out runs, and a pin into a
+                     disabled control would be a dead end). -->
+                <ToggleButton x:Name="ArtistsTabButton" Content="Artists" FontSize="18" Padding="24,6" Click="Tab_Click"
+                              XYFocusRight="{x:Bind AlbumsTabButton}" />
+                <ToggleButton x:Name="AlbumsTabButton" Content="Albums" FontSize="18" Padding="24,6" Click="Tab_Click"
+                              XYFocusLeft="{x:Bind ArtistsTabButton}"
+                              XYFocusRight="{x:Bind SongsTabButton}" />
+                <ToggleButton x:Name="SongsTabButton" Content="Songs" FontSize="18" Padding="24,6" Click="Tab_Click"
+                              XYFocusLeft="{x:Bind AlbumsTabButton}" />
             </StackPanel>
 
             <!-- Sort + the whole-scope actions, right-aligned. Play All /
