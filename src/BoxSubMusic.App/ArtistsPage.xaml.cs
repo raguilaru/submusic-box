@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BoxSubMusic.App.Models;
 using BoxSubMusic.App.Services;
+using BoxSubMusic.Core.Browsing;
 using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
 using Windows.UI.Xaml;
@@ -24,6 +25,14 @@ namespace BoxSubMusic.App
     {
         // Grid cards are 200 epx; request double for 200%-scale displays.
         private const int CoverArtSize = 400;
+
+        // The totals pass reads the album list at the API's per-request cap, so
+        // it makes as few round trips as the protocol allows.
+        private const int AlbumPageSize = 500;
+
+        // Safety stop for a server that ignores albumOffset (it would otherwise
+        // return page 1 forever): 500 pages is a 250 000-album library.
+        private const int MaxAlbumPages = 500;
 
         private CancellationTokenSource _cts;
 
@@ -101,6 +110,9 @@ namespace BoxSubMusic.App
                 else
                 {
                     ShowContent();
+                    // Rows are already on screen; the per-artist track counts
+                    // and play times fill in behind them (§7.1).
+                    _ = FillTotalsAsync(cards, cancellationToken);
                 }
             }
             catch (OperationCanceledException)
@@ -112,6 +124,78 @@ namespace BoxSubMusic.App
                 if (!cancellationToken.IsCancellationRequested)
                 {
                     ShowConnectError(ex.Message);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fills in each row's track count and total play time (§7.1, decision
+        /// 2026-07-27) by summing the album list once — every album carries
+        /// artistId, songCount and duration, so this costs
+        /// ceil(albums / 500) requests no matter how many artists there are.
+        /// Asking the server per artist instead would be one getArtist per row
+        /// (measured: ~19 s for 500 artists at a 150 ms RTT).
+        ///
+        /// Deliberately applied only after the WHOLE list is in: a partial sum
+        /// would understate an artist, and a wrong number is worse than the
+        /// album count the rows already show. For the same reason a failure or a
+        /// mid-pass navigation applies nothing at all — the rows simply keep
+        /// their album counts, which stay correct.
+        /// </summary>
+        private async Task FillTotalsAsync(
+            IReadOnlyList<ArtistCard> cards, CancellationToken cancellationToken)
+        {
+            var totals = new ArtistTotals();
+
+            try
+            {
+                int offset = 0;
+                for (int page = 0; page < MaxAlbumPages; page++)
+                {
+                    IReadOnlyList<Album> albums = await AppSession.Client.GetAlbumList2Async(
+                        AlbumListType.AlphabeticalByName, AlbumPageSize, offset, cancellationToken);
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    totals.AddPage(albums);
+
+                    // A short page is the end of the library. The page cap above
+                    // is the guard against a server that ignores the offset and
+                    // would otherwise hand us the same full page forever.
+                    if (albums.Count < AlbumPageSize)
+                    {
+                        break;
+                    }
+
+                    offset += albums.Count;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (SubsonicClientException)
+            {
+                // The page itself is fine and the album counts still stand, so
+                // this enrichment fails quietly rather than dropping an error
+                // state on a screen the user is already reading. Not a §15
+                // silent degrade: nothing the user asked for went missing.
+                return;
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            foreach (ArtistCard card in cards)
+            {
+                ArtistTotal total;
+                if (totals.TryGet(card.Id, out total))
+                {
+                    card.ApplyTotals(total);
                 }
             }
         }

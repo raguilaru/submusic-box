@@ -62,9 +62,10 @@ they are committed here like any other source.
 - View-model logic and playback/queue orchestration contracts (interfaces)
 - Browsing rules and display wording shared by more than one page —
   `Browsing/SongSorter` (the §7.3 orderings and their labels),
-  `Browsing/DurationText` (track and total duration wording). Anything two
-  surfaces must agree on belongs here rather than in either page, so they
-  cannot drift and the behavior stays unit-tested.
+  `Browsing/DurationText` (track and total duration wording),
+  `Browsing/ArtistTotals` (per-artist sums folded from album pages, §7.1).
+  Anything two surfaces must agree on — or any rule worth pinning with tests
+  rather than eyeballing in a page — belongs here rather than in a view.
 - No UWP or Windows-specific APIs — must be unit-testable on any host
 
 ### BoxSubMusic.SubsonicClient (.NET Standard class library)
