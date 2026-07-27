@@ -42,6 +42,9 @@ A feature is accepted only if:
 - Left within a segmented row (Search's scope filters, the Favorites tabs)
   moves to the button on its left; only Left from the row's first button
   leaves it for the nav pane.
+- Left from a control to the right of such a row (the Favorites sort / Play All
+  / Shuffle All cluster) steps back through that cluster and into the row's
+  active button, not into the nav pane.
 - Focus navigation through the left menu is consistent with controller input.
 - Account/server info is placed in the bottom area of the shell.
 
@@ -121,6 +124,8 @@ Pass if:
 - The last selected tab is restored on return and after an app restart.
 - Left from the Songs or Albums tab moves to the tab on its left; only Left
   from Artists (the first tab) leaves the row for the nav pane.
+- Left from Shuffle All / Play All / the sort button walks back through the
+  cluster and lands on the tab currently showing, not in the nav pane.
 - The sort options offered change with the tab, and each tab's chosen sort is
   restored independently.
 - Changing the sort reorders the whole scope immediately, with no refetch.

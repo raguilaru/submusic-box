@@ -66,7 +66,9 @@ planned slice. Since then, refinement rounds have landed on top:
 - **Segmented-row focus + Show Favorites + overlay header spacing**
   (2026-07-27) — the Favorites tab row and Search's scope filters now pin their
   own left/right focus (Left from Favorites' Songs tab reached the nav pane
-  instead of Albums; Search had the same unpinned shape); **Show Favorites**
+  instead of Albums; Search had the same unpinned shape), and Favorites' sort /
+  Play All / Shuffle All cluster pins leftward back into the active tab for the
+  same reason; **Show Favorites**
   joins the Settings nav toggles, revising §5's original "Favorites is not
   hideable" clause (see §16); and the expanded overlay's Queue ⇄ Lyrics header
   got real spacing. Not yet device-verified (backlog items 44–46).
@@ -343,7 +345,10 @@ code-complete-but-not-yet-device-verified rounds.
     nav pane. Right walks back the same way. Right from Songs must still reach
     the sort / Play All / Shuffle All cluster — check this both idle and
     **while a Play All fan-out is running** (those controls are disabled then;
-    focus must not vanish or stick). On **Search**, run a query and walk the
+    focus must not vanish or stick). Coming back the other way, **Left from
+    Shuffle All → Play All → Sort → the tab currently showing** (not the nav
+    pane); switch tabs and confirm Left from Sort follows the active tab
+    (Artists, Albums, Songs in turn). On **Search**, run a query and walk the
     All / Artists / Albums / Songs filters the same way: Left steps between
     them and only Left from **All** reaches the nav. Also confirm LB/RB still
     move the caret while the query box has focus (that mapping outranks region
@@ -474,7 +479,13 @@ revisiting the reasoning (many encode a hard-won console lesson).
   the row's FIRST button should fall through to the pane. Both segmented rows in
   the app are pinned this way: **Favorites' Artists/Albums/Songs tabs** and
   **Search's All/Artists/Albums/Songs scope filters**. Any future segmented row
-  needs the same treatment — the default behavior is the bug.
+  needs the same treatment — the default behavior is the bug. The same applies
+  to whatever sits to the RIGHT of such a row: Favorites' sort / Play All /
+  Shuffle All cluster pins leftward too (Shuffle All → Play All → Sort → the
+  active tab), and **Sort's target is set in code** because it follows the
+  showing tab. The three disable together, so a leftward pin can never point at
+  a disabled control while its source is focusable — the reason Songs' Right
+  into the cluster stays unpinned.
 - **TV-safe inset:** shell content sits inside `ShellRoot` Padding 32,20;
   backgrounds paint edge-to-edge. Overscan-free displays show a uniform
   background border (intended §2 trade-off).

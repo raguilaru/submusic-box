@@ -951,7 +951,14 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   future one rather than a one-page patch. On Favorites, the Songs tab's Right
   is deliberately left unpinned so it can still reach the sort / Play All /
   Shuffle All cluster, which disables itself during a fan-out — a pin into a
-  disabled control would strand focus.
+  disabled control would strand focus. **The cluster pins back leftward**
+  (added later the same day, after Left from the sort button was seen leaving
+  for the nav pane): Play All → Sort and Shuffle All → Play All are static
+  XAML pins, while **Sort's left target is the ACTIVE tab button and is set in
+  code** (`ShowActiveTab`) — a static pin would send Left to Artists while the
+  Songs tab is showing. The disabled-control worry does not apply in this
+  direction: `SetActionsBusy` disables all three together, so no pin can point
+  at a disabled button while its source is still focusable.
   (c) The expanded overlay's **Queue ⇄ Lyrics header gained spacing**
   (§13.2): tab padding 18,8 → 26,10, strip spacing 10 → 18, title-stack
   spacing 6 → 12, header column spacing 16 → 24. At the shipped values the
