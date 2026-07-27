@@ -431,11 +431,16 @@ Slice 04; this slice added the theme selector — RadioButtons on Settings,
 instant apply, root-frame `RequestedTheme`, Automatic resolved from
 `UISettings` with `ColorValuesChanged` live-follow. Console-verified at
 checkpoint #6 (2026-07-17) — the live-follow event fires on Xbox.
+**Extended 2026-07-27** (§16): a fourth toggle, **Show Favorites**, joins the
+three — Favorites was spec'd as non-hideable when it landed on 2026-07-26 and
+that clause was revised. Same `NavigationPreferences` shape, so it inherits
+the existing persistence and `Changed` → `ApplyNavVisibility` wiring. Not yet
+device-verified.
 
 ### Deliverables
 - Automatic/Dark/Light theme selector
 - persistence of theme selection
-- nav visibility toggles for Artists/Albums/Playlists
+- nav visibility toggles for Artists/Albums/Playlists (Favorites added 2026-07-27)
 - protections preventing Search/Home from being hidden
 
 ### Out of scope

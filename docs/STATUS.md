@@ -1,7 +1,8 @@
 # Current Status
 
-Last updated: 2026-07-27 (browse list rows + view-toggle restyle, on top of the
-Favorites and Songs-sorting rounds; the file was condensed to a clean
+Last updated: 2026-07-27 (Favorites tab focus + Show Favorites toggle +
+overlay header spacing, on top of the browse list rows + view-toggle restyle and
+the Favorites and Songs-sorting rounds; the file was condensed to a clean
 final-state summary on 2026-07-23 — the previous chronological pass-by-pass log
 lives in git history).
 
@@ -62,6 +63,13 @@ planned slice. Since then, refinement rounds have landed on top:
   the person glyph in both sort menus. Shared logic moved to Core:
   `Browsing/DurationText` (+7 tests) and `Browsing/ArtistTotals` (+8 tests).
   Not yet device-verified (backlog items 38–43).
+- **Segmented-row focus + Show Favorites + overlay header spacing**
+  (2026-07-27) — the Favorites tab row and Search's scope filters now pin their
+  own left/right focus (Left from Favorites' Songs tab reached the nav pane
+  instead of Albums; Search had the same unpinned shape); **Show Favorites**
+  joins the Settings nav toggles, revising §5's original "Favorites is not
+  hideable" clause (see §16); and the expanded overlay's Queue ⇄ Lyrics header
+  got real spacing. Not yet device-verified (backlog items 44–46).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -327,6 +335,34 @@ code-complete-but-not-yet-device-verified rounds.
     description shows just the owner, and that no starred marker appears
     (playlists have no favorite state by design).
 
+**Favorites focus + Show Favorites + overlay header spacing (2026-07-27):**
+
+44. **Segmented-row focus (Favorites tabs + Search scope filters):** on
+    Favorites, with focus on the **Songs** tab, Left moves to **Albums**, and
+    Left again to **Artists**; only Left from Artists leaves the row for the
+    nav pane. Right walks back the same way. Right from Songs must still reach
+    the sort / Play All / Shuffle All cluster — check this both idle and
+    **while a Play All fan-out is running** (those controls are disabled then;
+    focus must not vanish or stick). On **Search**, run a query and walk the
+    All / Artists / Albums / Songs filters the same way: Left steps between
+    them and only Left from **All** reaches the nav. Also confirm LB/RB still
+    move the caret while the query box has focus (that mapping outranks region
+    cycling there and is untouched by these pins).
+45. **Show Favorites:** Settings now lists a fourth nav toggle after Show
+    Playlists. Turning it off removes the Favorites nav item; turning it back
+    on restores it; the choice survives a relaunch. Up/Down through the four
+    switches into the theme radios still walks the column without straying
+    into the nav pane. Known, unchanged quirk: hiding Favorites **while
+    viewing it** leaves its content on screen until the next nav selection.
+46. **Overlay header spacing:** open the expanded overlay on a server WITH
+    lyrics — the LB badge, "Queue", the "Lyrics" pill and the RB badge should
+    read as four separate elements with air between them, the stripe motif
+    and the "<album> · N songs" line should each stand clear, and the
+    Jump-to-current / collapse buttons shouldn't crowd the tabs. Check the
+    Lyrics tab too, where the "Jump to current line" button appears in that
+    row. On a server WITHOUT lyrics the single "Queue" title should still sit
+    correctly (the tab strip is hidden, not restyled).
+
 *(Future work: append console items here.)*
 
 ## Known gaps / durable notes
@@ -431,6 +467,14 @@ revisiting the reasoning (many encode a hard-won console lesson).
   pulls focus into the content. Accepted for v1.
 - **Settings/Account are ordinary menu items** at the bottom of the list (the
   PaneFooter was a gamepad focus dead zone) — not pinned to the pane bottom edge.
+- **Horizontal segmented rows need explicit XYFocusLeft/Right pins.** The XY
+  engine will step out of a tab/filter row into the nav pane rather than to the
+  adjacent button (found on Favorites' tabs, 2026-07-27 — the same class as the
+  now-playing bar's transport chain and the browse views' XYFocusUp pins). Only
+  the row's FIRST button should fall through to the pane. Both segmented rows in
+  the app are pinned this way: **Favorites' Artists/Albums/Songs tabs** and
+  **Search's All/Artists/Albums/Songs scope filters**. Any future segmented row
+  needs the same treatment — the default behavior is the bug.
 - **TV-safe inset:** shell content sits inside `ShellRoot` Padding 32,20;
   backgrounds paint edge-to-edge. Overscan-free displays show a uniform
   background border (intended §2 trade-off).

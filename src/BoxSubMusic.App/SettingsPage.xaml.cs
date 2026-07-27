@@ -5,9 +5,9 @@ using Windows.UI.Xaml.Controls;
 namespace BoxSubMusic.App
 {
     /// <summary>
-    /// Settings: the three §5 nav-visibility toggles (Slice 04) and the §12
-    /// theme selector (Slice 12). Search and Home intentionally have no
-    /// toggle.
+    /// Settings: the §5 nav-visibility toggles (Slice 04; Favorites joined
+    /// them 2026-07-27) and the §12 theme selector (Slice 12). Search and Home
+    /// intentionally have no toggle.
     /// </summary>
     public sealed partial class SettingsPage : Page
     {
@@ -20,6 +20,7 @@ namespace BoxSubMusic.App
             ArtistsToggle.IsOn = NavigationPreferences.ShowArtists;
             AlbumsToggle.IsOn = NavigationPreferences.ShowAlbums;
             PlaylistsToggle.IsOn = NavigationPreferences.ShowPlaylists;
+            FavoritesToggle.IsOn = NavigationPreferences.ShowFavorites;
             switch (ThemeService.Mode)
             {
                 case ThemeMode.Dark:
@@ -56,6 +57,10 @@ namespace BoxSubMusic.App
             else if (ReferenceEquals(sender, PlaylistsToggle))
             {
                 NavigationPreferences.ShowPlaylists = PlaylistsToggle.IsOn;
+            }
+            else if (ReferenceEquals(sender, FavoritesToggle))
+            {
+                NavigationPreferences.ShowFavorites = FavoritesToggle.IsOn;
             }
         }
 

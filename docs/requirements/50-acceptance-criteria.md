@@ -37,8 +37,11 @@ A feature is accepted only if:
 ### Pass if:
 - Left navigation is persistent and collapsible.
 - Search and Home are always visible.
-- Artists, Albums, and Playlists can each be hidden independently from Settings.
+- Artists, Albums, Playlists and Favorites can each be hidden independently from Settings.
 - Search filters appear in the main pane only after search is active.
+- Left within a segmented row (Search's scope filters, the Favorites tabs)
+  moves to the button on its left; only Left from the row's first button
+  leaves it for the nav pane.
 - Focus navigation through the left menu is consistent with controller input.
 - Account/server info is placed in the bottom area of the shell.
 
@@ -116,6 +119,8 @@ Pass if:
 - Each tab lists the starred items of that scope, using the browse card
   language (artists/albums) and the §7.3 columns (songs).
 - The last selected tab is restored on return and after an app restart.
+- Left from the Songs or Albums tab moves to the tab on its left; only Left
+  from Artists (the first tab) leaves the row for the nav pane.
 - The sort options offered change with the tab, and each tab's chosen sort is
   restored independently.
 - Changing the sort reorders the whole scope immediately, with no refetch.
@@ -230,8 +235,9 @@ Pass if:
 - Theme options include Automatic, Dark, Light.
 - User selection persists across relaunch.
 - Automatic follows system theme.
-- Nav visibility toggles work for Artists, Albums, Playlists only.
-- Search and Home remain fixed.
+- Nav visibility toggles work for Artists, Albums, Playlists and Favorites.
+- Search and Home remain fixed (they have no toggle at all).
+- Each toggle survives a relaunch.
 
 ### Fail if:
 - Theme resets every launch.

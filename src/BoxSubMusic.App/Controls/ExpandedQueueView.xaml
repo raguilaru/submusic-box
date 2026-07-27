@@ -24,11 +24,14 @@
             <Setter Property="Background" Value="Transparent" />
         </Style>
         <!-- Segmented Queue / Lyrics tabs on the right pane. Retro checked
-             visuals come from the App.xaml ToggleButton-checked overrides. -->
+             visuals come from the App.xaml ToggleButton-checked overrides.
+             Padding widened 2026-07-27: at 18,8 the checked pill's fill ran
+             close to its own label and to the neighbouring tab, so the strip
+             read as one crowded block at 10 ft. -->
         <Style x:Key="PaneTabToggle" TargetType="ToggleButton">
             <Setter Property="MinWidth" Value="0" />
-            <Setter Property="Padding" Value="18,8" />
-            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="26,10" />
+            <Setter Property="CornerRadius" Value="22" />
             <Setter Property="FontSize" Value="20" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Background" Value="Transparent" />
@@ -230,13 +233,17 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0" ColumnSpacing="16">
+                <!-- Header row. Column spacing and the title stack's spacing
+                     were both opened up 2026-07-27: the tab strip, the stripe
+                     motif and the context line sat almost flush against each
+                     other, and the two right-hand buttons crowded the tabs. -->
+                <Grid Grid.Row="0" ColumnSpacing="24" Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Spacing="6">
+                    <StackPanel Grid.Column="0" Spacing="12">
                         <!-- Single-mode title, shown when the server has no
                              songLyrics extension (the Lyrics tab is hidden). -->
                         <TextBlock
@@ -254,7 +261,7 @@
                         <StackPanel
                             x:Name="TabStrip"
                             Orientation="Horizontal"
-                            Spacing="10"
+                            Spacing="18"
                             VerticalAlignment="Center"
                             Visibility="Collapsed">
                             <local:ControllerGlyph Label="LB" VerticalAlignment="Center" Opacity="0.65" />

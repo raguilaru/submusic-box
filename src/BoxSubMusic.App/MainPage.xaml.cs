@@ -490,6 +490,7 @@ namespace BoxSubMusic.App
             ArtistsNavItem.Visibility = ToVisibility(NavigationPreferences.ShowArtists);
             AlbumsNavItem.Visibility = ToVisibility(NavigationPreferences.ShowAlbums);
             PlaylistsNavItem.Visibility = ToVisibility(NavigationPreferences.ShowPlaylists);
+            FavoritesNavItem.Visibility = ToVisibility(NavigationPreferences.ShowFavorites);
 
             // A just-revealed item realizes its template now — give its icon
             // the same treatment (idempotent for the others).

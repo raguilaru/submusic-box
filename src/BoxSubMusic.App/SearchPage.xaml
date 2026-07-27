@@ -255,7 +255,13 @@
         </Grid>
 
         <!-- Scope filters (§5: in the content area, visible once search is
-             active). Segmented toggles, exclusivity managed in code. -->
+             active). Segmented toggles, exclusivity managed in code.
+             Explicit left/right pins (2026-07-27, the same fix as the
+             Favorites tab row): without them the XY engine leaves the filter
+             row for the nav pane instead of stepping to the adjacent scope.
+             Only the FIRST filter falls through to the nav — the §13.1
+             convention that Left reaches the pane — so All deliberately has
+             no left pin. -->
         <StackPanel
             x:Name="FilterPanel"
             Grid.Row="2"
@@ -263,10 +269,16 @@
             Spacing="8"
             Margin="0,0,0,16"
             Visibility="Collapsed">
-            <ToggleButton x:Name="FilterAllButton" Content="All" FontSize="18" Padding="24,6" IsChecked="True" Click="Filter_Click" />
-            <ToggleButton x:Name="FilterArtistsButton" Content="Artists" FontSize="18" Padding="24,6" Click="Filter_Click" />
-            <ToggleButton x:Name="FilterAlbumsButton" Content="Albums" FontSize="18" Padding="24,6" Click="Filter_Click" />
-            <ToggleButton x:Name="FilterSongsButton" Content="Songs" FontSize="18" Padding="24,6" Click="Filter_Click" />
+            <ToggleButton x:Name="FilterAllButton" Content="All" FontSize="18" Padding="24,6" IsChecked="True" Click="Filter_Click"
+                          XYFocusRight="{x:Bind FilterArtistsButton}" />
+            <ToggleButton x:Name="FilterArtistsButton" Content="Artists" FontSize="18" Padding="24,6" Click="Filter_Click"
+                          XYFocusLeft="{x:Bind FilterAllButton}"
+                          XYFocusRight="{x:Bind FilterAlbumsButton}" />
+            <ToggleButton x:Name="FilterAlbumsButton" Content="Albums" FontSize="18" Padding="24,6" Click="Filter_Click"
+                          XYFocusLeft="{x:Bind FilterArtistsButton}"
+                          XYFocusRight="{x:Bind FilterSongsButton}" />
+            <ToggleButton x:Name="FilterSongsButton" Content="Songs" FontSize="18" Padding="24,6" Click="Filter_Click"
+                          XYFocusLeft="{x:Bind FilterAlbumsButton}" />
         </StackPanel>
 
         <!-- Content states share row 3; only one is visible at a time. -->
