@@ -88,15 +88,17 @@
                 FontSize="21"
                 FontWeight="SemiBold"
                 TextTrimming="CharacterEllipsis" />
+            <!-- Opacities nudged up 2026-07-27: on the light theme's mid-tone
+                 chrome surface the 14-epx line at 0.55 fell under 4:1. -->
             <TextBlock
                 x:Name="ArtistAlbumText"
                 FontSize="16"
-                Opacity="0.75"
+                Opacity="0.8"
                 TextTrimming="CharacterEllipsis" />
             <TextBlock
                 x:Name="StreamInfoText"
                 FontSize="14"
-                Opacity="0.55" />
+                Opacity="0.65" />
         </StackPanel>
 
         <!-- Transport cluster: shuffle · previous · play/pause · next ·

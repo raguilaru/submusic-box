@@ -431,6 +431,7 @@ namespace BoxSubMusic.App
             NavHintPanel.Visibility = Visibility.Visible;
             PaneBackdrop.Width = NavView.OpenPaneLength;
             PaneToggleIcon.Glyph = PaneContractGlyph;
+            ShowBrandWordmark(true);
         }
 
         private void NavView_PaneClosing(NavigationView sender, NavigationViewPaneClosingEventArgs args)
@@ -441,6 +442,21 @@ namespace BoxSubMusic.App
             NavHintPanel.Visibility = Visibility.Collapsed;
             PaneBackdrop.Width = NavView.CompactPaneLength;
             PaneToggleIcon.Glyph = PaneExpandGlyph;
+            ShowBrandWordmark(false);
+        }
+
+        /// <summary>
+        /// Follows the pane state for the brand header (2026-07-27): the
+        /// wordmark would clip to an unreadable sliver in the 48-epx rail, so
+        /// only the mark survives there — and its padding tightens to 4 so the
+        /// 40-epx mark centres on the rail exactly as the section icons do.
+        /// </summary>
+        private void ShowBrandWordmark(bool show)
+        {
+            BrandWordmark.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            BrandHeader.Margin = show
+                ? new Thickness(12, 10, 12, 16)
+                : new Thickness(4, 10, 4, 16);
         }
 
         private void ContentFrame_Navigated(object sender, NavigationEventArgs e)

@@ -141,6 +141,14 @@ Implement the persistent collapsible left navigation and content-host structure.
 - Cross-Cutting Theming
 - Cross-Cutting Iconography
 
+### Open design note
+**Extended 2026-07-27** (§16): the shell now paints the page ground for the
+whole app — pages inside the content frame set `Background="Transparent"` — so
+the record-groove watermark introduced with the light-theme rework can sit
+under the content. The nav pane also gained the app's brand mark in its
+`PaneHeader` (the app's one branding placement, §13.6). Not yet
+device-verified.
+
 ### Deliverables
 - main shell layout
 - collapsible nav
@@ -148,6 +156,8 @@ Implement the persistent collapsible left navigation and content-host structure.
 - bottom-area settings/account placement
 - theme-aware icon treatment
 - hide/show toggles plumbing placeholder
+- shell-owned page ground + ambient watermark (2026-07-27)
+- brand mark in the pane header (2026-07-27)
 
 ### Out of scope
 - detailed browse content
