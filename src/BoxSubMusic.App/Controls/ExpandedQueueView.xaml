@@ -42,7 +42,7 @@
         x:Name="Root"
         Visibility="Collapsed"
         KeyDown="Root_KeyDown"
-        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        Background="{ThemeResource RetroPageBackgroundBrush}">
         <Grid.RenderTransform>
             <TranslateTransform x:Name="RootTransform" />
         </Grid.RenderTransform>

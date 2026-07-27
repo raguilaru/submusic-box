@@ -7,7 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource RetroPageBackgroundBrush}">
 
     <!--
     Slice 04 (requirements §5): the application shell. Persistent collapsible
@@ -54,6 +54,37 @@
          still paints the full canvas, so overscan crops only background. -->
     <Grid x:Name="ShellRoot" KeyDown="ShellRoot_KeyDown" Padding="32,20,32,20">
 
+    <!-- Ambient record grooves (light-theme round, 2026-07-27, §13.2). The
+         light half read as a large empty field, most visibly on sparse pages
+         (Settings, Account, an empty search). The logo's record peeking out
+         of its sleeve becomes a watermark: concentric groove rings centred
+         off the right edge, so arcs sweep the right third of the canvas.
+         Pure decoration — never hit-testable, never focusable, and it carries
+         no information, so nothing is lost if a display crops it.
+         It sits FIRST so it paints under everything, which is also why the
+         shell's pages no longer paint their own opaque background (they set
+         Background="Transparent" and this page's parchment shows through).
+         The negative margin cancels the TV-safe padding: the motif is
+         background, and backgrounds paint the full canvas (2026-07-18). -->
+    <Grid
+        x:Name="BrandWatermark"
+        Margin="-32,-20,-460,-20"
+        IsHitTestVisible="False"
+        HorizontalAlignment="Right"
+        VerticalAlignment="Center">
+        <Ellipse Width="1100" Height="1100" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="3" />
+        <Ellipse Width="940" Height="940" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="2" />
+        <Ellipse Width="790" Height="790" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="3" />
+        <Ellipse Width="650" Height="650" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="2" />
+        <Ellipse Width="520" Height="520" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="3" />
+        <Ellipse Width="400" Height="400" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="2" />
+        <!-- The record's label — the one filled shape, so the rings read as a
+             disc rather than as abstract circles. Held at under half the
+             rings' weight: a solid area at the strokes' own alpha stopped
+             reading as a label and started reading as a smudge. -->
+        <Ellipse Width="230" Height="230" Opacity="0.45" Fill="{ThemeResource RetroWatermarkBrush}" />
+    </Grid>
+
     <!-- Rounded pane backdrop (checkpoint #8 request, 2026-07-19): the OS
          NavigationView paints its pane background as a hard-edged rectangle,
          so its pane brushes are overridden to Transparent (App.xaml theme
@@ -69,12 +100,18 @@
          apart (read as unbalanced). Matching the bar's bottom inset lines
          them up; the footer hint's bottom margin was raised to clear the
          shortened backdrop's rounded corner. -->
+    <!-- Parchment frame (2026-07-27): on light the pane and the play bar are
+         cards on a paper ground, so both get the same hairline the browse
+         cards carry. Transparent on dark, where the surface separates from
+         black unaided. -->
     <Border
         x:Name="PaneBackdrop"
         HorizontalAlignment="Left"
         Width="280"
         Margin="0,0,0,16"
         CornerRadius="12"
+        BorderBrush="{ThemeResource RetroPaneBorderBrush}"
+        BorderThickness="1"
         Background="{ThemeResource RetroSurfaceBrush}" />
 
     <!-- Collapsed-rail centering (2026-07-19 — the REAL cause, found by
@@ -100,6 +137,44 @@
         ItemInvoked="NavView_ItemInvoked"
         PaneOpening="NavView_PaneOpening"
         PaneClosing="NavView_PaneClosing">
+
+        <!-- App identity (2026-07-27 branding round): the logo sits at the top
+             of the nav pane — the one place a 10-foot app should carry its
+             mark, since it is chrome the user already ignores rather than
+             content space, and it is present on every screen without being
+             repeated on any of them. Deliberately NOT added to page headers,
+             the play bar, or as a content watermark: at couch distance a
+             repeated logo is noise, and the user knows what they launched.
+             PaneHeader is safe here for the same reason PaneFooter's hint is
+             (2026-07-17): the 2026-07-14 focus dead-zone lesson concerned
+             FOCUSABLE items, and this is inert decoration.
+             The mark keeps the whole logo, only scaled (the 2026-07-19 asset
+             decision), inside the app's parchment frame; the wordmark beside
+             it is real text so it is legible at 10 ft, matching SetupPage's
+             logo + title pairing. Both the wordmark and the header's padding
+             follow the pane state (PaneOpening/PaneClosing) — 4+40+4 is
+             exactly the 48-epx compact rail, so the mark stays centred on it
+             when the pane collapses. -->
+        <NavigationView.PaneHeader>
+            <StackPanel
+                x:Name="BrandHeader"
+                Orientation="Horizontal"
+                Margin="12,10,12,16"
+                Spacing="12">
+                <Border
+                    Width="40"
+                    Height="40"
+                    BorderBrush="{ThemeResource RetroCardBorderBrush}"
+                    BorderThickness="1"
+                    VerticalAlignment="Center">
+                    <Image Source="ms-appx:///Assets/BrandLogo.png" Stretch="UniformToFill" />
+                </Border>
+                <StackPanel x:Name="BrandWordmark" VerticalAlignment="Center">
+                    <TextBlock Text="SubMusic Box" FontSize="19" FontWeight="SemiBold" />
+                    <controls:RetroStripes Width="88" Margin="0,5,0,0" />
+                </StackPanel>
+            </StackPanel>
+        </NavigationView.PaneHeader>
 
         <!-- Footer hint (slimmed 2026-07-22): the pane used to stack two badge
              rows (LB/RB region cycle + Y queue), which read as cramped in the

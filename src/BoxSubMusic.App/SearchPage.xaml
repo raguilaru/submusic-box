@@ -7,7 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="Transparent">
 
     <!-- Search (Slice 13, requirements §5/§17 resolution 2026-07-19): the
          query runs on submit (Enter / OSK accept — no live-as-you-type churn),

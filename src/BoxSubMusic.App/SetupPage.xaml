@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource RetroPageBackgroundBrush}">
 
     <!--
     Slice 03 (requirements §4): first-launch server connection.
@@ -14,6 +14,27 @@
     stay inside the text boxes for caret movement (see the Slice 01 note in
     MainPage.xaml). Gamepad XY focus works page-wide regardless.
     -->
+    <Grid>
+
+    <!-- The shell's record-groove watermark (2026-07-27), so the first screen
+         and the app behind it are the same place. Same geometry as MainPage;
+         inert decoration, so it sits under the form and takes no input. This
+         page has no TV-safe padding of its own (the form already sits inside
+         the safe area), hence no negative margin. -->
+    <Grid
+        IsHitTestVisible="False"
+        HorizontalAlignment="Right"
+        VerticalAlignment="Center"
+        Margin="0,0,-460,0">
+        <Ellipse Width="1100" Height="1100" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="3" />
+        <Ellipse Width="940" Height="940" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="2" />
+        <Ellipse Width="790" Height="790" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="3" />
+        <Ellipse Width="650" Height="650" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="2" />
+        <Ellipse Width="520" Height="520" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="3" />
+        <Ellipse Width="400" Height="400" Stroke="{ThemeResource RetroWatermarkBrush}" StrokeThickness="2" />
+        <Ellipse Width="230" Height="230" Opacity="0.45" Fill="{ThemeResource RetroWatermarkBrush}" />
+    </Grid>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel
             MaxWidth="720"
@@ -131,4 +152,6 @@
             </StackPanel>
         </StackPanel>
     </ScrollViewer>
+
+    </Grid>
 </Page>

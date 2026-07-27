@@ -35,6 +35,22 @@
                     <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="Transparent" />
                     <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="Transparent" />
 
+                    <!-- Page ground (2026-07-27 light round): pages no longer
+                         paint ApplicationPageBackgroundThemeBrush themselves —
+                         the shell paints this once behind everything, so the
+                         ambient watermark can sit under the content frame.
+                         Dark keeps the black the console pass approved; it is
+                         only the light half that changes (see below). -->
+                    <SolidColorBrush x:Key="RetroPageBackgroundBrush" Color="#FF000000" />
+                    <!-- Record grooves drawn faintly across the empty right of
+                         the shell. Alpha does the work — the value is the
+                         accent, so the motif is on-palette in both themes. -->
+                    <SolidColorBrush x:Key="RetroWatermarkBrush" Color="#127FADA9" />
+                    <!-- Frame around the floating pane/bar cards. On dark the
+                         surface already separates from black on its own, so
+                         this stays invisible there. -->
+                    <SolidColorBrush x:Key="RetroPaneBorderBrush" Color="Transparent" />
+
                     <!-- Seafoam accent on dark (from the logo's lower "S" stripes). -->
                     <Color x:Key="SystemAccentColor">#FF7FADA9</Color>
                     <Color x:Key="RetroAccentColor">#FF7FADA9</Color>
@@ -104,31 +120,64 @@
                     <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="Transparent" />
                     <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="Transparent" />
 
+                    <!-- Light-theme rework, 2026-07-27 (§13.2). The old light
+                         half was the system near-white page + a pale seafoam
+                         that sat only a few percent off it, so neither the nav
+                         pane nor the play bar read as a surface, and a 1080p
+                         TV showed one large flat white field. Three moves fix
+                         it, and none of them touches dark:
+                         (a) the ground becomes warm parchment (the logo's
+                             cream, lightened) with a soft vertical wash, so
+                             white is no longer the app's dominant colour;
+                         (b) the chrome surface deepens far enough to read as
+                             a card ON that parchment;
+                         (c) the primary fill stops being aged tan — a brown
+                             play/pause disc was the muddiest thing on screen
+                             — and becomes the deep teal accent, which is
+                             already the colour of every checked toggle and
+                             radio, so the primary action finally matches the
+                             rest of the light palette.
+                         Tan survives where it earns its keep: the parchment
+                         card frames and the first stripe of the motif. -->
+                    <LinearGradientBrush x:Key="RetroPageBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#FFF7F3EA" Offset="0" />
+                        <GradientStop Color="#FFEDE5D6" Offset="1" />
+                    </LinearGradientBrush>
+                    <SolidColorBrush x:Key="RetroWatermarkBrush" Color="#1F2F6B66" />
+                    <SolidColorBrush x:Key="RetroPaneBorderBrush" Color="#66A08B63" />
+
                     <!-- Deep sleeve teal on light (seafoam lacks contrast there). -->
                     <Color x:Key="SystemAccentColor">#FF2F6B66</Color>
                     <Color x:Key="RetroAccentColor">#FF2F6B66</Color>
                     <SolidColorBrush x:Key="RetroAccentBrush" Color="#FF2F6B66" />
-                    <!-- "Cream" darkens to aged tan so it reads on light surfaces. -->
-                    <SolidColorBrush x:Key="RetroCreamBrush" Color="#FF8A7550" />
-                    <SolidColorBrush x:Key="RetroSurfaceBrush" Color="#FFD9E5E2" />
-                    <SolidColorBrush x:Key="RetroCardBorderBrush" Color="#80A08B63" />
+                    <!-- The "cream" role is the primary fill (play/pause,
+                         progress line). On light it is the deep teal, not the
+                         aged tan it used to be — see the note above. -->
+                    <SolidColorBrush x:Key="RetroCreamBrush" Color="#FF2F6B66" />
+                    <!-- Chrome surface (nav pane, play bar, controller badges):
+                         deepened from #D9E5E2 so it separates from the
+                         parchment. Still light enough that the near-black pane
+                         text keeps ~10:1, and the 24-epx accent icons on it
+                         stay above the 3:1 large-graphic line. -->
+                    <SolidColorBrush x:Key="RetroSurfaceBrush" Color="#FFC4D9D3" />
+                    <SolidColorBrush x:Key="RetroCardBorderBrush" Color="#99A08B63" />
                     <SolidColorBrush x:Key="RetroStripeBrush1" Color="#FF8A7550" />
                     <SolidColorBrush x:Key="RetroStripeBrush2" Color="#FF4E8783" />
                     <SolidColorBrush x:Key="RetroStripeBrush3" Color="#FF2F6B66" />
-                    <!-- Light theme's "cream" is a dark tan, so its ink is pale. -->
+                    <!-- Ink on the (now teal) primary fill stays the pale cream. -->
                     <SolidColorBrush x:Key="RetroOnCreamBrush" Color="#FFF5EFE0" />
                     <!-- Detail-view action buttons — same roles as dark, on the
-                         light palette: primary = the aged-tan play/pause fill
-                         with pale ink; tonal = translucent deep-teal chip. -->
-                    <SolidColorBrush x:Key="RetroPrimaryFillBrush" Color="#FF8A7550" />
-                    <SolidColorBrush x:Key="RetroPrimaryFillHoverBrush" Color="#FF9C8760" />
-                    <SolidColorBrush x:Key="RetroPrimaryFillPressedBrush" Color="#FF75623F" />
+                         light palette: primary = the deep-teal fill with pale
+                         cream ink; tonal = translucent deep-teal chip. -->
+                    <SolidColorBrush x:Key="RetroPrimaryFillBrush" Color="#FF2F6B66" />
+                    <SolidColorBrush x:Key="RetroPrimaryFillHoverBrush" Color="#FF3D7C76" />
+                    <SolidColorBrush x:Key="RetroPrimaryFillPressedBrush" Color="#FF265853" />
                     <SolidColorBrush x:Key="RetroPrimaryInkBrush" Color="#FFF5EFE0" />
-                    <SolidColorBrush x:Key="RetroTonalFillBrush" Color="#222F6B66" />
-                    <SolidColorBrush x:Key="RetroTonalFillHoverBrush" Color="#382F6B66" />
-                    <SolidColorBrush x:Key="RetroTonalFillPressedBrush" Color="#4E2F6B66" />
-                    <SolidColorBrush x:Key="RetroTonalBorderBrush" Color="#802F6B66" />
-                    <SolidColorBrush x:Key="RetroTonalInkBrush" Color="#FF2F6B66" />
+                    <SolidColorBrush x:Key="RetroTonalFillBrush" Color="#2E2F6B66" />
+                    <SolidColorBrush x:Key="RetroTonalFillHoverBrush" Color="#452F6B66" />
+                    <SolidColorBrush x:Key="RetroTonalFillPressedBrush" Color="#5C2F6B66" />
+                    <SolidColorBrush x:Key="RetroTonalBorderBrush" Color="#8C2F6B66" />
+                    <SolidColorBrush x:Key="RetroTonalInkBrush" Color="#FF2A5F5A" />
                     <SolidColorBrush x:Key="RetroVinylBrush" Color="#FF1B1B19" />
                     <SolidColorBrush x:Key="RetroVinylGrooveBrush" Color="#2EFFFFFF" />
                     <SolidColorBrush x:Key="RetroVinylLabelBrush" Color="#FF2F6B66" />

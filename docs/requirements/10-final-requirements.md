@@ -296,6 +296,13 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
 ### 13.5 View-mode toggle
 - Wherever grid/list dual modes exist, the app MUST provide one consistent and always-visible toggle control.
 
+### 13.6 Branding (added 2026-07-27)
+
+- The app MUST carry its own mark in exactly one persistent place in the shell — the top of the navigation pane — so its identity is present on every screen without being repeated on any of them.
+- The mark MUST NOT be repeated on page headers, the now-playing bar, or over content: at 10-foot distance a repeated logo is noise, and the surrounding content is what the user came for.
+- Any wordmark accompanying the mark MUST be rendered as text, not as pixels inside a scaled-down logo image, so it stays legible at 10 ft.
+- Brand presence beyond the mark MUST be carried by the palette and the logo-derived motifs (the triple stripe, the vinyl/groove forms), not by additional logo placements.
+
 ## 14. AI-Assisted Build Harness
 
 - Development MUST proceed screen-by-screen and subsystem-by-subsystem, not as a single giant generation request.
@@ -964,6 +971,60 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   spacing 6 → 12, header column spacing 16 → 24. At the shipped values the
   LB/RB badges, the two tab labels, the stripe motif and the context line
   read as one crowded block at 10 ft.
+
+- 2026-07-27: **The light theme is rebuilt on a parchment ground, and the app
+  mark joins the nav pane** (§13.2/§13.6/§5; Rafael's report that light mode
+  "looks bad — not enough contrast, the white background feels too empty and
+  bright"). Diagnosis first, because three separate faults compounded: the page
+  was the system near-white, the chrome surface (#D9E5E2) sat only a few
+  percent off it so neither the nav pane nor the play bar read as a surface at
+  all, and the primary fill was the aged tan — a brown play/pause disc that was
+  the muddiest object on screen. Dark mode had none of these because its
+  inversion works: cream on petrol on black. Five changes, **all confined to
+  the Light theme dictionary except the watermark and the pane header**:
+  (a) **The ground is warm parchment**, not white — a soft vertical wash
+  (#F7F3EA → #EDE5D6) from the logo's cream. White was the one value in the
+  app that was not in the palette, and a large flat white field is genuinely
+  uncomfortable on a 1080p TV.
+  (b) **The chrome surface deepens** to #C4D9D3 and both floating cards (nav
+  pane, play bar) carry the parchment hairline the browse cards already had, so
+  they read as cards ON paper. The pane border brush is transparent on dark,
+  where the surface separates from black unaided — the dark half is untouched.
+  (c) **The primary fill is the deep teal accent**, not the aged tan. It is
+  already the colour of every checked toggle and radio in light mode, so the
+  play/pause disc, the progress line and the detail pages' Play buttons finally
+  agree with the rest of the theme. Tan is demoted to what it is good at: the
+  card frames and the first stripe of the motif.
+  (d) **An ambient record-groove watermark** — concentric rings centred off the
+  right edge, the logo's record emerging from its sleeve — answers the "empty"
+  half of the complaint on sparse pages (Settings, Account, an empty search).
+  It is inert decoration carrying no information, at ~12 % alpha on light and
+  ~7 % on dark. To let it sit UNDER the content, the shell now paints the page
+  ground once and **every page inside the shell sets
+  `Background="Transparent"`** (SetupPage and the queue overlay stay opaque —
+  they are not inside the content frame). Accepted consequence: a Frame
+  navigation transition can briefly show both pages through each other.
+  (e) **Settings and Account gained the page-title stripe motif** every browse
+  page already had — part of why those two read as the emptiest screens.
+  Branding (§13.6): the mark goes in the **nav pane header** and nowhere else.
+  It keeps the complete logo, only scaled (the 2026-07-19 asset decision), in a
+  parchment frame at 40 epx, with "SubMusic Box" beside it as real TEXT — the
+  same pairing SetupPage uses, and the reason the wordmark stays legible at
+  10 ft where a scaled-down logo's own lettering would not. `PaneHeader` is
+  safe here for the same reason `PaneFooter`'s hint is (2026-07-17): the
+  2026-07-14 focus dead-zone lesson concerned FOCUSABLE items, and this is
+  inert. The wordmark hides and the header's padding tightens to 4 epx when the
+  pane collapses, so the mark centres on the 48-epx rail exactly as the section
+  icons do.
+  **Considered and rejected: keeping the chrome dark in light mode** (the
+  Spotify/Apple Music pattern — petrol pane and bar in both themes). It is the
+  more striking option and would have fixed contrast outright, but the nav
+  items' foreground comes from the OS NavigationView's own theme brushes, which
+  in Light resolve to near-black; making that legible means overriding the
+  whole `NavigationViewItemForeground*` state family and betting they are as
+  reachable as the pane-background brushes were. A wrong bet ships black text
+  on dark teal, and it cannot be checked anywhere but the console. Revisit only
+  with a device pass budgeted for it.
 
 ## 17. Open Decisions / TODO
 

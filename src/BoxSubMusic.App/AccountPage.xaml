@@ -2,17 +2,22 @@
     x:Class="BoxSubMusic.App.AccountPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:BoxSubMusic.App.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="Transparent">
 
     <!-- §5: account / server info. Passwords are never displayed. -->
     <StackPanel Padding="48" Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
+        <!-- Page-title stripe motif (2026-07-27): every browse page carries
+             it; Settings and Account were the two that did not, which is part
+             of why they read as the emptiest screens in the app. -->
         <TextBlock
             Text="Account"
             FontSize="48"
             FontWeight="SemiBold" />
+        <controls:RetroStripes Width="150" HorizontalAlignment="Left" Margin="0,-8,0,0" />
 
         <TextBlock
             x:Name="ServerText"

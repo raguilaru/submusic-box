@@ -255,7 +255,18 @@ Pass if:
 - Keyboard/mouse input does not break the app.
 - Input glyphs switch based on active input mode, if implemented in the current slice.
 - All implemented screens render acceptably in both light and dark themes.
+- In the light theme, the page ground, the nav pane and the now-playing bar are
+  three distinguishable values — the pane and the bar read as surfaces sitting
+  on the ground, not as the ground itself.
+- Neither theme's dominant colour is one the palette does not contain (the
+  light theme's ground is the logo's warm parchment, not white).
+- The primary action fill (play/pause, progress line, detail Play buttons) is
+  the same colour family as the theme's other selected states.
 - Focus indicators remain visible at TV distance.
+- The app mark appears in the nav pane header and nowhere else, and its
+  wordmark is legible at 10 ft.
+- Decoration carrying no information (the stripe motif, the record-groove
+  watermark) is never focusable and never obscures content or focus visuals.
 
 ### Fail if:
 - Controller navigation is treated as secondary.

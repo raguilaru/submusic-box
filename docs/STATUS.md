@@ -1,8 +1,9 @@
 # Current Status
 
-Last updated: 2026-07-27 (Favorites tab focus + Show Favorites toggle +
-overlay header spacing, on top of the browse list rows + view-toggle restyle and
-the Favorites and Songs-sorting rounds; the file was condensed to a clean
+Last updated: 2026-07-27 (light-theme rework + nav-pane brand mark, on top of
+the Favorites tab focus / Show Favorites / overlay header spacing round, the
+browse list rows + view-toggle restyle, and the Favorites and Songs-sorting
+rounds; the file was condensed to a clean
 final-state summary on 2026-07-23 — the previous chronological pass-by-pass log
 lives in git history).
 
@@ -72,6 +73,14 @@ planned slice. Since then, refinement rounds have landed on top:
   joins the Settings nav toggles, revising §5's original "Favorites is not
   hideable" clause (see §16); and the expanded overlay's Queue ⇄ Lyrics header
   got real spacing. Not yet device-verified (backlog items 44–46).
+- **Light theme rework + nav-pane brand mark** (2026-07-27) — the light half
+  is rebuilt on a warm parchment ground with the chrome deepened into real
+  cards, the muddy aged-tan primary replaced by the deep teal accent, and an
+  ambient record-groove watermark under the content (which is why every page
+  inside the shell now paints `Background="Transparent"` and the shell paints
+  the ground once). The app mark joins the nav pane header — the app's one
+  branding placement, per the new §13.6. Dark is untouched apart from the very
+  faint watermark. Not yet device-verified (backlog items 47–52).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -368,6 +377,42 @@ code-complete-but-not-yet-device-verified rounds.
     row. On a server WITHOUT lyrics the single "Queue" title should still sit
     correctly (the tab strip is hidden, not restyled).
 
+**Light theme rework + nav-pane brand mark (2026-07-27):**
+
+47. **Light mode, the whole point of the round:** switch the theme to Light and
+    walk Home → a browse grid → a detail page → Settings. The ground should read
+    as warm parchment (never white), the nav pane and the play bar as distinct
+    cards sitting ON it with a visible tan hairline, and the play/pause disc,
+    the progress line and the detail Play buttons as deep teal — no brown
+    anywhere except the card frames and the first stripe. Confirm at 10 ft that
+    the parchment does not look dirty or yellow on the real TV (this is the one
+    value that can go wrong on a differently-calibrated display) and that album
+    artwork still reads cleanly against it.
+48. **Dark mode is unchanged:** switch back to Dark and confirm nothing moved
+    except the new watermark and the pane header — same black ground, same
+    petrol surfaces, no border on the pane.
+49. **Record-groove watermark:** faint rings sweep the right of every screen.
+    Confirm in BOTH themes that it reads as texture and never as content —
+    that no ring competes with a card edge or a focus rectangle, that the
+    filled label reads as a record label and not a smudge, and that it is
+    invisible enough on dark (7 % alpha) to be worth keeping there at all. Also
+    check the setup screen, which now carries it too.
+50. **Pages are transparent now:** navigate quickly between sections and in/out
+    of detail pages. The known trade-off is that a Frame transition can briefly
+    show two pages through each other — confirm it is not distracting on
+    device. Nothing should ever show "no background".
+51. **Nav pane brand mark:** the logo + "SubMusic Box" sit above the chevron
+    toggle. Confirm the 40-epx mark is crisp (not soft — the asset is 176 px),
+    that the wordmark is legible at 10 ft, and that the header steals no space
+    the menu needs. **Collapse the pane**: the wordmark must disappear and the
+    mark must centre on the 48-epx rail like the section icons, with no clipped
+    sliver. Focus is the thing to watch — the header is inert decoration, so
+    Up from Search must still reach the chevron item and never stop on the
+    logo.
+52. **Play-bar text contrast:** on the light theme's mid-tone bar, the
+    artist · album line and the format/bitrate line (opacities nudged up this
+    round) should both be comfortably readable at 10 ft.
+
 *(Future work: append console items here.)*
 
 ## Known gaps / durable notes
@@ -493,6 +538,26 @@ revisiting the reasoning (many encode a hard-won console lesson).
   `UISettings.ColorValuesChanged` fires on Xbox. `FavoriteHeart` reads
   `SystemAccentColor` once at construction (accent change repaints only after a
   page/control rebuild).
+- **The light theme is not a tinted copy of the dark one** (2026-07-27): its
+  ground is warm parchment rather than white, its chrome surface is deepened
+  far enough to read as a card on that ground, and its primary fill is the deep
+  teal accent — NOT the aged tan the "cream" role maps to elsewhere. The tan
+  survives only in the card frames and the motif's first stripe. Reverting any
+  of the three reintroduces the washed-out, flat look Rafael reported.
+- **Pages inside the shell paint no background of their own** — they are
+  `Background="Transparent"` and MainPage paints `RetroPageBackgroundBrush`
+  once, so the record-groove watermark can sit under the content frame.
+  SetupPage and the expanded-queue overlay stay opaque by necessity (neither
+  is inside the content frame). Consequence to accept: a Frame navigation
+  transition can briefly show two pages through each other.
+- **The app mark has exactly one home: the nav pane header** (§13.6). Adding it
+  to page headers, the play bar, or over content is an explicit non-goal — at
+  10 ft a repeated logo is noise. The wordmark beside it is real text, not
+  pixels in a scaled logo, which is why it survives at 10 ft.
+- **Keeping the chrome dark in light mode was considered and rejected** — see
+  §16 (2026-07-27). It needs the OS `NavigationViewItemForeground*` state
+  family to be as override-reachable as the pane-background brushes were, and a
+  wrong bet ships black text on dark teal that only a console pass would catch.
 - **Retro accent override reach** is the open device question: framework brushes
   composed from `SystemAccentColor` at generic.xaml scope may not follow the
   app-level override — any surface still showing the console accent gets its own
