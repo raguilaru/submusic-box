@@ -1078,6 +1078,13 @@ namespace BoxSubMusic.App
             PlayAllButton.XYFocusDown = below;
             ShuffleAllButton.XYFocusDown = below;
 
+            // Left from the cluster belongs to the tab row, not the nav pane
+            // (the same XY-engine finding the tabs themselves are pinned
+            // around). Sort is the cluster's leftmost control, and its target
+            // is the tab currently showing — hence a code pin rather than the
+            // static ones Play All / Shuffle All carry in XAML.
+            SortButton.XYFocusLeft = ActiveTabButton();
+
             // Re-evaluate the whole-tab actions for the scope now showing.
             SetActionsBusy(_buildingPool);
 

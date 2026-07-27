@@ -299,7 +299,17 @@
                  and Albums that means fetching each container's songs on
                  demand, so the pair disables itself and shows the ring while
                  it works (a favorites library of many artists is a real wait,
-                 and a dead-looking button would read as broken). -->
+                 and a dead-looking button would read as broken).
+
+                 Leftward pins for the same reason the tabs carry them: without
+                 them the XY engine leaves this cluster for the nav pane rather
+                 than stepping to the control beside it. Sort's left target is
+                 the ACTIVE tab button and is therefore set in code
+                 (ShowActiveTab) — a static pin would send Left to Artists while
+                 the Songs tab is showing. Play All / Shuffle All pin to the
+                 control on their left; the three disable together
+                 (SetActionsBusy), so no pin can land on a disabled button while
+                 its source is still focusable. -->
             <StackPanel
                 Orientation="Horizontal"
                 Spacing="12"
@@ -331,6 +341,7 @@
                     Style="{StaticResource RetroPrimaryButtonStyle}"
                     Padding="24,8"
                     VerticalAlignment="Center"
+                    XYFocusLeft="{x:Bind SortButton}"
                     Click="PlayAllButton_Click">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xF606;" FontSize="18" />
@@ -342,6 +353,7 @@
                     Style="{StaticResource RetroTonalButtonStyle}"
                     Padding="24,8"
                     VerticalAlignment="Center"
+                    XYFocusLeft="{x:Bind PlayAllButton}"
                     Click="ShuffleAllButton_Click">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <FontIcon FontFamily="{StaticResource FluentIconFont}" Glyph="&#xEF37;" FontSize="18" />
