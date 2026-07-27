@@ -173,11 +173,11 @@
                     <DataTemplate x:DataType="models:ArtistCard">
                         <!-- Row shape matches the Albums list (§7.1/§7.2,
                              2026-07-27): artwork + name on the left, the
-                             starred marker, then the count on the right.
-                             getArtists carries the album count and the starred
-                             flag and nothing more — song count and total play
-                             time would cost one getArtist per row, so they sit
-                             on the artist detail page instead. -->
+                             starred marker, then the counts on the right.
+                             getArtists carries only the album count and the
+                             starred flag, so the track count and total play
+                             time are summed from the album list once (see
+                             ArtistTotals) and fill in behind the rows. -->
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -243,9 +243,13 @@
                                 Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
                                 Visibility="{x:Bind StarredVisibility}"
                                 VerticalAlignment="Center" />
+                            <!-- Album count alone until the album-list aggregate
+                                 completes, then album count · tracks · total
+                                 play time (OneWay so the row repaints in
+                                 place). -->
                             <TextBlock
                                 Grid.Column="3"
-                                Text="{x:Bind AlbumCountLabel}"
+                                Text="{x:Bind MetaLabel, Mode=OneWay}"
                                 FontSize="18"
                                 Opacity="0.75"
                                 TextAlignment="Right"
