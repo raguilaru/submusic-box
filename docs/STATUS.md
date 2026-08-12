@@ -1,6 +1,8 @@
 # Current Status
 
-Last updated: 2026-08-13 (background memory, round two: cover-art URLs were
+Last updated: 2026-08-13 (background memory rounds two and three: the console
+cleared artwork (~27 MB) and the overlay (free) as suspects and pinned the cost
+on scrolling the queue + jumping to a track, now instrumented; cover-art URLs were
 unique per request — defeating both platform caches — so the strategy moved
 from shedding memory to not allocating it; plus a diagnostic switch that runs
 the app with no artwork, to measure what artwork actually costs. On top of
@@ -116,8 +118,25 @@ planned slice. Since then, refinement rounds have landed on top:
   match what is drawn (2026-08-12 halved the decode sizes but not the `size=`
   parameter, so covers still downloaded at 4× the area). Ships with a
   diagnostic **"Run without artwork"** toggle on Account — the measurement
-  that bounds artwork's share of the ~139 MB floor. Not yet device-verified
-  (backlog items 59–62).
+  that bounds artwork's share of the ~139 MB floor. Partly device-verified
+  (the measurement ran; see the next entry — backlog items 61–62 still open).
+- **Console result + jump instrumentation** (2026-08-13) — the artwork
+  measurement was run and it **answered its question and cleared its suspect**:
+  same build, same 228-track queue, `EnteredBackground` reads **156 MB with
+  artwork and 129 MB without**, so artwork is ~27 MB. With artwork fully
+  suppressed the app still reached **290 MB** and was killed. The
+  content/composition split also cleared the overlay: opening it costs
+  **0–1 MB**, which **retracts the "overlay costs ~49 MB" reading** of
+  2026-08-12 (that number was everything that happened in the eight seconds
+  after it opened). The real culprit is one interaction, isolated by a control
+  run: sitting in the overlay for 27 s costs **+7 MB**, while scrolling the
+  228 rows and jumping to a track costs **+91 MB** (artwork on) and **+166 MB**
+  (artwork off) — precisely the reported symptom. Two mechanisms remain (open
+  `MediaPlaybackItem` buffers vs. the queue list realizing rows), so this round
+  instruments rather than guesses: `JumpRequested` / `AfterJumpMoveTo` /
+  `AfterJumpSettled` bracket the jump, and `MaxPlayedItemsToKeepOpen` drops
+  from 2 to 0 permanently as a candidate fix that is also half the experiment.
+  Not yet device-verified (backlog items 63–65).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -550,6 +569,45 @@ so deploy, stop debugging, and launch from the Dev Home tile.
     carry the previous login's credentials, and the symptom would be broken
     images rather than an error.
 
+**Splitting the queue-jump spike (2026-08-13, §11):**
+
+Items 59–60 are **answered** — artwork is ~27 MB and the URL fix is in; the
+overlay itself is free. What remains is the 91–166 MB that scrolling the queue
+and jumping to a track costs. Items 63–64 are two runs that separate the two
+possible causes; run them in order and do not combine them, because combining
+them is what produced the wrong answer last time. Non-debug launch as always.
+
+63. **Scroll only, no jump.** Play a 200+ track queue, open the overlay, scroll
+    all the way to the bottom of the rows, scroll back, then **close the
+    overlay without selecting anything** and read `QueueOverlayClosed`. Then
+    background and read `EnteredBackground`. If those numbers are tens of MB
+    above the reading before you opened it, the cost is the queue `ListView`
+    realizing rows — each carries a `SpinningVinyl` and a four-item
+    `MenuFlyout` from the `DataTemplate` — and the fix is in the row template,
+    not in playback. If they are flat, scrolling is innocent and item 64 has
+    the answer.
+64. **Jump with no scrolling.** Fresh launch, same queue, open the overlay and
+    press A on a row that is **already on screen** — no scrolling at all. Read
+    the three new lines in order:
+    `JumpRequested #1` → `AfterJumpMoveTo #1` → `AfterJumpSettled #1` (2.5 s
+    later). Growth between Requested and MoveTo means the platform allocated
+    synchronously when it opened the target item; growth only by Settled means
+    it was the new stream buffering; no growth at either means the jump is
+    innocent and item 63 has the answer. Then jump twice more and watch whether
+    each `AfterJumpSettled #N` steps up cumulatively — that is what tells us
+    whether it accumulates per jump or reaches a ceiling. The line records the
+    target's format and bitrate, so note whether the big steps are the lossless
+    tracks.
+65. **Did `MaxPlayedItemsToKeepOpen = 0` help, and what did it cost?**
+    Compare item 64's numbers against the 91–166 MB the 2026-08-13 log
+    recorded. Then check the trade it buys: **Previous** now has to reopen the
+    stream, so confirm from the bar and from the Guide's media controls that
+    pressing Previous still works and is not annoyingly slow (a modest delay is
+    the accepted price; a multi-second stall is not). Gapless forward playback
+    must be unaffected — this setting governs already-played items, not the
+    next-track prefetch, so listen through two or three track boundaries to
+    confirm nothing gaps.
+
 *(Future work: append console items here.)*
 
 ## Known gaps / durable notes
@@ -663,6 +721,26 @@ revisiting the reasoning (many encode a hard-won console lesson).
   later), **survived at 178 MB** for 36 s. Xbox tolerates a moderate overage
   and kills a large one — which is exactly the reported "sometimes it keeps
   playing".
+- **Artwork is ~27 MB — real, fixed, and not the cause** (measured 2026-08-13
+  with the "Run without artwork" switch). Same build, same 228-track queue:
+  `EnteredBackground` 156 MB with artwork, 129 MB without. With artwork fully
+  suppressed the app still reached 290 MB and was killed, so no amount of
+  artwork work would have solved this. Do not re-open artwork as the suspect
+  without a measurement that contradicts this one.
+- **Opening the expanded queue is free (0–1 MB), and the 2026-08-12 claim that
+  it cost ~49 MB is RETRACTED.** That figure was everything that happened in
+  the eight seconds after the overlay opened, attributed to the overlay. The
+  `QueueOverlayOpening` → `QueueOverlayContentReady` pair now brackets it
+  properly and reads 0–1 MB on every console run.
+- **The cost is scrolling the queue and jumping to a track**, isolated by its
+  own control run (2026-08-13): sitting in the open overlay for 27 s costs
+  **+7 MB**; scrolling 228 rows and jumping costs **+91 MB** with artwork and
+  **+166 MB** without. That is the reported symptom exactly — a long queue
+  plays in the background indefinitely, and dies after you go back and pick
+  another track. Two candidate mechanisms remain (open `MediaPlaybackItem`
+  buffers vs. the queue `ListView` realizing rows, each of which carries a
+  `SpinningVinyl` and a four-item `MenuFlyout` from its `DataTemplate`);
+  backlog items 63–64 separate them and must be run separately.
 - **Every cover-art URL used to be unique, defeating both platform caches**
   (found 2026-08-13). `GetCoverArtUri` goes through the same request builder
   as every endpoint, and token auth mints a **fresh random salt per call**, so
@@ -698,7 +776,13 @@ revisiting the reasoning (many encode a hard-won console lesson).
   measured 236 MB, inside the 178–270 MB range already seen with 256 kbps
   m4a; the variance tracks browsing, not codec. Open `MediaPlaybackItem`s do
   hold native demux/decode buffers that are several times larger for FLAC,
-  which is why `MaxPlayedItemsToKeepOpen` now drops to 0 while backgrounded.
+  which is why **`MaxPlayedItemsToKeepOpen` is now 0 always** (2026-08-13),
+  not only while backgrounded: at 2, a jump left the track you came from open
+  on top of the new one and its prefetched successor. It buys a marginally
+  faster Previous, which is the wrong trade against a 128 MB limit — but note
+  this is a candidate fix under test, not a confirmed one (backlog item 65).
+  The background-pressure path still sets 0 explicitly, so raising the
+  constant again cannot silently un-fix the background case.
 
 - **The app deliberately destroys its own UI while backgrounded.** Xbox drops
   the memory limit to 128 MB with ~2 s to comply, so under pressure

@@ -11,6 +11,7 @@ using Windows.Media.MediaProperties;
 using Windows.Media.Playback;
 using Windows.Storage.Streams;
 using Windows.UI.Core;
+using Windows.UI.Xaml;
 
 namespace BoxSubMusic.App.Services
 {
@@ -76,10 +77,31 @@ namespace BoxSubMusic.App.Services
         private MediaPlaybackList _list;
 
         /// <summary>
-        /// Played items the list keeps open for responsive skip-back. Dropped
-        /// to 0 under background memory pressure (§11).
+        /// Played items the list keeps open for responsive skip-back.
+        ///
+        /// **Now 0, and that is a candidate fix under test** (§11,
+        /// 2026-08-13). The console log showed that scrolling the expanded
+        /// queue and jumping to another track adds 91–166 MB against a 128 MB
+        /// background limit, and that it does so with artwork suppressed — so
+        /// the growth is not the UI's images. An open
+        /// <see cref="MediaPlaybackItem"/> holds native demux/decode buffers
+        /// that are several times larger for FLAC, and at 2 a jump leaves the
+        /// track you came from open on top of the new one and its prefetched
+        /// successor. Keeping played items open buys a marginally faster
+        /// Previous; on a 128 MB budget that is the wrong trade.
+        ///
+        /// The background-pressure path below still sets 0 explicitly, so
+        /// raising this constant again cannot silently un-fix the background
+        /// case.
         /// </summary>
-        private const int DefaultPlayedItemsKept = 2;
+        private const int DefaultPlayedItemsKept = 0;
+
+        // Diagnostics: how long after a jump to take the settled reading, and
+        // the one-shot timer that takes it. Instant growth means the media
+        // pipeline opened something; growth over seconds means it buffered.
+        private static readonly TimeSpan JumpSettleDelay = TimeSpan.FromMilliseconds(2500);
+        private DispatcherTimer _jumpSettleTimer;
+        private int _jumpCount;
 
         // Scrobble bookkeeping, touched from the media thread (PositionChanged).
         private Song _scrobbleSong;
@@ -475,6 +497,18 @@ namespace BoxSubMusic.App.Services
                 return;
             }
 
+            // Diagnostics (§11, 2026-08-13): the jump is the operation the
+            // console log implicated, so it is bracketed the way the overlay
+            // open already is. The three readings answer different questions —
+            // "Requested" is the baseline, "MoveTo" catches an allocation the
+            // platform makes synchronously when it opens the target item, and
+            // "Settled" catches one that accrues while the new stream buffers.
+            // The track's own format rides along because an open item's native
+            // buffers are several times larger for lossless.
+            _jumpCount++;
+            BackgroundDiagnostics.LogMemory(
+                "JumpRequested #" + _jumpCount + " (to " + DescribeStream(song) + ")");
+
             MediaPlaybackItem landed = _list.MoveTo((uint)index);
             if (landed != item)
             {
@@ -486,6 +520,41 @@ namespace BoxSubMusic.App.Services
             }
 
             Player.Play();
+
+            BackgroundDiagnostics.LogMemory("AfterJumpMoveTo #" + _jumpCount);
+            LogJumpSettledSoon();
+        }
+
+        /// <summary>Format/bitrate of a queued track, for the jump diagnostics.</summary>
+        private static string DescribeStream(Song song)
+        {
+            string format = string.IsNullOrEmpty(song.Format) ? "unknown" : song.Format;
+            return song.BitRate.HasValue
+                ? format + " " + song.BitRate.Value + " kbps"
+                : format;
+        }
+
+        /// <summary>
+        /// Takes one memory reading a couple of seconds after a jump, once the
+        /// new stream has opened and buffered. One-shot and restarted per jump,
+        /// so a burst of jumps logs a single settled figure for the burst
+        /// rather than one line each. UI thread (see the class remarks).
+        /// </summary>
+        private void LogJumpSettledSoon()
+        {
+            if (_jumpSettleTimer == null)
+            {
+                _jumpSettleTimer = new DispatcherTimer { Interval = JumpSettleDelay };
+                _jumpSettleTimer.Tick += (s, e) =>
+                {
+                    _jumpSettleTimer.Stop();
+                    BackgroundDiagnostics.LogMemory("AfterJumpSettled #" + _jumpCount);
+                    BackgroundDiagnostics.FlushSoon();
+                };
+            }
+
+            _jumpSettleTimer.Stop();
+            _jumpSettleTimer.Start();
         }
 
         /// <summary>

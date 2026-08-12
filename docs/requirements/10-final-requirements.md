@@ -1170,6 +1170,50 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   aimed at the wrong target, which is the mistake this round exists to stop
   repeating.
 
+- 2026-08-13 (console result): **artwork is ~27 MB, the overlay is free, and
+  the cost is the queue JUMP** (§11). The suppressed-run measurement above was
+  run and answered its question. Same build, same 228-track queue, same point
+  in the lifecycle: `EnteredBackground` reads **156 MB with artwork and 129 MB
+  without**. So artwork is real but small, and it is **not** what kills the
+  app — with artwork fully suppressed the app still reached **290 MB** and was
+  terminated by the OS (no `Suspending` line, no exception).
+  The content/composition split added the day before also reported:
+  `QueueOverlayOpening` → `QueueOverlayContentReady` is **0–1 MB every time**.
+  **This retracts the "the overlay costs ~49 MB" reading of 2026-08-12**, which
+  attributed to the overlay everything that happened in the eight seconds after
+  it opened. Opening the overlay is free.
+  What the log actually implicates is one interaction, isolated by its own
+  control run:
+  - opened the overlay and left it alone for 27 s: **+7 MB**;
+  - opened it, scrolled the 228 rows, jumped to a track: **+91 MB** (artwork
+    on) and **+166 MB** (artwork suppressed).
+  That is exactly the reported symptom — a 200-track queue plays in the
+  background indefinitely, and dies after going back and picking another track.
+  The view release reclaimed **0 MB** in every one of these, as it has in every
+  measurement since this began.
+  Two mechanisms remain, and they need different fixes: the media pipeline
+  holding open `MediaPlaybackItem`s (a jump leaves the track you came from open
+  on top of the new one and its prefetched successor, and those native
+  demux/decode buffers are several times larger for lossless), or the queue
+  `ListView` realizing rows as it is scrolled (each row carries a
+  `SpinningVinyl` and a four-item `MenuFlyout` declared in the `DataTemplate`).
+  This round does not guess between them:
+  (a) **The jump is instrumented** the way the overlay open already was —
+  `JumpRequested` (with the target's format and bitrate), `AfterJumpMoveTo`,
+  and `AfterJumpSettled` 2.5 s later. Growth at MoveTo means the platform
+  opened something; growth by the settled reading means it buffered; growth at
+  neither means the cost was the scrolling, not the jump. The settled timer is
+  one-shot and restarted per jump, so a burst of jumps logs one figure.
+  (b) **`MaxPlayedItemsToKeepOpen` drops from 2 to 0 permanently**, not just
+  under background pressure. It is simultaneously a candidate fix and half the
+  experiment: keeping two played items open buys a marginally faster Previous
+  and, if the first mechanism is the right one, costs tens of megabytes against
+  a 128 MB limit. The pressure path still sets 0 explicitly so that raising the
+  constant again cannot silently un-fix the background case.
+  (c) The scroll half needs no new code: opening the overlay, scrolling to the
+  bottom without jumping, and closing it reports through the existing
+  `QueueOverlayClosed` line.
+
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.
