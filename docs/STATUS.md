@@ -586,6 +586,33 @@ revisiting the reasoning (many encode a hard-won console lesson).
 
 **Background memory (§11):**
 
+- **CORRECTION (2026-08-12, third console pass): releasing the view frees
+  almost nothing, and the app's memory is NATIVE, not managed.** Measured on
+  device at `EnteredBackground`: usage 236 MB, **managed heap 2 MB**, private
+  commit 171 MB. Dropping the whole visual tree moved private commit from 171
+  to 172 MB across three runs, with the finalizer drain and
+  `DisconnectChildrenRecursive` both in place. So the Songs page's song
+  library — the allocation the original diagnosis blamed — is not the problem;
+  at 2 MB of managed heap, *nothing of ours* is. The view release is retained
+  (it is correct, cheap and reclaims what it can) but it is NOT the fix.
+- **The real lever is the peak footprint, not the release.** The app launches
+  at 28 MB and reaches 178–270 MB after under a minute of browsing. Observed
+  outcomes: **killed at 270 MB** (no `Suspending` line, fresh launch 26 s
+  later), **survived at 178 MB** for 36 s. Xbox tolerates a moderate overage
+  and kills a large one — which is exactly the reported "sometimes it keeps
+  playing".
+- **Artwork was decoded at 2× its display size everywhere** (200-epx tiles at
+  400, 56-epx rows at 112, 320-epx headers at 640, the 220-epx carousel at
+  440), costing 4× the memory for no visible gain — layout scaling is
+  disabled, so the app is 1 epx to 1 physical pixel at 1080p. Halved
+  everywhere 2026-08-12. Decode sizes must stay equal to the display box; a
+  future "make it sharper" change costs four times what it looks like.
+- **High-bitrate FLAC is a secondary cost, not the driver.** A FLAC session
+  measured 236 MB, inside the 178–270 MB range already seen with 256 kbps
+  m4a; the variance tracks browsing, not codec. Open `MediaPlaybackItem`s do
+  hold native demux/decode buffers that are several times larger for FLAC,
+  which is why `MaxPlayedItemsToKeepOpen` now drops to 0 while backgrounded.
+
 - **The app deliberately destroys its own UI while backgrounded.** Xbox drops
   the memory limit to 128 MB with ~2 s to comply, so under pressure
   `App.ReduceMemoryUsage` sets `Window.Current.Content = null` and
