@@ -111,13 +111,14 @@ namespace BoxSubMusic.App.Controls
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
+            // Timer first, then the reference — see OnTimerTick.
+            _timer.Stop();
+
             if (_playback != null)
             {
                 _playback.Changed -= OnPlaybackChanged;
                 _playback = null;
             }
-
-            _timer.Stop();
         }
 
         /// <summary>Slides the view up over the shell on the Queue tab.</summary>
@@ -371,6 +372,16 @@ namespace BoxSubMusic.App.Controls
 
         private void OnTimerTick()
         {
+            // Same race the now-playing bar hit on device (2026-08-12): a tick
+            // already queued on the dispatcher can run after Unloaded, once
+            // the view is released under background memory pressure. Both
+            // callees dereference _playback, and an unhandled
+            // NullReferenceException here takes the whole process down.
+            if (_playback == null)
+            {
+                return;
+            }
+
             UpdatePosition();
             UpdateLyricHighlight();
         }

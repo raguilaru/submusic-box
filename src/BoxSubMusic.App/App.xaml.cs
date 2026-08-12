@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.System;
@@ -33,6 +34,16 @@ namespace BoxSubMusic.App
         /// the OS allows after the limit changes.
         /// </summary>
         private static readonly TimeSpan ReleaseTimeout = TimeSpan.FromMilliseconds(1600);
+
+        /// <summary>
+        /// When this assembly was compiled. Bump-free build identity: the
+        /// package version rarely changes during a debugging round, but this
+        /// moves on every rebuild, so the log can distinguish a fresh deploy
+        /// from a stale one on the console.
+        /// </summary>
+        private static readonly string BuildStamp =
+            new System.IO.FileInfo(typeof(App).GetTypeInfo().Assembly.Location)
+                .LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss");
 
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
@@ -82,6 +93,21 @@ namespace BoxSubMusic.App
             // equal the window.
             ApplicationView.GetForCurrentView().SetDesiredBoundsMode(
                 ApplicationViewBoundsMode.UseCoreWindow);
+
+            // Package version + build time, so a log answers "is the console
+            // actually running the build I just deployed?" without guesswork.
+            // A stale deploy and a failed fix look identical otherwise.
+            try
+            {
+                PackageVersion v = Package.Current.Id.Version;
+                Services.BackgroundDiagnostics.Log(
+                    "Build: package=" + v.Major + "." + v.Minor + "." + v.Build + "." + v.Revision
+                    + ", compiled=" + BuildStamp);
+            }
+            catch (Exception ex)
+            {
+                Services.BackgroundDiagnostics.Log("Build: version unavailable (" + ex.Message + ")");
+            }
 
             // Stamped on every launch because it decides whether the rest of
             // the log means anything: Xbox does NOT enforce background memory

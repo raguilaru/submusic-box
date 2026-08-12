@@ -90,13 +90,22 @@ namespace BoxSubMusic.App.Controls
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
+            // Stop the timer BEFORE dropping the service reference. The old
+            // order crashed the app on device (2026-08-12): releasing the view
+            // under background memory pressure unloads this control while
+            // playback continues, and a tick already queued on the dispatcher
+            // then ran against a null _playback — an unhandled
+            // NullReferenceException, which takes the process down and stops
+            // the music. Stop() first shrinks the window; the guard in
+            // UpdatePosition closes it, since a tick already dispatched still
+            // runs after Stop() returns.
+            _timer.Stop();
+
             if (_playback != null)
             {
                 _playback.Changed -= Update;
                 _playback = null;
             }
-
-            _timer.Stop();
         }
 
         private void Update()
@@ -195,13 +204,22 @@ namespace BoxSubMusic.App.Controls
 
         private void UpdatePosition()
         {
-            MediaPlaybackSession session = _playback.Session;
+            // A tick can still arrive after Unloaded (see OnUnloaded): the
+            // control is gone, playback is not, and dereferencing here is what
+            // crashed the app on device.
+            PlaybackService playback = _playback;
+            if (playback == null)
+            {
+                return;
+            }
+
+            MediaPlaybackSession session = playback.Session;
             TimeSpan position = session.Position;
 
             // The session only knows the duration once the stream has opened;
             // until then the tag metadata is the best estimate.
             TimeSpan duration = session.NaturalDuration;
-            Song song = _playback.Queue.CurrentTrack;
+            Song song = playback.Queue.CurrentTrack;
             if (duration <= TimeSpan.Zero && song != null)
             {
                 duration = song.Duration;
