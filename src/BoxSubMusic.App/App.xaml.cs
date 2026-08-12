@@ -79,7 +79,22 @@ namespace BoxSubMusic.App
             ApplicationView.GetForCurrentView().SetDesiredBoundsMode(
                 ApplicationViewBoundsMode.UseCoreWindow);
 
+            // Stamped on every launch because it decides whether the rest of
+            // the log means anything: Xbox does NOT enforce background memory
+            // limits on a debugged process, so an F5 run never receives the
+            // 1024 → 128 MB transition and never exercises the release path.
+            // Two console passes were spent discovering this from the limit
+            // value alone (an unrestricted ~3168 MB vs. the real 1024 MB).
+            Services.BackgroundDiagnostics.Log(
+                "OnLaunched: debuggerAttached=" + System.Diagnostics.Debugger.IsAttached
+                + (System.Diagnostics.Debugger.IsAttached
+                    ? " — background memory limits are NOT enforced in this run; it cannot test background survival"
+                    : " — background memory limits apply; this run is valid for background testing"));
             Services.BackgroundDiagnostics.LogMemory("OnLaunched");
+
+            // Flushed immediately so the run is identifiable even if the app
+            // is killed before any other event writes.
+            Services.BackgroundDiagnostics.FlushSoon();
 
             if (e.PrelaunchActivated == false)
             {
