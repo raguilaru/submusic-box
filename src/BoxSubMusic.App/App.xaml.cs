@@ -120,6 +120,10 @@ namespace BoxSubMusic.App
                 + (System.Diagnostics.Debugger.IsAttached
                     ? " — background memory limits are NOT enforced in this run; it cannot test background survival"
                     : " — background memory limits apply; this run is valid for background testing"));
+            // Which artwork mode this run measures (§11, 2026-08-13). The
+            // suppressed run exists to bound artwork's share of the footprint;
+            // without this line the two runs are indistinguishable in the log.
+            Services.BackgroundDiagnostics.Log("OnLaunched: " + Services.CoverArt.DescribeMode());
             Services.BackgroundDiagnostics.LogMemory("OnLaunched");
 
             // Flushed immediately so the run is identifiable even if the app

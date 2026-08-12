@@ -1,6 +1,10 @@
 # Current Status
 
-Last updated: 2026-08-12 (background memory fix: the app now releases its view
+Last updated: 2026-08-13 (background memory, round two: cover-art URLs were
+unique per request — defeating both platform caches — so the strategy moved
+from shedding memory to not allocating it; plus a diagnostic switch that runs
+the app with no artwork, to measure what artwork actually costs. On top of
+the 2026-08-12 background memory fix: the app now releases its view
 to survive the Xbox 128 MB background limit — the cause of music stopping when
 a game launches — plus a file-based diagnostic log; on top of
 the light-theme rework + nav-pane brand mark, on top of
@@ -97,6 +101,23 @@ planned slice. Since then, refinement rounds have landed on top:
   `Services/BackgroundDiagnostics` — a file log, because Xbox does not
   enforce background limits under a debugger, so this bug is only observable
   in a non-debug run. Not yet device-verified (backlog items 53–58).
+- **Cover-art URL caching + request tiers** (2026-08-13) — the second
+  background-memory round, and a change of strategy. Ten console rounds
+  established that *releasing* memory does not work here (footprint is ~100 %
+  native; dropping the whole visual tree reclaims ~1 MB), so this round attacks
+  the allocation instead. Root cause found in the request path:
+  `GetCoverArtUri` went through the shared request builder, which mints a
+  **fresh random salt per call**, so every cover URL was unique — XAML's
+  URI-keyed image cache and the HTTP cache could never hit, and the image cache
+  accumulated an entry per request in native memory the app cannot release.
+  All 16 call sites now route through `Services/CoverArt`, which mints one URL
+  per (cover, tier) and rounds display sizes onto a four-step ladder, so one
+  cover is one cached image instead of up to six. Request sizes also now
+  match what is drawn (2026-08-12 halved the decode sizes but not the `size=`
+  parameter, so covers still downloaded at 4× the area). Ships with a
+  diagnostic **"Run without artwork"** toggle on Account — the measurement
+  that bounds artwork's share of the ~139 MB floor. Not yet device-verified
+  (backlog items 59–62).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -488,6 +509,47 @@ check.
     They are owned by `MediaPlayer.CommandManager`, not the UI, so they should
     be untouched — this checks that assumption on device.
 
+**Cover-art URL caching + the artwork measurement (2026-08-13, §11):**
+
+This round is a measurement first and a fix second. Items 59–60 are the
+measurement — they are the point of the deploy. Items 61–62 confirm the fix
+broke nothing. Same rule as items 53–58: **not testable under the debugger**,
+so deploy, stop debugging, and launch from the Dev Home tile.
+
+59. **The artwork measurement — run it twice, this is the deliverable.**
+    Fresh launch, then walk a FIXED path you can repeat exactly (say: Home →
+    Albums, scroll a few screens → an album → back → Artists, scroll → play
+    something). Background the app (Guide / Dev Home) and note the
+    `EnteredBackground` usage. Now go to **Account → Diagnostics → Run without
+    artwork = On**, restart the app, walk the *same* path, background, and note
+    it again. The launch log stamps `artwork=on` / `artwork=SUPPRESSED` on each
+    run so the two are never confused. The gap between the two numbers is
+    artwork's entire contribution to the footprint — the question ten console
+    rounds could not answer. If the suppressed run still lands near 139 MB,
+    artwork is exonerated and the next round should look elsewhere; if it drops
+    to 60–70 MB, an app-owned bitmap cache becomes the obvious next step.
+60. **Did the URL fix move the floor by itself?** Compare this build's
+    artwork-on reading against the ~139 MB the 2026-08-12 build recorded for a
+    comparable session. Both platform caches can now hit, so a repeated pass
+    over the same albums should cost far less than the first — worth walking
+    the same grid twice in one run and watching whether the second pass adds
+    anything at all. That second-pass number is the honest test of the caching
+    claim; the first pass proves nothing.
+61. **Artwork still looks right everywhere.** The request ladder means several
+    surfaces now share one image, and one cover is served at a smaller
+    requested size than before (grid cards asked for 400 and got 200). Check at
+    10 ft for softness on: the browse grids and list-row thumbs, Home carousels
+    and the resume card, artist/album/playlist detail headers, playlist
+    composite tiles (grid AND list), the now-playing bar's spinning vinyl, and
+    the expanded overlay's 400-epx artwork. Nothing should look softer than it
+    did — if a header does, its tier is the thing to raise, not the decode size.
+62. **The SMTC thumbnail still appears** in the Guide's media controls (it now
+    shares the 320 tier with the detail headers), and **sign-out is clean**:
+    sign out, sign in as the same or another user, and confirm covers still
+    load. That path exercises the URL-cache reset — a stale cached URL would
+    carry the previous login's credentials, and the symptom would be broken
+    images rather than an error.
+
 *(Future work: append console items here.)*
 
 ## Known gaps / durable notes
@@ -601,12 +663,37 @@ revisiting the reasoning (many encode a hard-won console lesson).
   later), **survived at 178 MB** for 36 s. Xbox tolerates a moderate overage
   and kills a large one — which is exactly the reported "sometimes it keeps
   playing".
+- **Every cover-art URL used to be unique, defeating both platform caches**
+  (found 2026-08-13). `GetCoverArtUri` goes through the same request builder
+  as every endpoint, and token auth mints a **fresh random salt per call**, so
+  the same cover at the same size produced a different URL every time. XAML's
+  decoded-image cache is URI-keyed and process-wide and the HTTP cache is
+  URL-keyed, so neither could ever hit: every appearance of a cover was a fresh
+  download and decode, and the image cache accumulated an entry per request in
+  native memory the app does not own. This is the best explanation yet for the
+  three facts nothing else fit — the footprint is native, the tree release
+  reclaims nothing, and browsing raises the floor. **`Services/CoverArt` is now
+  the only place the app builds a cover URL**; do not call `GetCoverArtUri`
+  directly again, and be aware that any *other* endpoint whose URL is used as a
+  cache key has the same hazard by construction.
+- **Cover requests round onto a four-step ladder** (100 / 220 / 320 / 400) so
+  one cover is one cached image across surfaces; before this the app asked for
+  a single cover at six distinct sizes (84, 300, 320, 400, 440, 640). Raising a display box above its tier
+  silently doubles that cover's cached copies — change the tier, not just the
+  box. Decode size remains a separate concern and still equals the display box.
+- **The "Run without artwork" toggle on Account is scaffolding**, not a
+  feature: it is how the artwork-vs-floor question gets measured, and it should
+  be removed once answered.
 - **Artwork was decoded at 2× its display size everywhere** (200-epx tiles at
   400, 56-epx rows at 112, 320-epx headers at 640, the 220-epx carousel at
   440), costing 4× the memory for no visible gain — layout scaling is
   disabled, so the app is 1 epx to 1 physical pixel at 1080p. Halved
   everywhere 2026-08-12. Decode sizes must stay equal to the display box; a
   future "make it sharper" change costs four times what it looks like.
+  Footnote (2026-08-13): that round halved the DECODE sizes but left the
+  server-side `size=` request at the old doubled values, so covers kept
+  downloading at 4× the area needed for another day. Request and decode are
+  two separate numbers and both have to be right.
 - **High-bitrate FLAC is a secondary cost, not the driver.** A FLAC session
   measured 236 MB, inside the 178–270 MB range already seen with 256 kbps
   m4a; the variance tracks browsing, not codec. Open `MediaPlaybackItem`s do

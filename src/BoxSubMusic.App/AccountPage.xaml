@@ -39,5 +39,30 @@
             Padding="48,12"
             Margin="0,24,0,0"
             Click="SignOutButton_Click" />
+
+        <!-- Diagnostics (§11 background-memory investigation, 2026-08-13).
+             Temporary scaffolding, not product surface: it exists to run the
+             one measurement that reading the code cannot settle — how much of
+             the app's ~139 MB resting footprint is artwork. Browse the same
+             path with it off and then on, and compare the EnteredBackground
+             lines in background-diagnostics.log. Remove this block once the
+             question is answered. It lives on Account rather than Settings
+             because Settings is product surface. -->
+        <TextBlock
+            Text="Diagnostics"
+            FontSize="24"
+            FontWeight="SemiBold"
+            Margin="0,40,0,0" />
+        <ToggleSwitch
+            x:Name="SuppressArtworkToggle"
+            Header="Run without artwork"
+            OnContent="On"
+            OffContent="Off"
+            Toggled="SuppressArtworkToggle_Toggled" />
+        <TextBlock
+            Text="Memory measurement only: the app requests no cover art at all. Restart the app after changing this, then browse as usual and read background-diagnostics.log."
+            FontSize="18"
+            Opacity="0.7"
+            TextWrapping="Wrap" />
     </StackPanel>
 </Page>

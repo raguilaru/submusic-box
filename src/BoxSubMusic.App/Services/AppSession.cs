@@ -32,6 +32,10 @@ namespace BoxSubMusic.App.Services
         {
             Client = client;
             _connectTask = null;
+
+            // Minted cover-art URLs embed the credentials they were built
+            // with, so they cannot outlive the login that made them.
+            CoverArt.Reset();
         }
 
         /// <summary>Drops the active client (sign-out).</summary>
@@ -39,6 +43,7 @@ namespace BoxSubMusic.App.Services
         {
             Client = null;
             _connectTask = null;
+            CoverArt.Reset();
         }
 
         /// <summary>
@@ -88,6 +93,7 @@ namespace BoxSubMusic.App.Services
                 var credentials = new SubsonicServerCredentials(
                     new Uri(login.Url), login.Username, login.Password);
                 Client = new SubsonicApiClient(credentials, Http);
+                CoverArt.Reset();
                 return true;
             }
             catch (Exception)

@@ -29,10 +29,11 @@ namespace BoxSubMusic.App
     /// </summary>
     public sealed partial class ArtistDetailPage : Page
     {
-        // Detail artwork is 320 epx and album cards 200; request generously for
-        // 200%-scale displays.
-        private const int HeaderArtSize = 640;
-        private const int AlbumArtSize = 400;
+        // Both are display boxes (1:1 at 1080p, layout scaling off). The
+        // album grid's 200 shares its request tier with the Albums browse
+        // page, so an album seen in both places is one cached image.
+        private const int HeaderArtSize = 320;
+        private const int AlbumArtSize = 200;
 
         private CancellationTokenSource _cts;
         private string _artistId;
@@ -139,12 +140,13 @@ namespace BoxSubMusic.App
             ArtistNameText.Text = detail.Artist.Name;
             CountsText.Text = FormatCounts(detail);
 
-            ArtworkImage.Source = detail.Artist.CoverArtId == null
+            Uri headerArt = CoverArt.UriFor(detail.Artist.CoverArtId, HeaderArtSize);
+            ArtworkImage.Source = headerArt == null
                 ? null
                 : new BitmapImage
                 {
-                    UriSource = AppSession.Client.GetCoverArtUri(detail.Artist.CoverArtId, HeaderArtSize),
-                    DecodePixelWidth = 320, // matches the 320-epx header box (1:1 at 1080p)
+                    UriSource = headerArt,
+                    DecodePixelWidth = HeaderArtSize,
                 };
 
             // Restore the favorite toggle without triggering a star/unstar call.
@@ -158,7 +160,7 @@ namespace BoxSubMusic.App
                     a.Id,
                     a.Name,
                     string.IsNullOrEmpty(a.Artist) ? detail.Artist.Name : a.Artist,
-                    a.CoverArtId == null ? null : AppSession.Client.GetCoverArtUri(a.CoverArtId, AlbumArtSize)))
+                    CoverArt.UriFor(a.CoverArtId, AlbumArtSize)))
                 .ToList();
             AlbumsGrid.ItemsSource = cards;
             AlbumsGrid.Visibility = cards.Count == 0 ? Visibility.Collapsed : Visibility.Visible;

@@ -26,8 +26,10 @@ namespace BoxSubMusic.App
     /// </summary>
     public sealed partial class PlaylistsPage : Page
     {
-        // Cover art hint; XAML DecodePixelWidth downsizes per layout.
-        private const int CoverArtSize = 400;
+        // Largest box a constituent cover is drawn into: the grid tile's
+        // single-cover case at 200 epx. The composite cells (100 grid, 28/56
+        // list) decode down from that same shared image.
+        private const int CoverArtSize = 200;
 
         private CancellationTokenSource _cts;
 
@@ -177,7 +179,7 @@ namespace BoxSubMusic.App
                 }
 
                 var covers = PlaylistArtwork.SelectCoverArtIds(detail.Songs)
-                    .Select(id => client.GetCoverArtUri(id, CoverArtSize))
+                    .Select(id => CoverArt.UriFor(id, CoverArtSize))
                     .ToList();
                 card.SetCovers(covers);
             }

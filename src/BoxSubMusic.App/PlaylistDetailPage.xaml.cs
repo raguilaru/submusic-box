@@ -30,9 +30,10 @@ namespace BoxSubMusic.App
     /// </summary>
     public sealed partial class PlaylistDetailPage : Page
     {
-        // Composite cells are at most 320 epx wide; request double for
-        // 200%-scale displays (same sizing rule as the album header).
-        private const int HeaderArtSize = 640;
+        // Largest box a constituent cover is drawn into: the single-cover
+        // header at 320 epx (the composite cells decode down to 160 from the
+        // same shared image). Shares its request tier with the detail headers.
+        private const int HeaderArtSize = 320;
 
         private CancellationTokenSource _cts;
         private string _playlistId;
@@ -139,9 +140,8 @@ namespace BoxSubMusic.App
 
             // §7.4: header artwork is the same client-side composition as the
             // browse tile — the loaded songs carry the album references.
-            var client = AppSession.Client;
             HeaderArt.SetCovers(PlaylistArtwork.SelectCoverArtIds(detail.Songs)
-                .Select(id => client.GetCoverArtUri(id, HeaderArtSize))
+                .Select(id => CoverArt.UriFor(id, HeaderArtSize))
                 .ToList());
 
             var rows = detail.Songs.Select(ToRow).ToList();

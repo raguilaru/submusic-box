@@ -505,12 +505,12 @@ namespace BoxSubMusic.App.Controls
             }
 
             _artworkSongId = song.Id;
-            var client = AppSession.Client;
-            ArtworkImage.Source = song.CoverArtId == null || client == null
+            Uri art = CoverArt.UriFor(song.CoverArtId, ArtSize);
+            ArtworkImage.Source = art == null
                 ? null
                 : new BitmapImage
                 {
-                    UriSource = client.GetCoverArtUri(song.CoverArtId, ArtSize),
+                    UriSource = art,
                     DecodePixelWidth = ArtSize,
                 };
         }

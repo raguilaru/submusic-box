@@ -1114,6 +1114,62 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   release ran and reclaimed little" from "the release never ran" — the two
   looked identical in the first log.
 
+- 2026-08-13: **Cover-art URLs are minted once and shared across call sites;
+  the strategy moves from shedding memory to not allocating it** (§11/§13.4).
+  Ten console rounds established that releasing memory does not work in this
+  app: the footprint is ~100 % native (managed heap 2 MB against 200+ MB
+  total), dropping the entire visual tree reclaims ~1 MB, and rebuilding it
+  costs ~1 MB. Nothing the app owns holds the memory, which is why every
+  release-based remedy — including Microsoft's documented one — has returned
+  nothing. The cause found by reading the request path:
+  **`SubsonicApiClient.GetCoverArtUri` produced a different URL every call.**
+  It goes through the same builder as every other endpoint, and in token auth
+  mode that builder mints a fresh random salt per request (`t`/`s`), so two
+  requests for the same cover at the same size are two different URLs. XAML's
+  decoded-image cache is keyed by URI and process-wide; the HTTP cache is keyed
+  by URL. Unique URLs mean neither can ever hit, every appearance of a cover is
+  a fresh download and decode, and the framework's image cache accumulates an
+  entry per request that nothing will look up again — in native memory the app
+  neither owns nor can release. That matches the evidence exactly, including
+  why browsing raises the floor from 28 MB to ~139 MB and why the tree release
+  reclaims nothing.
+  Implemented as `Services/CoverArt`, now the app's **only** cover-URL
+  builder (all 16 call sites route through it; `GetCoverArtUri` is no longer
+  called directly anywhere in the app):
+  (a) **URLs are cached per (cover id, request tier)** for the session, so both
+  platform caches behave as designed. The cache is reset on any change of
+  server or user, because a cover URL embeds the credentials it was built with
+  — a stale one would authenticate as the previous login. It is capped at 2000
+  entries (~1.3 MB) and cleared rather than evicted at the cap; a library large
+  enough to reach it gets a clean start rather than a policy nothing here needs.
+  (b) **Display sizes round up to a four-step request ladder** (100 / 220 /
+  320 / 400), so one cover is one cached image across surfaces instead of one
+  per call site. The app previously asked for a single cover at **six distinct
+  sizes** (84, 300, 320, 400, 440, 640); the grids (200), carousel (220) and
+  resume card (160) now
+  share one, and the detail headers (320) share one with the SMTC thumbnail
+  (300). **Decode size is deliberately not this class's business** — callers
+  keep decoding at their own display box, per the 2026-08-12 rule that decode
+  size equals the display box.
+  (c) **Request sizes now match what is drawn.** The 2026-08-12 round halved
+  every `DecodePixelWidth` but left the `size=` parameter at the old doubled
+  values, so covers were still downloaded at 4× the area needed (400 for a
+  200-epx card, 640 for a 320-epx header) — corrected here. Decoded memory was
+  already right; this is download and native-buffer churn.
+  (d) **A diagnostic switch (`CoverArt.Suppressed`, a toggle on Account)
+  makes the app request no artwork at all**, persisted so a measurement run
+  starts from launch, and stamped into the launch log. It exists because the
+  one question reading the code cannot answer is how much of the ~139 MB floor
+  is artwork; browsing the same path with it off and on bounds that in two
+  runs. It is scaffolding, to be removed once the question is settled.
+  **Not done, deliberately:** an app-owned bitmap cache (fetching bytes and
+  feeding `SetSourceAsync` from a bounded LRU), which is the only design in
+  which "release the artwork cache" is a real operation rather than a hope.
+  It is the correct next step **only if** the suppressed-run measurement shows
+  artwork is a large share of the floor — otherwise it would be a large change
+  aimed at the wrong target, which is the mistake this round exists to stop
+  repeating.
+
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.

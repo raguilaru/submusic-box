@@ -192,12 +192,12 @@ namespace BoxSubMusic.App.Controls
             }
 
             _artworkSongId = song.Id;
-            var client = AppSession.Client;
-            ArtworkVinyl.Source = song.CoverArtId == null || client == null
+            Uri thumb = CoverArt.UriFor(song.CoverArtId, ThumbArtSize);
+            ArtworkVinyl.Source = thumb == null
                 ? null
                 : new BitmapImage
                 {
-                    UriSource = client.GetCoverArtUri(song.CoverArtId, ThumbArtSize),
+                    UriSource = thumb,
                     DecodePixelWidth = ThumbArtSize,
                 };
         }

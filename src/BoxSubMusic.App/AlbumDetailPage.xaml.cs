@@ -32,8 +32,9 @@ namespace BoxSubMusic.App
     /// </summary>
     public sealed partial class AlbumDetailPage : Page
     {
-        // Detail artwork is 320 epx; request double for 200%-scale displays.
-        private const int HeaderArtSize = 640;
+        // The header box itself (1:1 at 1080p, layout scaling off) — both the
+        // request size and the decode size.
+        private const int HeaderArtSize = 320;
 
         private CancellationTokenSource _cts;
         private string _albumId;
@@ -138,12 +139,13 @@ namespace BoxSubMusic.App
             AlbumArtistText.Text = album.Artist ?? string.Empty;
             MetaText.Text = FormatMeta(album, detail);
 
-            ArtworkImage.Source = album.CoverArtId == null
+            Uri headerArt = CoverArt.UriFor(album.CoverArtId, HeaderArtSize);
+            ArtworkImage.Source = headerArt == null
                 ? null
                 : new BitmapImage
                 {
-                    UriSource = AppSession.Client.GetCoverArtUri(album.CoverArtId, HeaderArtSize),
-                    DecodePixelWidth = 320, // matches the 320-epx header box (1:1 at 1080p)
+                    UriSource = headerArt,
+                    DecodePixelWidth = HeaderArtSize,
                 };
 
             // Restore the favorite toggle without triggering a star/unstar call.

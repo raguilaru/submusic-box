@@ -23,8 +23,11 @@ namespace BoxSubMusic.App
     /// </summary>
     public sealed partial class AlbumsPage : Page
     {
-        // Grid cards are 200 epx; request double for 200%-scale displays.
-        private const int CoverArtSize = 400;
+        // The display box CoverArt sizes the request from: the grid card, at
+        // 200 epx (the list row's 56-epx thumb decodes down from the same
+        // shared image). Layout scaling is off, so 1 epx is 1 physical pixel
+        // and there is nothing to double for.
+        private const int CoverArtSize = 200;
 
         private CancellationTokenSource _cts;
         private IncrementalSource<AlbumCard> _albums;
@@ -139,9 +142,7 @@ namespace BoxSubMusic.App
 
         private static AlbumCard ToCard(Album album)
         {
-            var artwork = album.CoverArtId == null
-                ? null
-                : AppSession.Client.GetCoverArtUri(album.CoverArtId, CoverArtSize);
+            var artwork = CoverArt.UriFor(album.CoverArtId, CoverArtSize);
             // Year/genre/track count/duration all come from getAlbumList2's own
             // attributes, so the richer list row (§7.2, 2026-07-27) costs no
             // extra request.

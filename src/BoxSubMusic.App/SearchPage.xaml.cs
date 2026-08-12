@@ -33,7 +33,8 @@ namespace BoxSubMusic.App
         private const int AllArtistCount = 6;
         private const int AllAlbumCount = 6;
         private const int AllSongCount = 10;
-        private const int CoverArtSize = 400;
+        // Display box the request is sized from: result cards are 200 epx.
+        private const int CoverArtSize = 200;
 
         /// <summary>search3 exists since Subsonic API 1.8 (§3 gate).</summary>
         private static readonly Version SearchMinimumApiVersion = new Version(1, 8);
@@ -754,18 +755,14 @@ namespace BoxSubMusic.App
 
         private static ArtistCard ToArtistCard(Artist artist)
         {
-            var artwork = artist.CoverArtId == null
-                ? null
-                : AppSession.Client.GetCoverArtUri(artist.CoverArtId, CoverArtSize);
+            var artwork = CoverArt.UriFor(artist.CoverArtId, CoverArtSize);
             var label = artist.AlbumCount == 1 ? "1 album" : artist.AlbumCount + " albums";
             return new ArtistCard(artist.Id, artist.Name, label, artwork);
         }
 
         private static AlbumCard ToAlbumCard(Album album)
         {
-            var artwork = album.CoverArtId == null
-                ? null
-                : AppSession.Client.GetCoverArtUri(album.CoverArtId, CoverArtSize);
+            var artwork = CoverArt.UriFor(album.CoverArtId, CoverArtSize);
             return new AlbumCard(album.Id, album.Name, album.Artist ?? string.Empty, artwork);
         }
 

@@ -29,8 +29,12 @@ namespace BoxSubMusic.App
         // §6.2/§6.3 cap; §6.4 follows for consistency.
         private const int MaxCarouselItems = 20;
 
-        // Card is 220 epx; request double for 200%-scale displays.
-        private const int CoverArtSize = 440;
+        // Display box the request is sized from: carousel tiles are 220 epx.
+        private const int CoverArtSize = 220;
+
+        // The resume card's own box (§6.1). Shares the 220 request tier with
+        // the carousels, so a recently-played album is one cached image here.
+        private const int ResumeArtSize = 160;
 
         private CancellationTokenSource _cts;
 
@@ -188,12 +192,13 @@ namespace BoxSubMusic.App
                 : current.Title + " · " + current.Artist;
 
             string coverArtId = state.Context?.CoverArtId ?? current.CoverArtId;
-            ResumeArtImage.Source = coverArtId == null
+            Uri resumeArt = CoverArt.UriFor(coverArtId, ResumeArtSize);
+            ResumeArtImage.Source = resumeArt == null
                 ? null
                 : new BitmapImage
                 {
-                    UriSource = AppSession.Client.GetCoverArtUri(coverArtId, 320),
-                    DecodePixelWidth = 160, // matches the 160-epx card box (1:1 at 1080p)
+                    UriSource = resumeArt,
+                    DecodePixelWidth = ResumeArtSize, // matches the 160-epx card box (1:1 at 1080p)
                 };
 
             ResumeSection.Visibility = Visibility.Visible;
@@ -215,9 +220,7 @@ namespace BoxSubMusic.App
 
         private static AlbumCard ToCard(Album album)
         {
-            var artwork = album.CoverArtId == null
-                ? null
-                : AppSession.Client.GetCoverArtUri(album.CoverArtId, CoverArtSize);
+            var artwork = CoverArt.UriFor(album.CoverArtId, CoverArtSize);
             return new AlbumCard(
                 album.Id,
                 album.Name,

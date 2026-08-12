@@ -808,10 +808,10 @@ namespace BoxSubMusic.App.Services
             props.MusicProperties.Title = song.Title;
             props.MusicProperties.Artist = song.Artist ?? string.Empty;
             props.MusicProperties.AlbumTitle = song.Album ?? string.Empty;
-            if (song.CoverArtId != null)
+            Uri thumbnail = CoverArt.UriFor(song.CoverArtId, ThumbnailArtSize);
+            if (thumbnail != null)
             {
-                props.Thumbnail = RandomAccessStreamReference.CreateFromUri(
-                    client.GetCoverArtUri(song.CoverArtId, ThumbnailArtSize));
+                props.Thumbnail = RandomAccessStreamReference.CreateFromUri(thumbnail);
             }
 
             item.ApplyDisplayProperties(props);

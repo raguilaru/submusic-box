@@ -23,8 +23,9 @@ namespace BoxSubMusic.App
     /// </summary>
     public sealed partial class ArtistsPage : Page
     {
-        // Grid cards are 200 epx; request double for 200%-scale displays.
-        private const int CoverArtSize = 400;
+        // Display box the request is sized from: the 200-epx grid card (the
+        // 56-epx list thumb decodes down from the same shared image).
+        private const int CoverArtSize = 200;
 
         // The totals pass reads the album list at the API's per-request cap, so
         // it makes as few round trips as the protocol allows.
@@ -202,9 +203,7 @@ namespace BoxSubMusic.App
 
         private static ArtistCard ToCard(Artist artist)
         {
-            var artwork = artist.CoverArtId == null
-                ? null
-                : AppSession.Client.GetCoverArtUri(artist.CoverArtId, CoverArtSize);
+            var artwork = CoverArt.UriFor(artist.CoverArtId, CoverArtSize);
             var label = artist.AlbumCount == 1 ? "1 album" : artist.AlbumCount + " albums";
             // getArtists carries the album count and the starred flag only; the
             // song count and total play time would cost one getArtist per row,
