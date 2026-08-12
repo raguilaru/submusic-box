@@ -209,6 +209,7 @@
       <DependentUpon>ControllerGlyph.xaml</DependentUpon>
     </Compile>
     <Compile Include="Services\AppSession.cs" />
+    <Compile Include="Services\BackgroundDiagnostics.cs" />
     <Compile Include="Services\ContentFocus.cs" />
     <Compile Include="Services\LyricsService.cs" />
     <Compile Include="Services\QueueActions.cs" />

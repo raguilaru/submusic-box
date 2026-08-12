@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.System;
@@ -46,6 +45,7 @@ namespace BoxSubMusic.App
             this.LeavingBackground += OnLeavingBackground;
             MemoryManager.AppMemoryUsageLimitChanging += OnMemoryUsageLimitChanging;
             MemoryManager.AppMemoryUsageIncreased += OnMemoryUsageIncreased;
+            this.UnhandledException += OnUnhandledException;
         }
 
         /// <summary>
@@ -65,10 +65,28 @@ namespace BoxSubMusic.App
             ApplicationView.GetForCurrentView().SetDesiredBoundsMode(
                 ApplicationViewBoundsMode.UseCoreWindow);
 
+            Services.BackgroundDiagnostics.LogMemory("OnLaunched");
+
+            if (e.PrelaunchActivated == false)
+            {
+                CreateRootFrame(e.Arguments);
+
+                // Ensure the current window is active
+                Window.Current.Activate();
+            }
+        }
+
+        /// <summary>
+        /// Builds the window content. Called at launch and again from
+        /// <see cref="OnLeavingBackground"/> when the view was released to
+        /// survive the background memory limit — which is why this is a
+        /// separate method rather than inline in OnLaunched.
+        /// </summary>
+        private void CreateRootFrame(string arguments)
+        {
             Frame rootFrame = Window.Current.Content as Frame;
 
-            // Do not repeat app initialization when the Window already has content,
-            // just ensure that the window is active
+            // Do not repeat app initialization when the Window already has content.
             if (rootFrame == null)
             {
                 // Create a Frame to act as the navigation context and navigate to the first page
@@ -76,81 +94,163 @@ namespace BoxSubMusic.App
 
                 rootFrame.NavigationFailed += OnNavigationFailed;
 
-                if (e.PreviousExecutionState == ApplicationExecutionState.Terminated)
-                {
-                    //TODO: Load state from previously suspended application
-                }
-
                 // Place the frame in the current Window
                 Window.Current.Content = rootFrame;
 
                 // Requirement §12: apply the persisted theme preference to
                 // the root frame before the first page renders (covers the
                 // setup page too) and start following the system theme when
-                // the mode is Automatic.
+                // the mode is Automatic. Idempotent — a rebuilt view
+                // re-points the service at the new frame without stacking a
+                // second system-theme subscription.
                 Services.ThemeService.Initialize(rootFrame);
             }
 
-            if (e.PrelaunchActivated == false)
+            if (rootFrame.Content == null)
             {
-                if (rootFrame.Content == null)
+                // Slice 03 (§4): a stored login goes straight to the shell,
+                // otherwise first-launch setup. The client is rebuilt from
+                // storage without connecting — launch stays network-free.
+                //
+                // AppSession is process-wide and outlives a released view, so
+                // a rebuild after a background memory drop goes straight back
+                // to the shell without re-reading the credential locker.
+                Type startPage;
+                if (Services.AppSession.Client != null)
                 {
-                    // Slice 03 (§4): a stored login goes straight to the shell,
-                    // otherwise first-launch setup. The client is rebuilt from
-                    // storage without connecting — launch stays network-free.
+                    startPage = typeof(MainPage);
+                }
+                else
+                {
                     var storedLogin = Services.CredentialStore.TryLoadActive();
-                    var startPage = Services.AppSession.TryInitializeFromStored(storedLogin)
+                    startPage = Services.AppSession.TryInitializeFromStored(storedLogin)
                         ? typeof(MainPage)
                         : typeof(SetupPage);
-                    rootFrame.Navigate(startPage, e.Arguments);
                 }
-                // Ensure the current window is active
-                Window.Current.Activate();
+
+                rootFrame.Navigate(startPage, arguments);
             }
         }
 
         private void OnEnteredBackground(object sender, EnteredBackgroundEventArgs e)
         {
             _isInBackground = true;
-            // Spike: skeleton only. Real implementation releases UI/view
-            // resources (image caches, view models) here to fit the
-            // background memory budget.
+            Services.BackgroundDiagnostics.LogMemory("EnteredBackground");
+            Services.BackgroundDiagnostics.FlushSoon();
+
+            // Deliberately NOT releasing the view here. Microsoft's guidance
+            // is to defer that to AppMemoryUsageLimitChanging: this event also
+            // fires for transitions the app comes straight back from, and
+            // tearing down the shell every time would make returning to the
+            // app visibly slow for no benefit. The handler below does the work
+            // only when the numbers actually demand it.
+            //
+            // "Do not perform long running operations in the EnteredBackground
+            // event because you can cause the transition between applications
+            // to appear slow to the user."
         }
 
         private void OnLeavingBackground(object sender, LeavingBackgroundEventArgs e)
         {
             _isInBackground = false;
-            // Spike: skeleton only. Real implementation restores/rebuilds
-            // UI state here if it was dropped on entering the background.
+            Services.BackgroundDiagnostics.LogMemory("LeavingBackground");
+
+            // Rebuild the view if it was released to survive the background
+            // limit. Playback never stopped — PlaybackService and its
+            // MediaPlayer are process-wide and hold no reference to the
+            // visual tree — so this restores the UI around audio that has
+            // been running the whole time.
+            if (Window.Current != null && Window.Current.Content == null)
+            {
+                Services.BackgroundDiagnostics.Log("Rebuilding released view.");
+                CreateRootFrame(string.Empty);
+            }
         }
 
         private void OnMemoryUsageLimitChanging(object sender, AppMemoryUsageLimitChangingEventArgs e)
         {
-            Debug.WriteLine("Memory limit changing: " + e.OldLimit + " -> " + e.NewLimit + " (background=" + _isInBackground + ")");
-            if (MemoryManager.AppMemoryUsage >= e.NewLimit)
+            // THE critical handler on Xbox: this is where the limit drops from
+            // ~1 GB to 128 MB because a game is taking the foreground. The app
+            // has roughly 2 seconds to get under the new limit or the OS
+            // suspends/terminates it — which is exactly the "music stops when
+            // I launch a game" symptom.
+            Services.BackgroundDiagnostics.Log(
+                "AppMemoryUsageLimitChanging: usage="
+                + Services.BackgroundDiagnostics.Megabytes(MemoryManager.AppMemoryUsage) + " MB"
+                + ", old=" + Services.BackgroundDiagnostics.Megabytes(e.OldLimit) + " MB"
+                + ", new=" + Services.BackgroundDiagnostics.Megabytes(e.NewLimit) + " MB"
+                + ", background=" + _isInBackground);
+
+            // Reduce against a safety margin rather than the bare limit.
+            // AppMemoryUsage lags the allocations the graphics/XAML layers
+            // charge back to the app, so sitting just under the line is not
+            // the same as being safe; and the cost of shedding the view when
+            // it turns out not to have been strictly necessary is one page
+            // rebuild on return, against a terminated app if we cut it fine.
+            ulong threshold = e.NewLimit - (e.NewLimit / 4);
+            if (MemoryManager.AppMemoryUsage >= threshold)
             {
                 ReduceMemoryUsage();
             }
+
+            Services.BackgroundDiagnostics.LogMemory("AfterLimitChangingHandler");
+            Services.BackgroundDiagnostics.FlushSoon();
         }
 
         private void OnMemoryUsageIncreased(object sender, object e)
         {
             AppMemoryUsageLevel level = MemoryManager.AppMemoryUsageLevel;
-            Debug.WriteLine("Memory usage increased: level=" + level + " (background=" + _isInBackground + ")");
+            Services.BackgroundDiagnostics.LogMemory("AppMemoryUsageIncreased");
             if (level == AppMemoryUsageLevel.OverLimit || level == AppMemoryUsageLevel.High)
             {
                 ReduceMemoryUsage();
+                Services.BackgroundDiagnostics.LogMemory("AfterUsageIncreasedHandler");
+                Services.BackgroundDiagnostics.FlushSoon();
             }
         }
 
+        /// <summary>
+        /// Releases the app's view while backgrounded (§11).
+        ///
+        /// Dropping the window content is the one lever big enough to matter
+        /// here, because it takes the whole visual tree with it: the shell,
+        /// the navigation frame and — importantly for this app — the two
+        /// pages held by <c>NavigationCacheMode.Required</c>, Songs and
+        /// Search. The Songs page alone retains the entire song library
+        /// (§7.3's client-side sort requires it), which is the largest
+        /// single allocation the app makes and one an ordinary GC will never
+        /// reclaim while the frame keeps the page alive.
+        ///
+        /// This works only because every page unregisters its handlers in
+        /// its Unloaded callback (MainPage drops the static
+        /// NavigationPreferences and Toast registrations there): a single
+        /// surviving reference from a static to a page would keep the whole
+        /// tree charged to the app and make the release a no-op.
+        /// </summary>
         private void ReduceMemoryUsage()
         {
-            // Spike: GC is the only lever we have so far. Real implementation
-            // additionally drops the XAML content tree while backgrounded.
-            if (_isInBackground)
+            if (_isInBackground && Window.Current != null && Window.Current.Content != null)
             {
-                GC.Collect();
+                Services.BackgroundDiagnostics.Log("Releasing view content to fit the background limit.");
+
+                // Pages release further resources from their own Unloaded
+                // handlers, which this assignment triggers.
+                Window.Current.Content = null;
             }
+
+            // Forced collection is the documented exception to leaving the GC
+            // alone: the 2-second budget is shorter than the time the
+            // collector would take to notice on its own, and what is being
+            // reclaimed is precisely what the OS is about to measure.
+            //
+            // Deliberately ONE collection, not the
+            // Collect/WaitForPendingFinalizers/Collect idiom: this runs
+            // against a heap that was just up to ~1 GB, and blocking on
+            // finalizers here risks spending the very budget the call exists
+            // to protect. If the log's AfterLimitChangingHandler line shows
+            // usage still high after a release, a finalizer pass is the next
+            // thing to try — measure before adding it.
+            GC.Collect();
         }
 
         /// <summary>
@@ -170,7 +270,7 @@ namespace BoxSubMusic.App
         /// </summary>
         /// <param name="sender">The source of the suspend request.</param>
         /// <param name="e">Details about the suspend request.</param>
-        private void OnSuspending(object sender, SuspendingEventArgs e)
+        private async void OnSuspending(object sender, SuspendingEventArgs e)
         {
             var deferral = e.SuspendingOperation.GetDeferral();
             // §6.1: flush the in-track resume position — termination happens
@@ -178,7 +278,30 @@ namespace BoxSubMusic.App
             // coarse. The queue structure is already on disk (persisted on
             // every structural change).
             Services.PlaybackService.NotifySuspending();
+
+            // Suspension is the last code that runs before a termination, so
+            // this is what makes the run-up to a kill readable afterwards.
+            Services.BackgroundDiagnostics.LogMemory("Suspending");
+            await Services.BackgroundDiagnostics.FlushAsync();
+
             deferral.Complete();
+        }
+
+        /// <summary>
+        /// Records faults that would otherwise look identical to a
+        /// memory-policy termination from the outside — the app simply stops.
+        /// The log is what tells the two apart.
+        /// </summary>
+        private void OnUnhandledException(
+            object sender, Windows.UI.Xaml.UnhandledExceptionEventArgs e)
+        {
+            Services.BackgroundDiagnostics.Log(
+                "UnhandledException (background=" + _isInBackground + "): " + e.Exception);
+            Services.BackgroundDiagnostics.LogMemory("AtUnhandledException");
+            Services.BackgroundDiagnostics.FlushSoon();
+
+            // Deliberately not marking it handled: swallowing the fault would
+            // hide the very thing being investigated.
         }
     }
 }

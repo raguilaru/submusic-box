@@ -1026,6 +1026,68 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   on dark teal, and it cannot be checked anywhere but the console. Revisit only
   with a device pass budgeted for it.
 
+- 2026-08-12: **Background survival is a memory contract, not a bitrate one —
+  the app releases its view to stay under the Xbox background limit**
+  (§11/§2; Rafael's report that launching a game usually stops the music,
+  sometimes not). Diagnosis first, because the suspected cause was the wrong
+  one: on Xbox the memory limit drops from ~1024 MB to **128 MB** when the app
+  is backgrounded, and the app has about **2 seconds** after
+  `AppMemoryUsageLimitChanging` to get under it or the OS suspends or
+  terminates it. That intermittency — "sometimes it keeps playing" — is the
+  signature of a footprint that sometimes fits and usually does not, which is
+  a memory story, not a stream-format one. **Bitrate is not the mechanism:**
+  `MediaPlayer` streaming a network URI is explicitly designed to keep
+  retrieving remote media in the background, and the delivered stream is
+  decoded in the media pipeline rather than accumulated on the app's heap.
+  Three things were checked and found already correct, so none of them is the
+  fault: the manifest declares `backgroundMediaPlayback`; the `MediaPlayer`
+  lives in the process-wide `PlaybackService` rather than being owned by a
+  page; `CommandManager.IsEnabled` is true, so SMTC integration is automatic.
+  Artwork was already decode-capped (`DecodePixelWidth`) at every call site.
+  The actual gap was that `App.ReduceMemoryUsage` was still the Slice 02
+  spike's skeleton — a bare `GC.Collect()`, which cannot reclaim anything the
+  live visual tree still references. Now implemented, per Microsoft's
+  prescribed pattern:
+  (a) **Under memory pressure while backgrounded the app sets
+  `Window.Current.Content = null`**, releasing the whole visual tree, and
+  rebuilds it in `LeavingBackground` via a shared `CreateRootFrame` that
+  `OnLaunched` also uses. This is the only lever big enough to matter, because
+  it also takes the two `NavigationCacheMode.Required` pages with it —
+  **Songs**, which retains the entire song library for §7.3's client-side
+  sort, is the app's largest single allocation and one no GC will ever
+  reclaim while the frame keeps the page alive. It works only because every
+  page already unregisters its handlers in `Unloaded` (MainPage drops the
+  static `NavigationPreferences` and `Toast` registrations there): one
+  surviving static reference to a page would have made the release a silent
+  no-op.
+  (b) **The release is deferred to `AppMemoryUsageLimitChanging`, not done in
+  `EnteredBackground`** — the documented performance guidance, since that
+  event also fires for transitions the user returns from immediately, and
+  tearing down the shell every time would make coming back visibly slow.
+  (c) **The trigger is 75 % of the new limit, not the limit itself.**
+  `AppMemoryUsage` lags what the graphics and XAML layers charge back to the
+  app, so sitting just under the line is not the same as being safe; the cost
+  of shedding the view unnecessarily is one page rebuild, against a
+  terminated app for cutting it fine.
+  (d) **`ThemeService.Initialize` became idempotent** — the root frame is now
+  rebuilt more than once per process, and re-subscribing a fresh `UISettings`
+  each time would stack live system-theme handlers.
+  **Accepted trade-off:** a released view rebuilds at Home, so navigation
+  position and the loaded song library are lost after a long backgrounding.
+  Playback is unaffected throughout, which is the point — and the alternative
+  is the app dying. `AppSession` is process-wide, so the rebuild returns to
+  the shell without re-reading the credential locker.
+  **Diagnostics (`Services/BackgroundDiagnostics`):** lifecycle and memory
+  events are logged to a bounded file in LocalFolder, because **Xbox does not
+  apply background memory limits while a debugger is attached** — the only
+  run that reproduces the bug is a Release run with no debugger, which is
+  exactly the run where `Debug.WriteLine` goes nowhere. `Log` never touches
+  the disk on the calling thread (the 2-second budget leaves no room for
+  I/O); the flush is awaited inside the suspend deferral, which is what makes
+  the last lines before a termination survive. `UnhandledException` is logged
+  too, since a fault and a memory kill look identical from outside — the app
+  simply stops.
+
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.
