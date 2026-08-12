@@ -251,6 +251,16 @@ namespace BoxSubMusic.App
 
             Services.BackgroundDiagnostics.Log("Rebuilding released view.");
             CreateRootFrame(string.Empty);
+
+            // The resting floor climbed roughly 15-30 MB per release/rebuild
+            // cycle on device (2026-08-12: 136 MB then 165 MB after
+            // equivalent cycles). If the released tree is not actually being
+            // collected, each rebuild stacks another one, and this line is
+            // where that shows: compare it against the LeavingBackground
+            // reading immediately above.
+            GC.Collect();
+            Services.BackgroundDiagnostics.LogMemory("AfterViewRebuild");
+            Services.BackgroundDiagnostics.FlushSoon();
         }
 
         private void OnMemoryUsageLimitChanging(object sender, AppMemoryUsageLimitChangingEventArgs e)

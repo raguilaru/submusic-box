@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -141,6 +141,9 @@ namespace BoxSubMusic.App.Controls
             }
 
             IsOpen = true;
+            // Bracketing the overlay isolates its cost: the console shows a
+            // ~92 MB jump in the step that opens it (2026-08-12).
+            BackgroundDiagnostics.LogMemory("QueueOverlayOpening");
             CloseStoryboard.Stop();
             Root.Visibility = Visibility.Visible;
             OpenTranslate.From = ViewHeight();
@@ -275,6 +278,7 @@ namespace BoxSubMusic.App.Controls
 
         private void CloseStoryboard_Completed(object sender, object e)
         {
+            BackgroundDiagnostics.LogMemory("QueueOverlayClosed");
             if (!IsOpen)
             {
                 Root.Visibility = Visibility.Collapsed;
