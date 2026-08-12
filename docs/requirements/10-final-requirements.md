@@ -1088,6 +1088,32 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   too, since a fault and a memory kill look identical from outside — the app
   simply stops.
 
+- 2026-08-12 (follow-up, first console log): **the release must be marshalled
+  to the UI thread — `Window.Current` is thread-static.** The first cut of the
+  fix above did nothing on device, and the diagnostic log is what proved it:
+  the real transition fired (`usage=161 MB, old=1024 MB, new=128 MB,
+  background=True`), yet no "Releasing view content" line appeared and usage
+  was unchanged at 162 MB afterwards. `MemoryManager` raises
+  `AppMemoryUsageLimitChanging` / `AppMemoryUsageIncreased` on a **threadpool
+  thread**, where `Window.Current` returns **null** — so the guard
+  `Window.Current != null && Window.Current.Content != null` read as "there is
+  no view to release" and the handler fell through to a bare `GC.Collect()`,
+  which is exactly the no-op the whole change was meant to replace. Microsoft's
+  sample writes `Window.Current.Content = null` inline in this handler and does
+  not mention the thread affinity, which is what makes this worth recording.
+  The app now captures the UI `CoreDispatcher` in `CreateRootFrame` (always on
+  the UI thread, at launch and on every rebuild) and dispatches the release
+  through it, **blocking up to 1200 ms** for completion — firing it
+  asynchronously would race the OS's measurement, which lands within ~2 s of
+  the limit change. `LeavingBackground`'s rebuild is marshalled the same way:
+  that event is expected on the UI thread, but a null `Window.Current` read
+  there would skip the rebuild and leave the app permanently blank, which is
+  too severe a failure to rest on an assumption. The `GC.Collect` now also runs
+  on the UI thread immediately after the tree is dropped, and an
+  `AfterViewRelease` line records the result, so the log distinguishes "the
+  release ran and reclaimed little" from "the release never ran" — the two
+  looked identical in the first log.
+
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.

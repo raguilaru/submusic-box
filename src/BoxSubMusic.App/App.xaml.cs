@@ -2,6 +2,7 @@ using System;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.System;
+using Windows.UI.Core;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -15,6 +16,19 @@ namespace BoxSubMusic.App
     sealed partial class App : Application
     {
         private bool _isInBackground;
+
+        /// <summary>
+        /// The UI thread's dispatcher, captured while on it. Memory-pressure
+        /// events arrive on a threadpool thread, where <c>Window.Current</c>
+        /// is null, so the release has to be marshalled back through this.
+        /// </summary>
+        private CoreDispatcher _uiDispatcher;
+
+        /// <summary>
+        /// How long to wait for the UI thread to drop the view. Comfortably
+        /// inside the ~2 s the OS allows after the limit changes.
+        /// </summary>
+        private static readonly TimeSpan ReleaseTimeout = TimeSpan.FromMilliseconds(1200);
 
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
@@ -84,6 +98,11 @@ namespace BoxSubMusic.App
         /// </summary>
         private void CreateRootFrame(string arguments)
         {
+            // Captured here because this always runs on the UI thread, at
+            // launch and on every rebuild. The memory-pressure handlers need
+            // it to get back onto this thread.
+            _uiDispatcher = Window.Current.Dispatcher;
+
             Frame rootFrame = Window.Current.Content as Frame;
 
             // Do not repeat app initialization when the Window already has content.
@@ -160,11 +179,32 @@ namespace BoxSubMusic.App
             // MediaPlayer are process-wide and hold no reference to the
             // visual tree — so this restores the UI around audio that has
             // been running the whole time.
-            if (Window.Current != null && Window.Current.Content == null)
+            //
+            // Marshalled for the same thread-static reason the release is
+            // (see ReleaseViewContent). This event is expected on the UI
+            // thread, but a null Window.Current read from the wrong thread
+            // would skip the rebuild and leave the app permanently blank —
+            // too severe a failure to leave resting on an assumption.
+            CoreDispatcher dispatcher = _uiDispatcher;
+            if (dispatcher == null || dispatcher.HasThreadAccess)
             {
-                Services.BackgroundDiagnostics.Log("Rebuilding released view.");
-                CreateRootFrame(string.Empty);
+                RebuildViewIfReleased();
             }
+            else
+            {
+                _ = dispatcher.RunAsync(CoreDispatcherPriority.High, RebuildViewIfReleased);
+            }
+        }
+
+        private void RebuildViewIfReleased()
+        {
+            if (Window.Current == null || Window.Current.Content != null)
+            {
+                return;
+            }
+
+            Services.BackgroundDiagnostics.Log("Rebuilding released view.");
+            CreateRootFrame(string.Empty);
         }
 
         private void OnMemoryUsageLimitChanging(object sender, AppMemoryUsageLimitChangingEventArgs e)
@@ -229,13 +269,9 @@ namespace BoxSubMusic.App
         /// </summary>
         private void ReduceMemoryUsage()
         {
-            if (_isInBackground && Window.Current != null && Window.Current.Content != null)
+            if (_isInBackground)
             {
-                Services.BackgroundDiagnostics.Log("Releasing view content to fit the background limit.");
-
-                // Pages release further resources from their own Unloaded
-                // handlers, which this assignment triggers.
-                Window.Current.Content = null;
+                ReleaseViewContent();
             }
 
             // Forced collection is the documented exception to leaving the GC
@@ -251,6 +287,72 @@ namespace BoxSubMusic.App
             // usage still high after a release, a finalizer pass is the next
             // thing to try — measure before adding it.
             GC.Collect();
+        }
+
+        /// <summary>
+        /// Drops the window content, on the UI thread.
+        ///
+        /// The marshalling is the whole point of this method. MemoryManager
+        /// raises its events on a threadpool thread, and
+        /// <c>Window.Current</c> is THREAD-STATIC — it returns null on any
+        /// thread but the UI one. Touching it directly in those handlers
+        /// therefore looks like "there is no view to release" and silently
+        /// does nothing, which is exactly how the first version of this fix
+        /// failed on device (console log 2026-08-12: the limit dropped to
+        /// 128 MB with usage at 161 MB, no release happened, and usage was
+        /// unchanged afterwards).
+        /// </summary>
+        private void ReleaseViewContent()
+        {
+            CoreDispatcher dispatcher = _uiDispatcher;
+            if (dispatcher == null)
+            {
+                Services.BackgroundDiagnostics.Log(
+                    "Cannot release view content: no UI dispatcher captured yet.");
+                return;
+            }
+
+            if (dispatcher.HasThreadAccess)
+            {
+                ReleaseViewContentOnUiThread();
+                return;
+            }
+
+            // Block until the UI thread has actually dropped the tree: the OS
+            // measures us within ~2 s of the limit change, so firing this
+            // off asynchronously and returning would race the measurement.
+            // The wait is bounded well inside that budget — an unresponsive
+            // UI thread must not be the reason we blow the deadline.
+            try
+            {
+                dispatcher
+                    .RunAsync(CoreDispatcherPriority.High, ReleaseViewContentOnUiThread)
+                    .AsTask()
+                    .Wait(ReleaseTimeout);
+            }
+            catch (Exception ex)
+            {
+                Services.BackgroundDiagnostics.Log("Releasing view content failed: " + ex.Message);
+            }
+        }
+
+        private void ReleaseViewContentOnUiThread()
+        {
+            if (Window.Current == null || Window.Current.Content == null)
+            {
+                return;
+            }
+
+            Services.BackgroundDiagnostics.Log("Releasing view content to fit the background limit.");
+
+            // Pages release further resources from their own Unloaded
+            // handlers, which this assignment triggers.
+            Window.Current.Content = null;
+
+            // Collect on the UI thread, before the caller's measurement: the
+            // tree it just dropped is what the OS is about to weigh.
+            GC.Collect();
+            Services.BackgroundDiagnostics.LogMemory("AfterViewRelease");
         }
 
         /// <summary>

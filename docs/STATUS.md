@@ -436,6 +436,15 @@ under the debugger**. Xbox does not apply background memory limits to a
 debugged process, so an F5 run will appear to pass no matter what. Deploy,
 then **stop debugging and launch the app from the Dev Home tile**.
 
+**A game is NOT required to exercise this** (established 2026-08-12 — retail
+games can't run in Dev Mode anyway). The first console log shows the real
+1024 → **128 MB** transition firing from an ordinary background excursion
+(Guide / Dev Home), with `background=True`. That is the same code path a game
+launch takes, so items 54–56 can be verified in Dev Mode as they stand. Only
+item 53's "does the music actually survive a game" needs retail mode, and it
+is the *consequence* of what the log measures rather than an independent
+check.
+
 53. **The bug itself:** play something, then launch a game and leave it
     running for several minutes. Music should keep playing every time — the
     symptom being fixed is that it usually stopped. Repeat from a heavy state
@@ -447,12 +456,15 @@ then **stop debugging and launch the app from the Dev Home tile**.
     `background-diagnostics.log` from the app's LocalFolder via the Device
     Portal (File explorer → LocalAppData → the app → LocalState). The line to
     find is `AppMemoryUsageLimitChanging`: it records usage, the old limit and
-    the **new limit (expect ~128 MB)**. Then read the `AfterLimitChangingHandler`
-    line directly below it. Confirm: usage was over the threshold, "Releasing
-    view content" appears, and the after-usage is **comfortably under 128 MB**
-    — not marginally under. If usage is already low and playback still dies,
-    the cause is NOT memory and the `UnhandledException` lines are where to
-    look next.
+    the **new limit (expect ~128 MB)**. Then read the lines below it. Confirm
+    in order: **"Releasing view content"** appears at all (its absence was the
+    2026-08-12 failure — the release was running off the UI thread and doing
+    nothing); **`AfterViewRelease`** shows usage having actually dropped; and
+    **`AfterLimitChangingHandler`** is **comfortably under 128 MB**, not
+    marginally under. A release that runs but reclaims little means something
+    still holds the tree — look for a static capturing a page. If usage is
+    already low and playback still dies, the cause is NOT memory and the
+    `UnhandledException` lines are where to look next.
 55. **Returning from the game:** switch back to the app. It should rebuild and
     be usable, landing on **Home** — the known trade-off is that navigation
     position and the loaded song library are lost when the view was released
@@ -603,6 +615,24 @@ revisiting the reasoning (many encode a hard-won console lesson).
   memory limits to a debugged process, so an F5 run always looks healthy.
   Verification requires a non-debug launch plus
   `background-diagnostics.log` from LocalFolder.
+- **`Window.Current` is thread-static, and the memory events are not on the UI
+  thread.** `MemoryManager` raises `AppMemoryUsageLimitChanging` /
+  `AppMemoryUsageIncreased` on a threadpool thread, where `Window.Current` is
+  **null** — so touching it directly there reads as "no view to release" and
+  silently does nothing. This is exactly how the first version of the fix
+  failed on device (2026-08-12 log: the 128 MB transition fired at 161 MB
+  usage, no release, no change). The release and the `LeavingBackground`
+  rebuild are both marshalled through a `CoreDispatcher` captured in
+  `CreateRootFrame`. Microsoft's own sample writes
+  `Window.Current.Content = null` inline in that handler without mentioning
+  thread affinity — do not "simplify" back toward it.
+- **The release blocks up to 1200 ms** waiting for the UI thread. Firing it
+  asynchronously would return before the tree was actually dropped and race
+  the OS's measurement, which lands within ~2 s of the limit change.
+- **The log distinguishes "released but reclaimed little" from "never
+  released"** via the `AfterViewRelease` line. The first console pass had no
+  such line and the two cases were indistinguishable — which cost a
+  device round trip.
 
 **Shell / focus / theming:**
 
