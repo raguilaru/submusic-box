@@ -6,6 +6,7 @@ using Windows.UI.Core;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
 namespace BoxSubMusic.App
@@ -25,10 +26,13 @@ namespace BoxSubMusic.App
         private CoreDispatcher _uiDispatcher;
 
         /// <summary>
-        /// How long to wait for the UI thread to drop the view. Comfortably
-        /// inside the ~2 s the OS allows after the limit changes.
+        /// How long to wait for the UI thread to drop the view. Raised from
+        /// 1200 ms once the release grew a finalizer pass — that work has to
+        /// finish before the OS measures, and timing out early would report
+        /// success while the memory was still charged. Still inside the ~2 s
+        /// the OS allows after the limit changes.
         /// </summary>
-        private static readonly TimeSpan ReleaseTimeout = TimeSpan.FromMilliseconds(1200);
+        private static readonly TimeSpan ReleaseTimeout = TimeSpan.FromMilliseconds(1600);
 
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
@@ -294,13 +298,9 @@ namespace BoxSubMusic.App
             // collector would take to notice on its own, and what is being
             // reclaimed is precisely what the OS is about to measure.
             //
-            // Deliberately ONE collection, not the
-            // Collect/WaitForPendingFinalizers/Collect idiom: this runs
-            // against a heap that was just up to ~1 GB, and blocking on
-            // finalizers here risks spending the very budget the call exists
-            // to protect. If the log's AfterLimitChangingHandler line shows
-            // usage still high after a release, a finalizer pass is the next
-            // thing to try — measure before adding it.
+            // The heavy reclamation happens inside ReleaseViewContent, which
+            // runs the finalizer pass the visual tree actually needs. This is
+            // the tail collection for anything the release itself dropped.
             GC.Collect();
         }
 
@@ -360,12 +360,38 @@ namespace BoxSubMusic.App
 
             Services.BackgroundDiagnostics.Log("Releasing view content to fit the background limit.");
 
+            // Explicitly break parent/child links before dropping the root.
+            // A single stray reference into the middle of the tree would
+            // otherwise keep the whole thing alive, and this severs the links
+            // rather than trusting that none exists.
+            try
+            {
+                VisualTreeHelper.DisconnectChildrenRecursive(Window.Current.Content);
+            }
+            catch (Exception ex)
+            {
+                Services.BackgroundDiagnostics.Log("DisconnectChildrenRecursive failed: " + ex.Message);
+            }
+
             // Pages release further resources from their own Unloaded
             // handlers, which this assignment triggers.
             Window.Current.Content = null;
 
-            // Collect on the UI thread, before the caller's measurement: the
-            // tree it just dropped is what the OS is about to weigh.
+            // The finalizer pass is NOT optional here, and the console
+            // measured why: on the first run where the release actually
+            // executed (2026-08-12, usage 176 MB against a 128 MB limit), a
+            // lone GC.Collect reclaimed **nothing at all**.
+            //
+            // The XAML tree and its decoded bitmaps are overwhelmingly NATIVE
+            // objects reached through RCWs. Collecting frees the managed
+            // wrappers, but the native memory the OS is measuring comes back
+            // only once those wrappers' finalizers run and drop the
+            // underlying references — hence collect, drain finalizers, then
+            // collect again to reclaim what they released.
+            GC.Collect();
+            Services.BackgroundDiagnostics.LogMemory("AfterCollect");
+
+            GC.WaitForPendingFinalizers();
             GC.Collect();
             Services.BackgroundDiagnostics.LogMemory("AfterViewRelease");
         }
