@@ -74,10 +74,32 @@ namespace BoxSubMusic.App.Services
         /// </summary>
         public static void LogMemory(string stage)
         {
+            // The managed-heap figure is the important one for the open
+            // question (2026-08-12): releasing the entire visual tree moved
+            // AppMemoryUsage by 0 MB across three console runs, so the ~150 MB
+            // that browsing adds is somewhere the tree does not own. Managed
+            // vs. native splits the search in half — a large managed heap
+            // points at our own collections, a small one at decoded bitmaps
+            // and the media pipeline.
+            string detail;
+            try
+            {
+                var report = MemoryManager.GetAppMemoryReport();
+                detail = ", managedHeap=" + Megabytes((ulong)GC.GetTotalMemory(false)) + " MB"
+                    + ", privateCommit=" + Megabytes(report.PrivateCommitUsage) + " MB"
+                    + ", totalCommit=" + Megabytes(report.TotalCommitUsage) + " MB"
+                    + ", peakPrivate=" + Megabytes(report.PeakPrivateCommitUsage) + " MB";
+            }
+            catch (Exception ex)
+            {
+                detail = ", memoryReportFailed=" + ex.Message;
+            }
+
             Log(stage
                 + ": usage=" + Megabytes(MemoryManager.AppMemoryUsage) + " MB"
                 + ", limit=" + Megabytes(MemoryManager.AppMemoryUsageLimit) + " MB"
-                + ", level=" + MemoryManager.AppMemoryUsageLevel);
+                + ", level=" + MemoryManager.AppMemoryUsageLevel
+                + detail);
         }
 
         public static string Megabytes(ulong bytes)
