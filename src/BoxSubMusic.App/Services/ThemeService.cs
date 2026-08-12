@@ -82,8 +82,18 @@ namespace BoxSubMusic.App.Services
         {
             _root = root;
             _dispatcher = root.Dispatcher;
-            _uiSettings = new UISettings();
-            _uiSettings.ColorValuesChanged += OnColorValuesChanged;
+
+            // Idempotent: the root frame is rebuilt whenever the view is
+            // released to fit the Xbox background memory limit (§11), so this
+            // runs more than once per process. Re-subscribing a fresh
+            // UISettings each time would stack live handlers — the instance is
+            // held statically precisely so the subscription survives GC.
+            if (_uiSettings == null)
+            {
+                _uiSettings = new UISettings();
+                _uiSettings.ColorValuesChanged += OnColorValuesChanged;
+            }
+
             Apply();
         }
 

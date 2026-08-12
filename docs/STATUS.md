@@ -1,6 +1,9 @@
 # Current Status
 
-Last updated: 2026-07-27 (light-theme rework + nav-pane brand mark, on top of
+Last updated: 2026-08-12 (background memory fix: the app now releases its view
+to survive the Xbox 128 MB background limit — the cause of music stopping when
+a game launches — plus a file-based diagnostic log; on top of
+the light-theme rework + nav-pane brand mark, on top of
 the Favorites tab focus / Show Favorites / overlay header spacing round, the
 browse list rows + view-toggle restyle, and the Favorites and Songs-sorting
 rounds; the file was condensed to a clean
@@ -81,6 +84,19 @@ planned slice. Since then, refinement rounds have landed on top:
   the ground once). The app mark joins the nav pane header — the app's one
   branding placement, per the new §13.6. Dark is untouched apart from the very
   faint watermark. Not yet device-verified (backlog items 47–52).
+- **Background survival under the Xbox memory limit** (2026-08-12) — the fix
+  for "music stops when I launch a game". Backgrounding drops the app's limit
+  from ~1 GB to **128 MB** with a ~2 s window to comply; `ReduceMemoryUsage`
+  was still the Slice 02 skeleton (a bare `GC.Collect`), so the app usually
+  failed to comply and was terminated. It now releases the visual tree
+  (`Window.Current.Content = null`) under pressure and rebuilds it on
+  `LeavingBackground`, which also sheds the `NavigationCacheMode.Required`
+  Songs page holding the whole song library. Bitrate was investigated and
+  ruled out as the mechanism; the manifest capability, the process-wide
+  `MediaPlayer` and SMTC wiring were all already correct. Adds
+  `Services/BackgroundDiagnostics` — a file log, because Xbox does not
+  enforce background limits under a debugger, so this bug is only observable
+  in a non-debug run. Not yet device-verified (backlog items 53–58).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -413,6 +429,53 @@ code-complete-but-not-yet-device-verified rounds.
     artist · album line and the format/bitrate line (opacities nudged up this
     round) should both be comfortably readable at 10 ft.
 
+**Background survival while a game runs (2026-08-12, §11):**
+
+This round is different from every other backlog item: it **cannot be tested
+under the debugger**. Xbox does not apply background memory limits to a
+debugged process, so an F5 run will appear to pass no matter what. Deploy,
+then **stop debugging and launch the app from the Dev Home tile**.
+
+53. **The bug itself:** play something, then launch a game and leave it
+    running for several minutes. Music should keep playing every time — the
+    symptom being fixed is that it usually stopped. Repeat from a heavy state
+    (open **Songs** and let the whole library finish loading, browse a few
+    grids so artwork is cached) and from a light one (play straight from Home
+    after a fresh launch). The heavy state was the likely failure case, so it
+    is the one that matters.
+54. **Read the log — this is the real deliverable.** Pull
+    `background-diagnostics.log` from the app's LocalFolder via the Device
+    Portal (File explorer → LocalAppData → the app → LocalState). The line to
+    find is `AppMemoryUsageLimitChanging`: it records usage, the old limit and
+    the **new limit (expect ~128 MB)**. Then read the `AfterLimitChangingHandler`
+    line directly below it. Confirm: usage was over the threshold, "Releasing
+    view content" appears, and the after-usage is **comfortably under 128 MB**
+    — not marginally under. If usage is already low and playback still dies,
+    the cause is NOT memory and the `UnhandledException` lines are where to
+    look next.
+55. **Returning from the game:** switch back to the app. It should rebuild and
+    be usable, landing on **Home** — the known trade-off is that navigation
+    position and the loaded song library are lost when the view was released
+    (`LeavingBackground` → "Rebuilding released view" in the log confirms this
+    path ran). Playback must not glitch, restart, or lose its position during
+    the rebuild, and the now-playing bar must show the correct track. Check the
+    theme survived the rebuild (this is what the `ThemeService` idempotency
+    fix guards) and that the nav toggles still reflect Settings.
+56. **Short excursions are not punished:** open the Guide, or switch out and
+    straight back. The view should NOT be torn down for a brief transition —
+    the release is deferred to actual memory pressure precisely so returning
+    stays fast. A "Releasing view content" line on every trivial excursion
+    means the threshold is too aggressive.
+57. **Bitrate is a control, not a suspect:** if a failure still occurs, repeat
+    it at a low server-side bitrate cap. The research says bitrate is not the
+    mechanism (the decode happens in the media pipeline, not on the app heap),
+    so a failure that tracks bitrate would contradict the diagnosis and is
+    worth knowing about.
+58. **SMTC while backgrounded:** with the view released, confirm the Guide's
+    media controls still show the track and still work (play/pause, next).
+    They are owned by `MediaPlayer.CommandManager`, not the UI, so they should
+    be untouched — this checks that assumption on device.
+
 *(Future work: append console items here.)*
 
 ## Known gaps / durable notes
@@ -508,6 +571,38 @@ revisiting the reasoning (many encode a hard-won console lesson).
 - **Search page is navigation-cached** (the one refetch-on-navigation exception),
   so starred markers on kept results can lag until the next search. While the
   query box has focus, LB/RB move the caret instead of jumping regions.
+
+**Background memory (§11):**
+
+- **The app deliberately destroys its own UI while backgrounded.** Xbox drops
+  the memory limit to 128 MB with ~2 s to comply, so under pressure
+  `App.ReduceMemoryUsage` sets `Window.Current.Content = null` and
+  `LeavingBackground` rebuilds via `CreateRootFrame`. Consequences that are
+  intended, not bugs: **returning from a long backgrounding lands on Home**,
+  losing navigation position and the loaded song library; the first frame back
+  costs a page rebuild. Playback is never interrupted — `PlaybackService` and
+  its `MediaPlayer` are process-wide and reference no visual element.
+- **This works only because pages unregister in `Unloaded`.** One static
+  holding a reference to a page (the `Toast` registration and
+  `NavigationPreferences.Changed` are the two live examples, both dropped in
+  `MainPage.OnUnloaded`) would keep the whole tree charged to the app and turn
+  the release into a silent no-op. Any new static that captures UI must be
+  unregistered the same way, or background playback regresses with no
+  visible symptom until a console pass.
+- **The reduction threshold is 75 % of the new limit**, not the limit itself:
+  `AppMemoryUsage` lags what the graphics/XAML layers charge back, so
+  "just under" is not safe. Releasing unnecessarily costs one rebuild;
+  cutting it fine costs the process.
+- **Bitrate is not the background-termination mechanism** (investigated
+  2026-08-12). `MediaPlayer` streaming a network URI is designed to keep
+  retrieving media in the background, and decoding happens in the media
+  pipeline rather than on the app heap. The manifest capability, the
+  process-wide player and `CommandManager.IsEnabled` were all already correct
+  — do not "fix" them again.
+- **This bug is invisible under the debugger.** Xbox does not apply background
+  memory limits to a debugged process, so an F5 run always looks healthy.
+  Verification requires a non-debug launch plus
+  `background-diagnostics.log` from LocalFolder.
 
 **Shell / focus / theming:**
 
