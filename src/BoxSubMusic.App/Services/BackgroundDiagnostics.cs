@@ -99,7 +99,8 @@ namespace BoxSubMusic.App.Services
                 + ": usage=" + Megabytes(MemoryManager.AppMemoryUsage) + " MB"
                 + ", limit=" + Megabytes(MemoryManager.AppMemoryUsageLimit) + " MB"
                 + ", level=" + MemoryManager.AppMemoryUsageLevel
-                + detail);
+                + detail
+                + ", queue=" + PlaybackService.QueueCountForDiagnostics);
         }
 
         public static string Megabytes(ulong bytes)

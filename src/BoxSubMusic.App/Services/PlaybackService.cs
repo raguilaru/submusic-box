@@ -46,6 +46,27 @@ namespace BoxSubMusic.App.Services
         public static PlaybackService Instance =>
             _instance ?? (_instance = new PlaybackService());
 
+        /// <summary>
+        /// Queue length for diagnostics, or -1 when playback was never
+        /// started. Deliberately does NOT create the instance: it is read from
+        /// the memory-pressure handlers on a threadpool thread, and the
+        /// service must be constructed on the UI thread (it captures that
+        /// dispatcher).
+        ///
+        /// Logged because the queue is the prime suspect for the app's native
+        /// footprint: RebuildList materializes a MediaPlaybackItem and a
+        /// MediaSource for EVERY track up front, so a few queued playlists
+        /// mean hundreds of native objects that no view release can touch.
+        /// </summary>
+        public static int QueueCountForDiagnostics
+        {
+            get
+            {
+                var instance = _instance;
+                return instance == null ? -1 : instance.Queue.Tracks.Count;
+            }
+        }
+
         private readonly CoreDispatcher _dispatcher;
         private readonly Dictionary<Song, MediaPlaybackItem> _songToItem =
             new Dictionary<Song, MediaPlaybackItem>();
