@@ -29,8 +29,8 @@ namespace BoxSubMusic.App.Controls
         private const string RepeatAllGlyph = "\uF172";
         private const string RepeatOneGlyph = "\uEF34";
 
-        // Thumbnail is 84 epx; request double for the TV's pixel density.
-        private const int ThumbArtSize = 168;
+        // Thumbnail is 84 epx. Decode at exactly that (see ExpandedQueueView).
+        private const int ThumbArtSize = 84; // matches the 84-epx thumb (1:1 at 1080p); was 168 = 4x the memory
 
         private readonly DispatcherTimer _timer;
         private PlaybackService _playback;

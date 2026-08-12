@@ -37,8 +37,10 @@ namespace BoxSubMusic.App.Controls
         private const string RepeatAllGlyph = "\uF172";
         private const string RepeatOneGlyph = "\uEF34";
 
-        // Artwork pane is 400 epx; request double for the TV's pixel density.
-        private const int ArtSize = 800;
+        // Artwork pane is 400 epx. Decode at exactly that: layout scaling is
+        // disabled, so 1 epx is 1 physical pixel and oversampling only costs
+        // memory — at 800 this was 2.56 MB per cached cover (console 2026-08-12).
+        private const int ArtSize = 400; // matches the 400-epx box (1:1 at 1080p); was 800 = 4x the memory
 
         private const int FocusAttempts = 5;
 
