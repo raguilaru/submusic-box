@@ -156,7 +156,7 @@
                                     <Rectangle.Fill>
                                         <ImageBrush Stretch="UniformToFill">
                                             <ImageBrush.ImageSource>
-                                                <BitmapImage UriSource="{x:Bind SingleCover, Mode=OneWay}" DecodePixelWidth="400" />
+                                                <BitmapImage UriSource="{x:Bind SingleCover, Mode=OneWay}" DecodePixelWidth="200" />
                                             </ImageBrush.ImageSource>
                                         </ImageBrush>
                                     </Rectangle.Fill>
@@ -181,7 +181,7 @@
                                         <Rectangle.Fill>
                                             <ImageBrush Stretch="UniformToFill">
                                                 <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover0, Mode=OneWay}" DecodePixelWidth="200" />
+                                                    <BitmapImage UriSource="{x:Bind Cover0, Mode=OneWay}" DecodePixelWidth="100" />
                                                 </ImageBrush.ImageSource>
                                             </ImageBrush>
                                         </Rectangle.Fill>
@@ -190,7 +190,7 @@
                                         <Rectangle.Fill>
                                             <ImageBrush Stretch="UniformToFill">
                                                 <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover1, Mode=OneWay}" DecodePixelWidth="200" />
+                                                    <BitmapImage UriSource="{x:Bind Cover1, Mode=OneWay}" DecodePixelWidth="100" />
                                                 </ImageBrush.ImageSource>
                                             </ImageBrush>
                                         </Rectangle.Fill>
@@ -199,7 +199,7 @@
                                         <Rectangle.Fill>
                                             <ImageBrush Stretch="UniformToFill">
                                                 <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover2, Mode=OneWay}" DecodePixelWidth="200" />
+                                                    <BitmapImage UriSource="{x:Bind Cover2, Mode=OneWay}" DecodePixelWidth="100" />
                                                 </ImageBrush.ImageSource>
                                             </ImageBrush>
                                         </Rectangle.Fill>
@@ -208,7 +208,7 @@
                                         <Rectangle.Fill>
                                             <ImageBrush Stretch="UniformToFill">
                                                 <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover3, Mode=OneWay}" DecodePixelWidth="200" />
+                                                    <BitmapImage UriSource="{x:Bind Cover3, Mode=OneWay}" DecodePixelWidth="100" />
                                                 </ImageBrush.ImageSource>
                                             </ImageBrush>
                                         </Rectangle.Fill>
@@ -294,7 +294,7 @@
                                     <Rectangle.Fill>
                                         <ImageBrush Stretch="UniformToFill">
                                             <ImageBrush.ImageSource>
-                                                <BitmapImage UriSource="{x:Bind SingleCover, Mode=OneWay}" DecodePixelWidth="112" />
+                                                <BitmapImage UriSource="{x:Bind SingleCover, Mode=OneWay}" DecodePixelWidth="56" />
                                             </ImageBrush.ImageSource>
                                         </ImageBrush>
                                     </Rectangle.Fill>
@@ -313,7 +313,7 @@
                                         <Rectangle.Fill>
                                             <ImageBrush Stretch="UniformToFill">
                                                 <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover0, Mode=OneWay}" DecodePixelWidth="56" />
+                                                    <BitmapImage UriSource="{x:Bind Cover0, Mode=OneWay}" DecodePixelWidth="28" />
                                                 </ImageBrush.ImageSource>
                                             </ImageBrush>
                                         </Rectangle.Fill>
@@ -322,7 +322,7 @@
                                         <Rectangle.Fill>
                                             <ImageBrush Stretch="UniformToFill">
                                                 <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover1, Mode=OneWay}" DecodePixelWidth="56" />
+                                                    <BitmapImage UriSource="{x:Bind Cover1, Mode=OneWay}" DecodePixelWidth="28" />
                                                 </ImageBrush.ImageSource>
                                             </ImageBrush>
                                         </Rectangle.Fill>
@@ -331,7 +331,7 @@
                                         <Rectangle.Fill>
                                             <ImageBrush Stretch="UniformToFill">
                                                 <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover2, Mode=OneWay}" DecodePixelWidth="56" />
+                                                    <BitmapImage UriSource="{x:Bind Cover2, Mode=OneWay}" DecodePixelWidth="28" />
                                                 </ImageBrush.ImageSource>
                                             </ImageBrush>
                                         </Rectangle.Fill>
@@ -340,7 +340,7 @@
                                         <Rectangle.Fill>
                                             <ImageBrush Stretch="UniformToFill">
                                                 <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover3, Mode=OneWay}" DecodePixelWidth="56" />
+                                                    <BitmapImage UriSource="{x:Bind Cover3, Mode=OneWay}" DecodePixelWidth="28" />
                                                 </ImageBrush.ImageSource>
                                             </ImageBrush>
                                         </Rectangle.Fill>

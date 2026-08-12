@@ -131,7 +131,7 @@
                                     <Image.Source>
                                         <BitmapImage
                                             UriSource="{x:Bind ArtworkUri}"
-                                            DecodePixelWidth="440" />
+                                            DecodePixelWidth="220" />
                                     </Image.Source>
                                 </Image>
                             </Grid>

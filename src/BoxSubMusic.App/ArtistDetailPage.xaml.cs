@@ -144,7 +144,7 @@ namespace BoxSubMusic.App
                 : new BitmapImage
                 {
                     UriSource = AppSession.Client.GetCoverArtUri(detail.Artist.CoverArtId, HeaderArtSize),
-                    DecodePixelWidth = 640,
+                    DecodePixelWidth = 320, // matches the 320-epx header box (1:1 at 1080p)
                 };
 
             // Restore the favorite toggle without triggering a star/unstar call.

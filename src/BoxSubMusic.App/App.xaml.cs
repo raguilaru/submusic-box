@@ -192,6 +192,7 @@ namespace BoxSubMusic.App
         {
             _isInBackground = false;
             Services.BackgroundDiagnostics.LogMemory("LeavingBackground");
+            Services.PlaybackService.NotifyLeavingBackground();
 
             // Rebuild the view if it was released to survive the background
             // limit. Playback never stopped — PlaybackService and its
@@ -290,6 +291,10 @@ namespace BoxSubMusic.App
         {
             if (_isInBackground)
             {
+                // Native memory, which is where this app's footprint actually
+                // is: the played-item decode buffers cost real megabytes,
+                // especially for high-bitrate FLAC.
+                Services.PlaybackService.NotifyBackgroundMemoryPressure();
                 ReleaseViewContent();
             }
 

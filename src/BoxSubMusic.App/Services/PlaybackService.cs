@@ -54,6 +54,12 @@ namespace BoxSubMusic.App.Services
 
         private MediaPlaybackList _list;
 
+        /// <summary>
+        /// Played items the list keeps open for responsive skip-back. Dropped
+        /// to 0 under background memory pressure (§11).
+        /// </summary>
+        private const int DefaultPlayedItemsKept = 2;
+
         // Scrobble bookkeeping, touched from the media thread (PositionChanged).
         private Song _scrobbleSong;
         private bool _scrobbleSent;
@@ -574,6 +580,52 @@ namespace BoxSubMusic.App.Services
             }
         }
 
+        /// <summary>
+        /// Background memory hook (App.ReduceMemoryUsage, §11): drop the
+        /// played-item buffers the list keeps for fast skip-back.
+        ///
+        /// Each open <see cref="MediaPlaybackItem"/> holds demuxer and decoder
+        /// state plus its network buffer, and that memory is NATIVE — which is
+        /// where the app's footprint actually lives (console 2026-08-12:
+        /// 236 MB total against a 2 MB managed heap). The cost is scale-free
+        /// for lossy files but real for high-bitrate FLAC, whose buffers are
+        /// several times larger.
+        ///
+        /// Only the responsiveness of pressing Previous is lost, and only
+        /// while backgrounded, where there is no UI to press it from. The
+        /// value is restored when the app returns to the foreground.
+        /// </summary>
+        public static void NotifyBackgroundMemoryPressure()
+        {
+            SetPlayedItemsKept(0);
+        }
+
+        /// <summary>Foreground hook: restore normal skip-back buffering.</summary>
+        public static void NotifyLeavingBackground()
+        {
+            SetPlayedItemsKept(DefaultPlayedItemsKept);
+        }
+
+        private static void SetPlayedItemsKept(int count)
+        {
+            var instance = _instance;
+            MediaPlaybackList list = instance?._list;
+            if (list == null)
+            {
+                return;
+            }
+
+            try
+            {
+                list.MaxPlayedItemsToKeepOpen = (uint)count;
+            }
+            catch (Exception)
+            {
+                // Never let a memory optimization take down playback — the
+                // whole point of the exercise is that audio keeps running.
+            }
+        }
+
         // --- §6.1 persistence ---------------------------------------------------
 
         /// <summary>
@@ -642,7 +694,7 @@ namespace BoxSubMusic.App.Services
             {
                 // Bound how many opened (buffered) items the list keeps alive:
                 // the Xbox background memory budget is strict (§11).
-                MaxPlayedItemsToKeepOpen = 2,
+                MaxPlayedItemsToKeepOpen = DefaultPlayedItemsKept,
                 AutoRepeatEnabled = Queue.RepeatMode == RepeatMode.All,
             };
 

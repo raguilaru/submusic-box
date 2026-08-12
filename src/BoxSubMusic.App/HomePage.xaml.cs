@@ -193,7 +193,7 @@ namespace BoxSubMusic.App
                 : new BitmapImage
                 {
                     UriSource = AppSession.Client.GetCoverArtUri(coverArtId, 320),
-                    DecodePixelWidth = 320,
+                    DecodePixelWidth = 160, // matches the 160-epx card box (1:1 at 1080p)
                 };
 
             ResumeSection.Visibility = Visibility.Visible;
