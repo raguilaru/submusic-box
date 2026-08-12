@@ -157,6 +157,12 @@ namespace BoxSubMusic.App.Controls
             // the Lyrics tab is ready whichever tab we open on.
             Refresh(forceRowRebuild: true);
 
+            // Splits the overlay's cost: everything above this line is
+            // content (rows, artwork, lyrics); the difference between this and
+            // the next EnteredBackground reading is composition/render
+            // surfaces, which is where a full-screen animated layer would show.
+            BackgroundDiagnostics.LogMemory("QueueOverlayContentReady");
+
             if (_paneMode == PaneMode.Lyrics)
             {
                 FocusLyrics(FocusAttempts);
