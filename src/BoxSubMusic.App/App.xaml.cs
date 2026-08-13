@@ -214,9 +214,30 @@ namespace BoxSubMusic.App
             // the app's own retention goes, which is what lets the later view
             // release actually reclaim something.
             long dropped = Services.CoverArt.CachedBitmapBytes;
+            ulong usageBeforeDrop = MemoryManager.AppMemoryUsage;
             Services.CoverArt.DropBitmaps();
             Services.BackgroundDiagnostics.LogMemory(
                 "AfterDropCovers (released " + Services.BackgroundDiagnostics.Megabytes((ulong)dropped) + " MB of cached covers)");
+
+            // The immediate reading above is taken microseconds after the
+            // references are dropped, which is why the first console pass was
+            // inconclusive: it reported 11 MB released and AppMemoryUsage did
+            // not move, and that is equally consistent with "the reading was
+            // too early" and with "native commit is never returned to the OS".
+            // The second reading is what tells those apart, and it decides
+            // whether the cover cache — or ANY release-based remedy — is worth
+            // anything at all (§11 candidate 3).
+            //
+            // Two delays, because one cannot settle it: a flat figure at 2.5 s
+            // alone would still leave "2.5 s was not long enough" open, which
+            // is the exact ambiguity being closed here. The stamped "released"
+            // and pre-drop numbers make each line readable on its own.
+            string drop = " [dropped " + Services.BackgroundDiagnostics.Megabytes((ulong)dropped)
+                + " MB, usage before drop " + Services.BackgroundDiagnostics.Megabytes(usageBeforeDrop) + " MB]";
+            Services.BackgroundDiagnostics.LogMemoryAfterDelay(
+                "AfterDropCoversSettled" + drop, TimeSpan.FromMilliseconds(2500));
+            Services.BackgroundDiagnostics.LogMemoryAfterDelay(
+                "AfterDropCoversLate" + drop, TimeSpan.FromSeconds(10));
 
             Services.BackgroundDiagnostics.FlushSoon();
 

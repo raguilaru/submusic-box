@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.System;
+using Windows.System.Threading;
 
 namespace BoxSubMusic.App.Services
 {
@@ -106,6 +107,48 @@ namespace BoxSubMusic.App.Services
         public static string Megabytes(ulong bytes)
         {
             return (bytes / (1024UL * 1024UL)).ToString();
+        }
+
+        /// <summary>
+        /// Takes a memory reading <paramref name="delay"/> after the call and
+        /// flushes it. For measuring whether memory the app has just released
+        /// ever registers as released — the open question that blocks every
+        /// release-based remedy (§11 candidate 3): every post-release reading
+        /// in this investigation has been taken microseconds after the
+        /// references were dropped, so "reclaimed 0 MB" and "reclaimed
+        /// something the reading was too early to see" are indistinguishable.
+        ///
+        /// A <c>ThreadPoolTimer</c>, not the <c>DispatcherTimer</c> that
+        /// <c>PlaybackService.LogSettledSoon</c> uses: the callers here are the
+        /// lifecycle and memory-pressure handlers, and those do not all arrive
+        /// on the UI thread (<c>MemoryManager</c> raises its events on the
+        /// threadpool). <see cref="LogMemory"/> reads only process-wide
+        /// counters, so it has no thread affinity of its own.
+        ///
+        /// The line stamps the delay actually elapsed. A backgrounded app can
+        /// be suspended before the timer fires — if a reading is missing, or
+        /// its elapsed time is far past the requested delay, that is the
+        /// explanation and the figure should not be trusted.
+        /// </summary>
+        public static void LogMemoryAfterDelay(string stage, TimeSpan delay)
+        {
+            var requestedAt = DateTimeOffset.Now;
+            try
+            {
+                ThreadPoolTimer.CreateTimer(
+                    _ =>
+                    {
+                        double elapsed = (DateTimeOffset.Now - requestedAt).TotalSeconds;
+                        LogMemory(stage + " (+" + elapsed.ToString("0.0") + "s)");
+                        FlushSoon();
+                    },
+                    delay);
+            }
+            catch (Exception ex)
+            {
+                // Diagnostics must never be the reason the app misbehaves.
+                Log(stage + ": delayed reading could not be scheduled — " + ex.Message);
+            }
         }
 
         /// <summary>

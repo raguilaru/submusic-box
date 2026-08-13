@@ -365,12 +365,27 @@ namespace BoxSubMusic.App.Services
             // block order lands correctly); under shuffle the play order is
             // re-expressed via SetShuffledItems (console-verified not to
             // interrupt the current track).
+            // Bracketed like RebuildList (§11): a queue built by "Add to
+            // queue" never goes through RebuildList, so without this an A/B
+            // that grows the queue by queue edits would report no per-item
+            // cost at all. NOT split into two passes the way RebuildList is —
+            // this list is live and attached to the player, and mutating it is
+            // precisely what destabilized the reverted item-recycling attempt.
+            // One number for the pair is enough here; RebuildList supplies the
+            // split.
+            BackgroundDiagnostics.LogMemory(
+                "QueueAddStart (adding " + added.Count + " to " + Queue.Tracks.Count + ")");
+
             foreach (Song song in added)
             {
                 var item = CreateItem(client, song);
                 MapItem(song, item);
                 _list.Items.Insert(IndexOfInTracks(song), item);
             }
+
+            BackgroundDiagnostics.LogMemory(
+                "QueueAddComplete (added " + added.Count + ", queue " + Queue.Tracks.Count + ")");
+            BackgroundDiagnostics.FlushSoon();
 
             if (Queue.ShuffleEnabled)
             {
@@ -813,15 +828,45 @@ namespace BoxSubMusic.App.Services
                 AutoRepeatEnabled = Queue.RepeatMode == RepeatMode.All,
             };
 
+            // Bracketed for §11: this loop is the leading candidate for the
+            // app's native footprint — an item, a MediaSource and a full set
+            // of display properties per track, all up front, scaling linearly
+            // with queue length, which is the exact shape of the reported bug.
+            // The estimate in hand (~16–26 MB for 200 tracks) is indirect;
+            // these three readings measure it, and split it into the two
+            // halves that have different fixes. Deliberately measurement
+            // only — nothing below changes what is built, just the order the
+            // two halves run in.
+            int trackCount = Queue.Tracks.Count;
+            string tracks = " (" + trackCount + " tracks)";
+            BackgroundDiagnostics.LogMemory("RebuildListStart" + tracks);
+
             // Items always sit in the list in ORIGINAL order; shuffle is
             // expressed via SetShuffledItems below, so toggling shuffle later
             // never interrupts the current track.
+            string format = _preferMp3Fallback ? "mp3" : null;
+            var created = new List<MediaPlaybackItem>(trackCount);
             foreach (Song song in Queue.Tracks)
             {
-                var item = CreateItem(client, song);
+                var item = CreateItemCore(client, song, format);
                 MapItem(song, item);
+                created.Add(item);
                 list.Items.Add(item);
             }
+
+            BackgroundDiagnostics.LogMemory("RebuildListItemsCreated" + tracks);
+
+            // Second pass rather than one call per item, so the SMTC half is
+            // separable. Safe here in a way it would not be on a live list:
+            // this list is not yet the player's source, so nothing can read a
+            // half-populated item in between.
+            for (int i = 0; i < created.Count; i++)
+            {
+                ApplyDisplayPropertiesTo(created[i], Queue.Tracks[i]);
+            }
+
+            BackgroundDiagnostics.LogMemory("RebuildListDisplayPropsApplied" + tracks);
+            BackgroundDiagnostics.FlushSoon();
 
             TryGetItem(Queue.CurrentTrack, out MediaPlaybackItem startingItem);
             list.StartingItem = startingItem;
@@ -947,6 +992,24 @@ namespace BoxSubMusic.App.Services
 
         private MediaPlaybackItem CreateItem(SubsonicApiClient client, Song song, string format)
         {
+            MediaPlaybackItem item = CreateItemCore(client, song, format);
+            ApplyDisplayPropertiesTo(item, song);
+            return item;
+        }
+
+        /// <summary>
+        /// The item and its source, without SMTC metadata. Split out from
+        /// <see cref="CreateItem(SubsonicApiClient, Song, string)"/> purely so
+        /// <see cref="RebuildList"/> can measure the two halves separately
+        /// (§11): the per-item queue cost is the leading candidate, and which
+        /// half of it is expensive decides between applying display properties
+        /// lazily (cheap, does not touch <c>_list.Items</c>) and a windowed
+        /// list (expensive, and mutating that collection is what sank the item
+        /// recycling attempt). Every other caller still gets both halves in
+        /// one call.
+        /// </summary>
+        private MediaPlaybackItem CreateItemCore(SubsonicApiClient client, Song song, string format)
+        {
             var item = new MediaPlaybackItem(
                 MediaSource.CreateFromUri(client.GetStreamUri(song.Id, format: format)));
             if (format != null)
@@ -954,8 +1017,16 @@ namespace BoxSubMusic.App.Services
                 _fallbackItems.Add(item);
             }
 
-            // SMTC metadata (§11): shown by the system media flyout and on
-            // whatever the console casts it to.
+            return item;
+        }
+
+        /// <summary>
+        /// SMTC metadata (§11): shown by the system media flyout and on
+        /// whatever the console casts it to. Includes a thumbnail stream
+        /// reference per item.
+        /// </summary>
+        private static void ApplyDisplayPropertiesTo(MediaPlaybackItem item, Song song)
+        {
             MediaItemDisplayProperties props = item.GetDisplayProperties();
             props.Type = MediaPlaybackType.Music;
             props.MusicProperties.Title = song.Title;
@@ -968,7 +1039,6 @@ namespace BoxSubMusic.App.Services
             }
 
             item.ApplyDisplayProperties(props);
-            return item;
         }
 
         // --- Player events (media thread unless noted) -------------------------

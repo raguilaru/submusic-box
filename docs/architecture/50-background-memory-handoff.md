@@ -35,11 +35,13 @@ no `Suspending` line.
   `artwork=on` / `artwork=SUPPRESSED`. It is scaffolding — delete it when the
   investigation closes.
 - Useful log markers, in flow order: `OnLaunched`, `LeavingBackground`,
+  `RebuildListStart` → `RebuildListItemsCreated` → `RebuildListDisplayPropsApplied`,
+  `QueueAddStart` → `QueueAddComplete`,
   `TrackChanged #N` → `AfterTrackSettled #N` (2.5 s later, where a stream
   open's cost lands), `JumpRequested #N` → `AfterJumpMoveTo #N`,
   `QueueOverlayOpening` → `QueueOverlayContentReady` → `QueueOverlayClosed`,
-  `EnteredBackground`, `AfterDropCovers`, `AppMemoryUsageLimitChanging`,
-  `AfterViewRelease`.
+  `EnteredBackground`, `AfterDropCovers` → `AfterDropCoversSettled` →
+  `AfterDropCoversLate`, `AppMemoryUsageLimitChanging`, `AfterViewRelease`.
 
 ---
 
@@ -198,6 +200,51 @@ which would explain every zero-reclaim reading in this investigation.
 play a 10-track album → background → read `EnteredBackground`; then queue
 200 tracks → background → read. The delta is the queue cost with nothing else
 moving.
+
+### Built 2026-08-13 — how to read what it logs
+
+Instrumentation only; no behaviour changed. Two brackets and one delayed pair.
+
+**Candidate 3 (does released memory ever register?)** — on `EnteredBackground`,
+after `AfterDropCovers`, two further readings fire at **+2.5 s** and **+10 s**:
+`AfterDropCoversSettled` and `AfterDropCoversLate`. Both stamp the megabytes
+dropped and the usage before the drop, so each line reads on its own, and both
+stamp the delay that actually elapsed (a suspended app can starve the timer —
+a figure far past its requested delay is not trustworthy).
+
+| Reading | Means |
+|---|---|
+| usage falls by roughly the dropped MB | the earlier readings were simply too early — release-based work is viable, and the cover cache is worth keeping |
+| usage flat at +2.5 s but down at +10 s | it registers, just slowly — and slower than the OS's ~2 s budget, so releasing under pressure can never help; only *not allocating* can |
+| flat at both, `privateCommit` too | native commit is never returned. **Candidate 2 is dead and so is every release-based idea**, including the cover cache. Delete it and attack allocation only |
+
+`privateCommit` is the discriminator against `AppMemoryUsage` — LogMemory
+prints both.
+
+**Candidate 1 (the queue's per-item cost)** — `RebuildList` now reports three
+readings with the track count: `RebuildListStart`,
+`RebuildListItemsCreated` (items + `MediaSource`, no metadata) and
+`RebuildListDisplayPropsApplied` (SMTC properties + the thumbnail stream
+reference). The two deltas decide between the two fixes ranked in §6:
+
+- **most of it in the display-props delta** → apply them lazily to the current
+  and next items only. Cheap, and it does not touch `_list.Items`, so none of
+  the instability that sank item recycling applies.
+- **most of it in the items delta** → the cost is `MediaSource` per track and
+  only a windowed list addresses it. Higher risk, for exactly that reason.
+- **both small** → the ~16–26 MB estimate was wrong, candidate 1 is not the
+  bug, and the browsing surcharge is the remaining target.
+
+To make this split measurable, `CreateItem` was divided into `CreateItemCore`
+and `ApplyDisplayPropertiesTo`, and `RebuildList` runs them as two passes.
+Nothing else changed: the list is not yet the player's source during either
+pass, and every other caller still gets both halves in one call.
+
+The queue-edit path (`AddSongs`) is bracketed too — `QueueAddStart` /
+`QueueAddComplete` — because a queue grown by "Add to queue" never goes through
+`RebuildList`, and the A/B above would otherwise report no per-item cost at
+all. It is **not** split into two passes: that list is live and attached to the
+player, and mutating it is what destabilized the reverted recycling attempt.
 
 ---
 
