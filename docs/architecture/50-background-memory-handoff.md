@@ -1,6 +1,7 @@
 # Background-memory investigation — handoff brief
 
-**Status: OPEN.** Last updated 2026-08-13, after ~15 console rounds.
+**Status: the reported bug no longer reproduces (run 14, 2026-08-13); margin is
+thin and the audit is open.** Last updated 2026-08-13, after 14 console runs.
 
 This file is deliberately self-contained: a new session should be able to
 continue from this alone. The full chronological record is in requirements §16
@@ -92,9 +93,46 @@ target is to stay under ~180 MB.**
 to the kill. **The stream and failure paths are exonerated: this is a memory
 bug, and the browsing surcharge is the right target.**
 
-**The floor RATCHETS across background round trips** (run 12 — four excursions,
-switching back and forth). This is the first genuine non-draining accumulation
-in the investigation; everything previously called a leak turned out to drain.
+**The ratchet is GONE, and it was never a leak** (run 14, 2026-08-13 — five
+excursions, the first run in the investigation where the app survived every one
+and playback never stopped). Post-release floors read **184 → 151 → 174 → 151 →
+173 MB**: they track how much browsing preceded each excursion and come back,
+with no monotonic climb. Background entry fell from run 13's 240 MB to
+**163–197 MB**. A track even changed while backgrounded and `OverLimit`, and
+playback carried on.
+
+`shells` reads **`0 of 4`** at `AfterCollect` in two of the cycles, so every
+released shell was genuinely collected; it ends at `1 of 5`. **Candidate 5(ii)
+— leaked page trees — is closed.** The trees were always collectable; the
+collection was simply running before the unregistrations that made them so
+(see the ordering fact below). Both fixes landed together, so the split between
+them is not measured.
+
+**Still imperfect after run 14**, all three worth ranking in an audit:
+- **The post-unload collection is a race, and loses more often than it wins.**
+  `CoreDispatcherPriority.Low` put the collect after `MainPage.Unloaded` in
+  only **2 of 5** cycles; in the other three `changedSubs` still read 85–87 at
+  `AfterViewRelease`. Needs to be deterministic, not probabilistic.
+- **The release runs TWICE per excursion.** `OnMemoryUsageIncreased` and
+  `OnMemoryUsageLimitChanging` both fire and both call `ReduceMemoryUsage`:
+  two tree drops and four GCs inside a ~2 s budget.
+- **Virtualization is unconfirmed.** The 95-song playlist still reads
+  `changedSubs=99`, exactly as in run 13, while a later PlaylistDetail visit
+  reads 28 and AlbumDetail 19–36. The `ScrollViewer` is verifiably gone and
+  `ContentFrame` sits in a height-constrained `*` row, so the layout is not the
+  cause. Leading explanation: `changedSubs` counts *container instances ever
+  created*, not visible rows — `SpinningVinyl` subscribes on `Loaded` and
+  unsubscribes on `Unloaded`, and a recycled container never unloads, so a
+  scrolled virtual list still accumulates one subscription per container.
+  **The check that settles it** (no build): open that playlist, do not scroll,
+  read `changedSubs`; scroll to the bottom, read again. ~15 then ~15 =
+  virtualization works and the subscription is fine; ~15 then climbing toward
+  95 = virtualization works but `SpinningVinyl` leaks per container; 99
+  immediately = virtualization is still off.
+
+**The floor ratcheted across background round trips before run 14** (run 12 —
+four excursions, switching back and forth). Retained for the shape of the
+failure; the cause is settled above.
 
 | Cycle | Entered bg | After release (+2.5 s) | Rebuilt at | Foreground bout |
 |---|---|---|---|---|
@@ -295,7 +333,25 @@ would also explain why it has always appeared to reclaim so little.
 
 ---
 
-## 7. The next step — run 14: the first build that changes behaviour
+## 7. Where it stands after run 14
+
+**The reported bug no longer reproduces.** Five background excursions, five
+survivals, playback continuous throughout. Background entry 163–197 MB against
+a band that survives below ~180–200 MB, no ratchet, no leaked shells.
+
+That is not the same as done. The margin is thin — 197 MB on cycle 3 is inside
+the range that killed earlier runs — and three defects found in run 14 remain
+(the collection race, the doubled release, unconfirmed virtualization). The
+work from here is an audit under a memory lens rather than another round of
+measurement: the instrumentation has answered what it can, and the remaining
+candidates are structural.
+
+Audit rule, learned the expensive way in this investigation: **a candidate
+ships only with a predicted, measurable signature** — "if this is real, X falls
+from A to B". Three fixes were built ahead of evidence here and two made things
+worse.
+
+## Superseded — run 14's brief (the first build that changed behaviour)
 
 Everything before this was instrumentation. Run 13 found two real defects with
 measurements behind them (§3), and both are now fixed. **Neither is claimed to
