@@ -821,12 +821,32 @@ revisiting the reasoning (many encode a hard-won console lesson).
   tracks and 22 tracks, both peak at 270–285 MB — **queue size does not drive
   the peak, churn rate does**. Replacing the queue does free memory (182 → 169
   MB), so that precondition passes; it is just no longer relevant.
-- **128 MB is a threshold the OS weighs, not a line it enforces.** Measured
-  2026-08-13: the app ran **more than five minutes backgrounded at 133–143 MB**
-  against a 128 MB limit, still advancing tracks. Collected against every other
-  observation the tolerance boundary sits between ~180 MB (survived) and
-  ~260 MB (killed). So the goal is not "get under 128" — it is "stay well
-  inside the band", and the minimal case already is.
+- **128 MB is a threshold the OS weighs, not a line it enforces — but the
+  tolerance runs out between ~180 and ~200 MB.** Observations, all 2026-08-13:
+  survived **133–143 MB** for 5+ minutes still advancing tracks; survived
+  **178 MB** for 36 s; **killed at ~201–214 MB**, and at 259, 270, 290 and
+  447 MB. So the working target is **stay under ~180 MB**, not under 128 — and
+  the minimal case (143 MB) already is, while a browsed session with a long
+  queue (201 MB) is not.
+- **The app-owned cover cache holds and drops covers, but dropping them did
+  not move `AppMemoryUsage`** (first console pass, 2026-08-13):
+  `AfterDropCovers` reported **11 MB released** and usage stayed at 201 MB —
+  through the subsequent `GC.Collect`, `WaitForPendingFinalizers` and the
+  visual-tree release. Two candidate explanations, undistinguished: the reading
+  is taken microseconds after the references are dropped, or native commit is
+  simply never returned to the OS (which would explain every zero-reclaim
+  reading in this whole investigation). Note also that 11 MB is small — even a
+  perfect release moves 201 to 190. **Do not treat the cache as a proven win
+  until a delayed post-drop reading says the megabytes materialise.**
+- **A 200-track queue costs roughly 16–26 MB in items alone**, before any of
+  them is opened: `RebuildList` materializes a `MediaPlaybackItem`, a
+  `MediaSource` and a full `ApplyDisplayProperties` (including an SMTC
+  thumbnail reference) per track. Measured indirectly — queue 14 → 228 cost
+  ~17 MB, and a 10 → 200 change cost ~68 MB alongside browsing. This scales
+  linearly with queue length, which is the exact shape of the reported bug, and
+  it is NOT the same thing as the (retracted) claim about opened items'
+  buffers. Two candidate fixes, neither measured yet: a windowed list, or
+  applying display properties only to the current and next items.
 - **The minimal floor is 143 MB — 15 MB over the limit** (measured 2026-08-13:
   fresh launch, play with no browsing, 32 s untouched, stable and drained).
   Composition: ~29 MB process baseline, ~28 MB shell, ~46 MB reaching a playing
