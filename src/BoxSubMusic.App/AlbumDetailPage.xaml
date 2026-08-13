@@ -17,8 +17,24 @@
          tracks, selecting a row jumps playback to that track, and the
          current track is highlighted. -->
     <Grid>
-        <ScrollViewer x:Name="ContentScroller" Visibility="Collapsed" Padding="48,36,48,36">
-            <StackPanel Spacing="36">
+        <!-- The track list IS the page's scroll host, and everything above it
+             is its Header — deliberately not a ScrollViewer wrapping both.
+             A ListView measured inside a ScrollViewer is given infinite
+             height, which silently disables virtualization (§11, measured on
+             console 2026-08-13: every row realized, each carrying a
+             SpinningVinyl and a four-item MenuFlyout). Layout and the single
+             scroll region are unchanged. Do not reintroduce an enclosing
+             ScrollViewer. -->
+        <ListView
+            x:Name="TracksList"
+            Visibility="Collapsed"
+            Padding="48,36,48,36"
+            SelectionMode="None"
+            IsItemClickEnabled="True"
+            ItemClick="TracksList_ItemClick"
+            ContextRequested="TracksList_ContextRequested">
+            <ListView.Header>
+            <StackPanel Spacing="36" Margin="0,0,0,16">
                 <!-- Header: artwork + metadata, same shape as artist detail. -->
                 <Grid ColumnSpacing="36">
                     <Grid.ColumnDefinitions>
@@ -131,12 +147,9 @@
                         FontSize="20"
                         Opacity="0.7"
                         Visibility="Collapsed" />
-                    <ListView
-                        x:Name="TracksList"
-                        SelectionMode="None"
-                        IsItemClickEnabled="True"
-                        ItemClick="TracksList_ItemClick"
-                        ContextRequested="TracksList_ContextRequested">
+                </StackPanel>
+            </StackPanel>
+            </ListView.Header>
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
                                 <Setter Property="Padding" Value="12,10" />
@@ -266,10 +279,7 @@
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
-                    </ListView>
-                </StackPanel>
-            </StackPanel>
-        </ScrollViewer>
+        </ListView>
 
         <ProgressRing
             x:Name="LoadingRing"

@@ -122,6 +122,32 @@ is precisely the page the view release forces a rebuild of on every return**:
 the release's own recovery path pays the largest render cost in the app, every
 cycle.
 
+**The release collected BEFORE the unregistrations ran** (run 13, and this had
+been true since the release was written). `Window.Current.Content = null`
+*schedules* the pages' `Unloaded` callbacks; it does not run them. The console
+timeline: `AfterViewRelease` at 06:29:01.022 with **`changedSubs=87`** and
+nothing reclaimed, `MainPage.Unloaded` at **06:29:01.133** (111 ms later), then
+`changedSubs=0` and usage 238 → 220 MB by the delayed reading. All three GC
+calls ran while every page and control was still subscribed to a
+process-lifetime static, so there was nothing they were allowed to reclaim.
+**This is the explanation for every "AfterViewRelease reclaimed 0 MB" reading
+in the investigation.** Fixed 2026-08-13 by collecting in a second,
+lower-priority dispatcher pass. `MainPage.Unloaded` DOES fire, so the
+"DisconnectChildrenRecursive suppresses Unloaded" form of candidate 5(ii) is
+disproven.
+
+**Three detail pages had virtualization silently disabled** (run 13).
+`changedSubs` turned out to be a row census — every song row carries a
+`SpinningVinyl` that subscribes — and it read **99 for a 95-song playlist** and
+**63 for a 59-song one**: every row realized, not the ~15 a virtualized list
+builds. Cause, confirmed in the XAML: the items control sat inside a
+page-level `ScrollViewer`, which measures it with infinite height and turns
+virtualization off. Album, Artist and Playlist detail were all affected (Search
+too, with bounded lists). Each realized row carries a `SpinningVinyl` and a
+four-item `MenuFlyout`. Fixed 2026-08-13 by making the items control the scroll
+host and moving the header into its `Header`. **The browse grids, Songs,
+Favorites and the queue overlay were never affected.**
+
 **The floor** (fresh launch → play → 30 s settle, no browsing)
 
 - **143 MB** with artwork, **129 MB** with artwork suppressed.
@@ -269,7 +295,45 @@ would also explain why it has always appeared to reclaim so little.
 
 ---
 
-## 7. The next step — run 13: is the ratchet a leak or unreturned commit?
+## 7. The next step — run 14: the first build that changes behaviour
+
+Everything before this was instrumentation. Run 13 found two real defects with
+measurements behind them (§3), and both are now fixed. **Neither is claimed to
+be sufficient** — run 13 entered the background at 240 MB, and these two
+together will not account for that.
+
+**Fix A — collect after the unload, not before.** `ReleaseViewContent` now runs
+two dispatcher passes: `High` drops the tree (`AfterViewDropped`), then `Low`
+collects (`AfterCollect`, `AfterViewRelease`), so the `Unloaded` callbacks land
+in between. Budget split 900 ms + 700 ms, still inside the OS's ~2 s.
+
+*Verify:* `changedSubs` on `AfterViewRelease` should now read **0 or close to
+it** (was 87), and that line should show a real drop rather than the usual
+zero. If `changedSubs` is still in the tens, something other than the shell
+handlers is holding the tree.
+
+**Fix B — restore virtualization on the three detail pages.** The items control
+is now the scroll host with the header in its `Header` property; layout and the
+single scroll region are unchanged.
+
+*Verify:* open a large playlist and read `changedSubs` on the settled
+navigation line — it should be **~15–20, not 99**. That number is the direct
+readout of whether virtualization is back.
+
+**Then re-measure the ratchet**, which run 13 could not: it died on the first
+excursion, so `shells` never went past `1 of 1`. Repeat run 12's shape — browse,
+play, queue a couple of hundred tracks, then background↔foreground four or five
+times with a browsing bout in between each — and watch `shells=` and the
+post-release floor across cycles.
+
+**If a comparable session still enters the background near 200 MB**, the
+remaining question is whether the app should keep releasing and rebuilding the
+view at all: the release costs a full Home rebuild on every return (+27 to
++48 MB, the app's most expensive page) and the ratchet may be the price of the
+cycle itself. That is a bigger behaviour change and wants its own A/B — same
+session shape with the release disabled — before it is made.
+
+## Answered by run 13 — was the ratchet a leak or unreturned commit?
 
 Three counters, no behaviour change, aimed squarely at candidate 5. Two of them
 ride on **every** `LogMemory` line, because the point at which a count starts

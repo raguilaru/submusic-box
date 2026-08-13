@@ -15,8 +15,22 @@
          behavior is live: Play queues every song oldest-album-first, Shuffle
          queues the same pool randomized — both replace the current queue. -->
     <Grid>
-        <ScrollViewer x:Name="ContentScroller" Visibility="Collapsed" Padding="48,36,48,36">
-            <StackPanel Spacing="36">
+        <!-- The album grid IS the page's scroll host, and everything above it
+             is its Header — deliberately not a ScrollViewer wrapping both.
+             An items control measured inside a ScrollViewer is given infinite
+             height, which silently disables virtualization (§11, measured on
+             console 2026-08-13). Layout and the single scroll region are
+             unchanged. Do not reintroduce an enclosing ScrollViewer. -->
+        <GridView
+            x:Name="AlbumsGrid"
+            Visibility="Collapsed"
+            Padding="48,36,48,36"
+            SelectionMode="None"
+            IsItemClickEnabled="True"
+            ItemClick="Album_ItemClick"
+            ContextRequested="Albums_ContextRequested">
+            <GridView.Header>
+            <StackPanel Spacing="36" Margin="0,0,0,16">
                 <!-- Header: artwork + metadata. -->
                 <Grid ColumnSpacing="36">
                     <Grid.ColumnDefinitions>
@@ -129,12 +143,9 @@
                         FontSize="20"
                         Opacity="0.7"
                         Visibility="Collapsed" />
-                    <GridView
-                        x:Name="AlbumsGrid"
-                        SelectionMode="None"
-                        IsItemClickEnabled="True"
-                        ItemClick="Album_ItemClick"
-                        ContextRequested="Albums_ContextRequested">
+                </StackPanel>
+            </StackPanel>
+            </GridView.Header>
                         <GridView.ItemContainerStyle>
                             <Style TargetType="GridViewItem">
                                 <Setter Property="Margin" Value="0,0,20,20" />
@@ -188,10 +199,7 @@
                                 </StackPanel>
                             </DataTemplate>
                         </GridView.ItemTemplate>
-                    </GridView>
-                </StackPanel>
-            </StackPanel>
-        </ScrollViewer>
+        </GridView>
 
         <ProgressRing
             x:Name="LoadingRing"

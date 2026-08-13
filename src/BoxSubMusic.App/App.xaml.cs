@@ -33,7 +33,13 @@ namespace BoxSubMusic.App
         /// success while the memory was still charged. Still inside the ~2 s
         /// the OS allows after the limit changes.
         /// </summary>
-        private static readonly TimeSpan ReleaseTimeout = TimeSpan.FromMilliseconds(1600);
+        // Split from one 1600 ms wait into two (§11, 2026-08-13): the tree is
+        // dropped first, then the collection runs in a SECOND, lower-priority
+        // dispatcher pass so the Unloaded callbacks land in between. See
+        // CollectAfterRelease for why that ordering is the whole point. The
+        // sum stays inside the OS's ~2 s budget.
+        private static readonly TimeSpan ReleaseTimeout = TimeSpan.FromMilliseconds(900);
+        private static readonly TimeSpan CollectTimeout = TimeSpan.FromMilliseconds(700);
 
         /// <summary>
         /// When this assembly was compiled. Bump-free build identity: the
@@ -414,7 +420,13 @@ namespace BoxSubMusic.App
 
             if (dispatcher.HasThreadAccess)
             {
+                // Already on the UI thread, so we cannot yield to let the
+                // Unloaded callbacks run before collecting — the collection is
+                // queued behind them instead and this call returns without it.
+                // Not the path the memory events take (they arrive on the
+                // threadpool); kept correct rather than optimal.
                 ReleaseViewContentOnUiThread();
+                _ = dispatcher.RunAsync(CoreDispatcherPriority.Low, CollectAfterRelease);
                 return;
             }
 
@@ -429,6 +441,23 @@ namespace BoxSubMusic.App
                     .RunAsync(CoreDispatcherPriority.High, ReleaseViewContentOnUiThread)
                     .AsTask()
                     .Wait(ReleaseTimeout);
+
+                // THEN collect, in a separate lower-priority pass. Nulling the
+                // window content does not run the pages' Unloaded callbacks
+                // synchronously — it schedules them — so a collection inside
+                // the pass above runs while every page and control is still
+                // subscribed to statics (PlaybackService.Changed, reached from
+                // an object that lives as long as the process). The console
+                // measured exactly that on 2026-08-13: AfterViewRelease read
+                // changedSubs=87 and reclaimed nothing, MainPage.Unloaded
+                // arrived 111 ms later, and usage had fallen 238 → 220 MB by
+                // the delayed reading. Queuing at Low puts this behind the
+                // unload work, so the collection finally runs against a tree
+                // nothing is holding.
+                dispatcher
+                    .RunAsync(CoreDispatcherPriority.Low, CollectAfterRelease)
+                    .AsTask()
+                    .Wait(CollectTimeout);
             }
             catch (Exception ex)
             {
@@ -459,20 +488,40 @@ namespace BoxSubMusic.App
             }
 
             // Pages release further resources from their own Unloaded
-            // handlers, which this assignment triggers.
+            // handlers, which this assignment SCHEDULES rather than runs — see
+            // CollectAfterRelease, which is why the collection is no longer
+            // here.
             Window.Current.Content = null;
 
-            // The finalizer pass is NOT optional here, and the console
-            // measured why: on the first run where the release actually
-            // executed (2026-08-12, usage 176 MB against a 128 MB limit), a
-            // lone GC.Collect reclaimed **nothing at all**.
-            //
-            // The XAML tree and its decoded bitmaps are overwhelmingly NATIVE
-            // objects reached through RCWs. Collecting frees the managed
-            // wrappers, but the native memory the OS is measuring comes back
-            // only once those wrappers' finalizers run and drop the
-            // underlying references — hence collect, drain finalizers, then
-            // collect again to reclaim what they released.
+            Services.BackgroundDiagnostics.LogMemory("AfterViewDropped");
+        }
+
+        /// <summary>
+        /// Collects, in a dispatcher pass AFTER the one that dropped the tree
+        /// (§11, 2026-08-13).
+        ///
+        /// The ordering is the entire point. `Window.Current.Content = null`
+        /// schedules the pages' Unloaded callbacks; it does not run them. Those
+        /// callbacks are what unregister the shell and its controls from
+        /// process-lifetime statics, and until they run the whole tree is still
+        /// reachable — so a collection in the same pass has nothing it is
+        /// allowed to reclaim. The console showed this plainly: the old
+        /// AfterViewRelease line read changedSubs=87 and reclaimed 0 MB,
+        /// MainPage.Unloaded arrived 111 ms afterwards, and usage had dropped
+        /// 238 → 220 MB by the time anything looked again.
+        ///
+        /// `changedSubs` on the line below is the check: it should now read 0,
+        /// or close to it. If it is still in the tens, something else is
+        /// holding the tree and the release is a no-op for a different reason.
+        ///
+        /// The finalizer pass is not optional. The XAML tree and its decoded
+        /// bitmaps are overwhelmingly native objects reached through RCWs:
+        /// collecting frees the managed wrappers, but the native memory the OS
+        /// measures comes back only once those wrappers' finalizers run — hence
+        /// collect, drain, collect again.
+        /// </summary>
+        private void CollectAfterRelease()
+        {
             GC.Collect();
             Services.BackgroundDiagnostics.LogMemory("AfterCollect");
 

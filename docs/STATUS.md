@@ -673,6 +673,36 @@ cache targets the first.
     cache's retention is dropped, so a quick out-and-back should look
     unchanged).
 
+**Detail-page virtualization + release ordering (2026-08-13, §11):**
+
+The first background-memory build that changes behaviour rather than only
+measuring. Items 75–76 are UI checks and need no special protocol; item 77 is
+the memory measurement and follows the usual non-debug rule.
+
+75. **The three detail pages still look and behave exactly as before.** Album,
+    Artist and Playlist detail no longer wrap their list/grid in a
+    `ScrollViewer` — the items control is now the scroll host and the header
+    is its `Header`. Confirm on each: the page scrolls as ONE region (header
+    scrolls away with the content, not pinned), the 48,36 inset is unchanged,
+    Play / Shuffle / Play next / Add to queue still take focus and work, D-pad
+    walks from the header buttons down into the rows and back up, and B-back
+    returns cleanly. On Artist detail the album grid must still wrap into the
+    same number of columns.
+76. **Empty states.** A playlist with no songs, an album with no tracks, an
+    artist with no albums: the header must still be visible with its
+    "no songs/tracks/albums" line. This is the one behaviour that changed
+    shape — the list is no longer collapsed when empty (collapsing it would
+    now hide the header too), so an empty list must render as nothing at all
+    rather than leaving a gap or a stray focus stop.
+77. **The two measurements.** Non-debug launch, then read the log. Open a large
+    playlist and check `changedSubs` on its `NavigatedSettled` line: **~15–20
+    is the win, 99 means virtualization is still off**. Then background and
+    check `changedSubs` on `AfterViewRelease`: **0 or near it** (was 87), with
+    that line finally showing a real drop instead of zero. Then repeat the
+    run-12 shape — browse, play, queue ~200 tracks, and switch
+    background↔foreground four or five times with browsing in between — and
+    watch `shells=` and the post-release floor across cycles.
+
 *(Future work: append console items here.)*
 
 ## Background memory (§11) — OPEN, see the handoff brief

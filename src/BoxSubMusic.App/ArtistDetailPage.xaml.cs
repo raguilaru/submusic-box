@@ -157,7 +157,9 @@ namespace BoxSubMusic.App
                     CoverArt.UriFor(a.CoverArtId, AlbumArtSize)))
                 .ToList();
             AlbumsGrid.ItemsSource = cards;
-            AlbumsGrid.Visibility = cards.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+            // Deliberately NOT collapsed when empty any more: the grid now
+            // hosts the page header, so hiding it would hide the whole page.
+            // NoAlbumsText (in the header) is the empty state.
             NoAlbumsText.Visibility = cards.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -343,14 +345,14 @@ namespace BoxSubMusic.App
         {
             LoadingRing.IsActive = true;
             ErrorPanel.Visibility = Visibility.Collapsed;
-            ContentScroller.Visibility = Visibility.Collapsed;
+            AlbumsGrid.Visibility = Visibility.Collapsed;
         }
 
         private void ShowContent()
         {
             LoadingRing.IsActive = false;
             ErrorPanel.Visibility = Visibility.Collapsed;
-            ContentScroller.Visibility = Visibility.Visible;
+            AlbumsGrid.Visibility = Visibility.Visible;
 
             // Focus convention: loaded content owns focus (see ContentFocus).
             // The old synchronous Programmatic focus here silently failed on
@@ -363,7 +365,7 @@ namespace BoxSubMusic.App
         private void ShowError(string message)
         {
             LoadingRing.IsActive = false;
-            ContentScroller.Visibility = Visibility.Collapsed;
+            AlbumsGrid.Visibility = Visibility.Collapsed;
             ErrorPanel.Visibility = Visibility.Visible;
             ErrorText.Text = message;
             RetryButton.Focus(FocusState.Keyboard);

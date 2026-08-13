@@ -152,7 +152,9 @@ namespace BoxSubMusic.App
             _detail = detail;
             _rows = rows;
             TracksList.ItemsSource = rows;
-            TracksList.Visibility = rows.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+            // Deliberately NOT collapsed when empty any more: the list now
+            // hosts the page header, so hiding it would hide the whole page.
+            // NoTracksText (in the header) is the empty state.
             NoTracksText.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
             // Nothing to queue on a trackless album (§15: visibly disabled
@@ -458,14 +460,14 @@ namespace BoxSubMusic.App
         {
             LoadingRing.IsActive = true;
             ErrorPanel.Visibility = Visibility.Collapsed;
-            ContentScroller.Visibility = Visibility.Collapsed;
+            TracksList.Visibility = Visibility.Collapsed;
         }
 
         private void ShowContent()
         {
             LoadingRing.IsActive = false;
             ErrorPanel.Visibility = Visibility.Collapsed;
-            ContentScroller.Visibility = Visibility.Visible;
+            TracksList.Visibility = Visibility.Visible;
 
             // Focus convention: loaded content owns focus (see ContentFocus).
             // The old synchronous Programmatic focus here silently failed on
@@ -478,7 +480,7 @@ namespace BoxSubMusic.App
         private void ShowError(string message)
         {
             LoadingRing.IsActive = false;
-            ContentScroller.Visibility = Visibility.Collapsed;
+            TracksList.Visibility = Visibility.Collapsed;
             ErrorPanel.Visibility = Visibility.Visible;
             ErrorText.Text = message;
             RetryButton.Focus(FocusState.Keyboard);

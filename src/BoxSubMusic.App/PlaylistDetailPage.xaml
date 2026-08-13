@@ -18,8 +18,24 @@
          Subsonic star/unstar endpoint covers songs, albums, and artists only.
          Read-only for v1 — no editing actions anywhere. -->
     <Grid>
-        <ScrollViewer x:Name="ContentScroller" Visibility="Collapsed" Padding="48,36,48,36">
-            <StackPanel Spacing="36">
+        <!-- The song list IS the page's scroll host, and everything above it
+             is its Header — deliberately not a ScrollViewer wrapping both.
+             A ListView measured inside a ScrollViewer is given infinite
+             height, which silently disables virtualization: the 2026-08-13
+             console log counted 99 realized rows for a 95-song playlist, each
+             carrying a SpinningVinyl and a four-item MenuFlyout (§11). The
+             layout and the single scroll region are unchanged; the rows now
+             virtualize. Do not reintroduce an enclosing ScrollViewer. -->
+        <ListView
+            x:Name="SongsList"
+            Visibility="Collapsed"
+            Padding="48,36,48,36"
+            SelectionMode="None"
+            IsItemClickEnabled="True"
+            ItemClick="SongsList_ItemClick"
+            ContextRequested="SongsList_ContextRequested">
+            <ListView.Header>
+            <StackPanel Spacing="36" Margin="0,0,0,16">
                 <!-- Header: composite artwork + metadata, same shape as album
                      detail. The artwork reuses the §7.4 tile composition at
                      header size — the songs arrive with getPlaylist, so the
@@ -166,12 +182,9 @@
                         FontSize="20"
                         Opacity="0.7"
                         Visibility="Collapsed" />
-                    <ListView
-                        x:Name="SongsList"
-                        SelectionMode="None"
-                        IsItemClickEnabled="True"
-                        ItemClick="SongsList_ItemClick"
-                        ContextRequested="SongsList_ContextRequested">
+                </StackPanel>
+            </StackPanel>
+            </ListView.Header>
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
                                 <Setter Property="Padding" Value="12,10" />
@@ -307,10 +320,7 @@
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
-                    </ListView>
-                </StackPanel>
-            </StackPanel>
-        </ScrollViewer>
+        </ListView>
 
         <ProgressRing
             x:Name="LoadingRing"
