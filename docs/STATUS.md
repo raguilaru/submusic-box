@@ -2,7 +2,8 @@
 
 Last updated: 2026-08-13 (background memory rounds two and three: the console
 cleared artwork (~27 MB) and the overlay (free) as suspects and pinned the cost
-on scrolling the queue + jumping to a track, now instrumented; cover-art URLs were
+on every stream open — playback items were never disposed and never garbage,
+now recycled per track change; cover-art URLs were
 unique per request — defeating both platform caches — so the strategy moved
 from shedding memory to not allocating it; plus a diagnostic switch that runs
 the app with no artwork, to measure what artwork actually costs. On top of
@@ -137,6 +138,24 @@ planned slice. Since then, refinement rounds have landed on top:
   `AfterJumpSettled` bracket the jump, and `MaxPlayedItemsToKeepOpen` drops
   from 2 to 0 permanently as a candidate fix that is also half the experiment.
   Not yet device-verified (backlog items 63–65).
+- **Retired playback items are recycled** (2026-08-13) — the split runs came
+  back and located it. Scrolling all 228 queue rows costs +13/+18 MB
+  (secondary, not addressed). **Jumping** is the real one: `AfterJumpMoveTo`
+  costs **0 MB** and even returns ~10 MB (so `MaxPlayedItemsToKeepOpen = 0`
+  works), while the settled reading 2.5 s later costs **+41, +25, +37 MB**
+  across three jumps — cumulative, never returned, killed at 259 MB. Codec is
+  not the driver (an m4a 256 kbps jump cost more than a FLAC one), so the cost
+  is **per stream open**. Mechanism: `RebuildList` materializes an item and a
+  `MediaSource` for every track and they live in `_list.Items` forever, so they
+  are never garbage — which is exactly why `GC.Collect` +
+  `WaitForPendingFinalizers` reclaimed 0 MB on every console run. The
+  2026-07-23 code review had flagged the missing disposal as latent; it is the
+  bug. Now every track change replaces the item that just stopped being current
+  with a fresh unopened one and disposes the old `MediaSource`
+  (`RecycleRetiredItem`, the shape `RetryWithMp3` already used). The settled
+  reading also moved onto every track change, and both item maps gained a lock
+  (recycling rewrites them far more often than before). Not yet device-verified
+  (backlog items 66–69).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -608,6 +627,45 @@ them is what produced the wrong answer last time. Non-debug launch as always.
     next-track prefetch, so listen through two or three track boundaries to
     confirm nothing gaps.
 
+**Item recycling — does the memory finally come back? (2026-08-13, §11):**
+
+Items 63–64 are **answered** (see the entry above). This round tests the fix.
+Item 66 is the one that matters; 67 is the risk it introduces.
+
+66. **Repeat the jump run and read the settled lines.** Same as before: play a
+    200+ queue, open the overlay, jump three times, watching
+    `TrackChanged #N` → `AfterTrackSettled #N`. Before the fix these stepped
+    161 → 224 → 240 → 268 MB. Now they should stay roughly **flat** — a jump
+    may still cost while the new stream buffers, but the previous one's memory
+    should come back, so the *baseline* must stop climbing. A flat trace is the
+    fix working. A trace that still climbs means the Dispose is not returning
+    what the open took, and the next suspect is the stream download buffer
+    rather than the decoder.
+67. **Playback must not glitch or die at a track boundary — this is the risk.**
+    The retired item's `MediaSource` is now disposed a dispatcher hop after the
+    platform moved on. If that is too eager it could fault natively, which a
+    try/catch cannot save. Listen through **at least five natural track
+    changes** with no interaction at all, and confirm: no gap, no stutter, no
+    silent stop, and no `Recycling a retired item failed` line in the log. If
+    playback dies at a boundary, the fallback is to keep the item replacement
+    and drop the explicit Dispose — replacing the item alone already turns a
+    permanently-live object into collectable garbage, which is the structural
+    half of the fix.
+68. **Natural advances, now measured.** Let the queue advance on its own
+    several times without touching anything and read the `TrackChanged` /
+    `AfterTrackSettled` pairs. This answers a question the earlier logs could
+    not: if an ordinary advance costs what a jump did, then background playback
+    of a long queue was always accumulating too and just took longer to reach
+    the ceiling. Either answer is useful; note which it is.
+69. **The queue still behaves.** Because items are swapped underneath it,
+    re-check the operations that depend on item identity: **Previous** (both
+    the bar button and the Guide's control) still goes back and plays;
+    jumping **backwards** to an already-played row still works; **shuffle**
+    toggled mid-playback still keeps the current track playing and reorders
+    the rest; and a queue edit ("Play next" / "Add to queue") still lands in
+    the right place. Also confirm the expanded queue's now-playing marker still
+    follows the right row.
+
 *(Future work: append console items here.)*
 
 ## Known gaps / durable notes
@@ -737,10 +795,28 @@ revisiting the reasoning (many encode a hard-won console lesson).
   **+7 MB**; scrolling 228 rows and jumping costs **+91 MB** with artwork and
   **+166 MB** without. That is the reported symptom exactly — a long queue
   plays in the background indefinitely, and dies after you go back and pick
-  another track. Two candidate mechanisms remain (open `MediaPlaybackItem`
-  buffers vs. the queue `ListView` realizing rows, each of which carries a
-  `SpinningVinyl` and a four-item `MenuFlyout` from its `DataTemplate`);
-  backlog items 63–64 separate them and must be run separately.
+  another track. **Split by two further runs the same day** — both mechanisms
+  are real and one is three times the other:
+  - **scrolling** all 228 rows costs **+13 MB** (artwork off) to **+18 MB**
+    (artwork on), and does not come back when the overlay closes. Secondary;
+    the fix would be in the row template (each row carries a `SpinningVinyl`
+    and a four-item `MenuFlyout`). Not addressed yet.
+  - **every stream OPEN** costs **+25 to +41 MB**, cumulative and never
+    returned — see the next note, which is the real bug.
+- **The memory is spent when a stream OPENS, not when the jump happens, and
+  the items were immortal** (2026-08-13). `AfterJumpMoveTo` costs 0 MB and even
+  returns ~10 MB, so `MaxPlayedItemsToKeepOpen = 0` genuinely works; the cost
+  lands at the settled reading 2.5 s later (+41, +25, +37 MB across three
+  jumps: 161 → 224 → 240 → 268 MB, then killed at 259). **Codec is not the
+  driver** — an m4a 256 kbps jump cost more than a FLAC one. The reason nothing
+  ever came back: `RebuildList` materializes a `MediaPlaybackItem` and a
+  `MediaSource` for EVERY track and they live in `_list.Items` for the life of
+  the queue, so they are never garbage — which is exactly why `GC.Collect` +
+  `WaitForPendingFinalizers` reclaimed **0 MB** on every console run since this
+  began. There was never anything to collect. Fixed by recycling the retired
+  item on each track change (`RecycleRetiredItem`); if the explicit `Dispose`
+  ever proves unsafe on device, the item replacement alone still converts a
+  permanently-live object into collectable garbage.
 - **Every cover-art URL used to be unique, defeating both platform caches**
   (found 2026-08-13). `GetCoverArtUri` goes through the same request builder
   as every endpoint, and token auth mints a **fresh random salt per call**, so
@@ -774,7 +850,11 @@ revisiting the reasoning (many encode a hard-won console lesson).
   two separate numbers and both have to be right.
 - **High-bitrate FLAC is a secondary cost, not the driver.** A FLAC session
   measured 236 MB, inside the 178–270 MB range already seen with 256 kbps
-  m4a; the variance tracks browsing, not codec. Open `MediaPlaybackItem`s do
+  m4a; the variance tracks browsing, not codec. **Confirmed directly
+  2026-08-13**: with each stream open individually measured, an m4a 256 kbps
+  jump cost +37 MB and a FLAC 1218 kbps jump +25 MB. The per-open cost is not
+  a function of the codec, so do not reach for bitrate as an explanation.
+  Open `MediaPlaybackItem`s do
   hold native demux/decode buffers that are several times larger for FLAC,
   which is why **`MaxPlayedItemsToKeepOpen` is now 0 always** (2026-08-13),
   not only while backgrounded: at 2, a jump left the track you came from open
@@ -952,14 +1032,17 @@ A review ahead of concluding the app found the code clean and disciplined
 capabilities). Latent items worth a future pass, none observed failing on
 device:
 
-- **`PlaybackService` item maps (`_songToItem`/`_itemToSong`) are read on the
-  media thread** (`OnCurrentItemChanged`/`OnItemFailed`) while mutated on the UI
-  thread — a plain `Dictionary<>` is not safe for concurrent read+write. Tiny
-  window; `_retriedSongs` already uses `_retryGate` for exactly this. Cheapest
-  fix: guard those map reads/writes with the same lock.
-- **`MediaPlaybackList`/items aren't explicitly disposed on rebuild/stop** —
-  GC reclaims them; explicit disposal would return decoder buffers
-  deterministically under the Xbox memory budget.
+- **DONE 2026-08-13 — `PlaybackService` item maps were read on the media
+  thread** (`OnCurrentItemChanged`/`OnItemFailed`) while mutated on the UI
+  thread, which a plain `Dictionary<>` does not support. Now guarded by
+  `_mapGate` behind `MapItem`/`TryGetSong`/`TryGetItem`/`RemapItem`/
+  `ClearMaps`. Item recycling rewrites both maps on every track change, so the
+  window this review called tiny stopped being tiny.
+- **DONE 2026-08-13 — `MediaPlaybackList` items weren't explicitly disposed.**
+  This turned out to be the background-memory bug itself, not a tidiness item:
+  the items were never garbage in the first place (they live in `_list.Items`
+  for the life of the queue), so the GC could never reclaim them and every
+  stream open leaked 25–41 MB. See the §11 notes above.
 - **Cleanup done this pass:** removed the now-dead `SectionPage` (every section
   has a real page; it survived only as an unreachable routing fallback);
   refreshed `README.md` to the finished state.

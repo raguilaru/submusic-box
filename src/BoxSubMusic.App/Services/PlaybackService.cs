@@ -74,6 +74,18 @@ namespace BoxSubMusic.App.Services
         private readonly Dictionary<MediaPlaybackItem, Song> _itemToSong =
             new Dictionary<MediaPlaybackItem, Song>();
 
+        /// <summary>
+        /// Guards both item maps. They are written on the UI thread and read
+        /// on the media thread (<see cref="OnCurrentItemChanged"/>,
+        /// <see cref="OnItemFailed"/>), and a plain Dictionary is not safe for
+        /// concurrent read + write. The 2026-07-23 code review flagged this as
+        /// latent with a tiny window; the item recycling added 2026-08-13
+        /// rewrites both maps on EVERY track change, which widens that window
+        /// enough that it has to be closed. Same reasoning as
+        /// <see cref="_retryGate"/>.
+        /// </summary>
+        private readonly object _mapGate = new object();
+
         private MediaPlaybackList _list;
 
         /// <summary>
@@ -96,12 +108,16 @@ namespace BoxSubMusic.App.Services
         /// </summary>
         private const int DefaultPlayedItemsKept = 0;
 
-        // Diagnostics: how long after a jump to take the settled reading, and
-        // the one-shot timer that takes it. Instant growth means the media
-        // pipeline opened something; growth over seconds means it buffered.
-        private static readonly TimeSpan JumpSettleDelay = TimeSpan.FromMilliseconds(2500);
-        private DispatcherTimer _jumpSettleTimer;
+        // Diagnostics: how long after a stream opens to take the settled
+        // reading, and the one-shot timer that takes it. The 2026-08-13 console
+        // log showed the cost of a jump arriving here, not at MoveTo — +41,
+        // +25 and +37 MB across three jumps, none of it returned. The reading
+        // now hangs off EVERY track change, not just a jump, because the
+        // open question is whether an ordinary advance costs the same.
+        private static readonly TimeSpan SettleDelay = TimeSpan.FromMilliseconds(2500);
+        private DispatcherTimer _settleTimer;
         private int _jumpCount;
+        private int _streamOpenCount;
 
         // Scrobble bookkeeping, touched from the media thread (PositionChanged).
         private Song _scrobbleSong;
@@ -336,7 +352,7 @@ namespace BoxSubMusic.App.Services
             var seen = new HashSet<Song>();
             foreach (Song song in songs)
             {
-                added.Add(_songToItem.ContainsKey(song) || !seen.Add(song)
+                added.Add(IsMapped(song) || !seen.Add(song)
                     ? CloneSong(song)
                     : song);
             }
@@ -359,8 +375,7 @@ namespace BoxSubMusic.App.Services
             foreach (Song song in added)
             {
                 var item = CreateItem(client, song);
-                _songToItem[song] = item;
-                _itemToSong[item] = song;
+                MapItem(song, item);
                 _list.Items.Insert(IndexOfInTracks(song), item);
             }
 
@@ -471,7 +486,7 @@ namespace BoxSubMusic.App.Services
         /// </summary>
         public void JumpTo(Song song)
         {
-            if (_list == null || song == null || !_songToItem.TryGetValue(song, out MediaPlaybackItem item))
+            if (_list == null || song == null || !TryGetItem(song, out MediaPlaybackItem item))
             {
                 return;
             }
@@ -521,8 +536,9 @@ namespace BoxSubMusic.App.Services
 
             Player.Play();
 
+            // The settled reading is taken by the track-change handler this
+            // MoveTo triggers, so it covers ordinary advances too.
             BackgroundDiagnostics.LogMemory("AfterJumpMoveTo #" + _jumpCount);
-            LogJumpSettledSoon();
         }
 
         /// <summary>Format/bitrate of a queued track, for the jump diagnostics.</summary>
@@ -535,26 +551,117 @@ namespace BoxSubMusic.App.Services
         }
 
         /// <summary>
-        /// Takes one memory reading a couple of seconds after a jump, once the
-        /// new stream has opened and buffered. One-shot and restarted per jump,
-        /// so a burst of jumps logs a single settled figure for the burst
-        /// rather than one line each. UI thread (see the class remarks).
+        /// Takes one memory reading a couple of seconds after a stream opens,
+        /// once it has buffered — which is where the 2026-08-13 console log
+        /// showed the cost landing. One-shot and restarted per open, so a burst
+        /// of track changes logs a single settled figure for the burst rather
+        /// than one line each. UI thread (see the class remarks).
         /// </summary>
-        private void LogJumpSettledSoon()
+        private void LogSettledSoon()
         {
-            if (_jumpSettleTimer == null)
+            if (_settleTimer == null)
             {
-                _jumpSettleTimer = new DispatcherTimer { Interval = JumpSettleDelay };
-                _jumpSettleTimer.Tick += (s, e) =>
+                _settleTimer = new DispatcherTimer { Interval = SettleDelay };
+                _settleTimer.Tick += (s, e) =>
                 {
-                    _jumpSettleTimer.Stop();
-                    BackgroundDiagnostics.LogMemory("AfterJumpSettled #" + _jumpCount);
+                    _settleTimer.Stop();
+                    BackgroundDiagnostics.LogMemory("AfterTrackSettled #" + _streamOpenCount);
                     BackgroundDiagnostics.FlushSoon();
                 };
             }
 
-            _jumpSettleTimer.Stop();
-            _jumpSettleTimer.Start();
+            _settleTimer.Stop();
+            _settleTimer.Start();
+        }
+
+        /// <summary>
+        /// UI-thread half of a track change (§11, 2026-08-13): logs the open
+        /// and recycles the item that just stopped playing.
+        /// </summary>
+        private void OnTrackChangedOnUi(MediaPlaybackItem retired, Song newSong)
+        {
+            _streamOpenCount++;
+            BackgroundDiagnostics.LogMemory(
+                "TrackChanged #" + _streamOpenCount
+                + (newSong == null ? string.Empty : " (to " + DescribeStream(newSong) + ")"));
+
+            RecycleRetiredItem(retired);
+            LogSettledSoon();
+        }
+
+        /// <summary>
+        /// Replaces the item that just stopped being current with a fresh,
+        /// unopened one and disposes the old one's <see cref="MediaSource"/>.
+        ///
+        /// This is the fix the 2026-08-13 log argues for. Every stream open
+        /// cost 25–41 MB that never came back, regardless of codec (an m4a
+        /// 256 kbps jump cost MORE than a FLAC one), and
+        /// <c>GC.Collect</c> + <c>WaitForPendingFinalizers</c> reclaimed zero
+        /// every time — because there is nothing to collect: all N items live
+        /// in <c>_list.Items</c> for the life of the queue, so their
+        /// <see cref="MediaSource"/>s are never garbage. Dropping
+        /// <c>MaxPlayedItemsToKeepOpen</c> to 0 returned ~10 MB per jump, so
+        /// the platform closes what it is asked to; the rest only comes back
+        /// with an explicit Dispose, which the 2026-07-23 code review had
+        /// already flagged as missing.
+        ///
+        /// The replacement keeps the queue whole — jumping back to the track
+        /// still works, it just reopens the stream, which is already true with
+        /// played items kept at 0. In-place item replacement is the shape
+        /// <see cref="RetryWithMp3"/> uses.
+        ///
+        /// UI thread: it mutates the list and the maps.
+        /// </summary>
+        private void RecycleRetiredItem(MediaPlaybackItem retired)
+        {
+            var client = AppSession.Client;
+            if (retired == null || _list == null || client == null)
+            {
+                return;
+            }
+
+            // Never touch what is playing. The list may also have prefetched
+            // the retired item as the NEXT one (this happens after Previous);
+            // replacing it then costs a re-prefetch, not correctness.
+            if (ReferenceEquals(retired, _list.CurrentItem))
+            {
+                return;
+            }
+
+            if (!TryGetSong(retired, out Song song))
+            {
+                return; // already recycled, or the queue was rebuilt
+            }
+
+            int index = _list.Items.IndexOf(retired);
+            if (index < 0)
+            {
+                return;
+            }
+
+            // A fallback item must come back as one, or the retry would be
+            // undone and the track would fail to decode again.
+            MediaPlaybackItem fresh = _fallbackItems.Contains(retired)
+                ? CreateItem(client, song, "mp3")
+                : CreateItem(client, song);
+
+            RemapItem(song, retired, fresh);
+            _fallbackItems.Remove(retired);
+            _list.Items[index] = fresh;
+            if (Queue.ShuffleEnabled)
+            {
+                ApplyShuffleToList();
+            }
+
+            try
+            {
+                retired.Source?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                // Never let a memory optimization take down playback.
+                BackgroundDiagnostics.Log("Recycling a retired item failed: " + ex.Message);
+            }
         }
 
         /// <summary>
@@ -794,12 +901,12 @@ namespace BoxSubMusic.App.Services
             foreach (Song song in Queue.Tracks)
             {
                 var item = CreateItem(client, song);
-                _songToItem[song] = item;
-                _itemToSong[item] = song;
+                MapItem(song, item);
                 list.Items.Add(item);
             }
 
-            list.StartingItem = _songToItem[Queue.CurrentTrack];
+            TryGetItem(Queue.CurrentTrack, out MediaPlaybackItem startingItem);
+            list.StartingItem = startingItem;
             list.CurrentItemChanged += OnCurrentItemChanged;
             list.ItemFailed += OnItemFailed;
             _list = list;
@@ -821,8 +928,7 @@ namespace BoxSubMusic.App.Services
                 _list = null;
             }
 
-            _songToItem.Clear();
-            _itemToSong.Clear();
+            ClearMaps();
             _fallbackItems.Clear();
             lock (_retryGate)
             {
@@ -845,7 +951,10 @@ namespace BoxSubMusic.App.Services
                 var order = new List<MediaPlaybackItem>(Queue.PlayOrder.Count);
                 foreach (Song song in Queue.PlayOrder)
                 {
-                    order.Add(_songToItem[song]);
+                    if (TryGetItem(song, out MediaPlaybackItem ordered))
+                    {
+                        order.Add(ordered);
+                    }
                 }
 
                 _list.SetShuffledItems(order);
@@ -853,6 +962,63 @@ namespace BoxSubMusic.App.Services
             else
             {
                 _list.ShuffleEnabled = false;
+            }
+        }
+
+        // --- Item maps (see _mapGate) -----------------------------------------
+
+        private void MapItem(Song song, MediaPlaybackItem item)
+        {
+            lock (_mapGate)
+            {
+                _songToItem[song] = item;
+                _itemToSong[item] = song;
+            }
+        }
+
+        private bool TryGetSong(MediaPlaybackItem item, out Song song)
+        {
+            lock (_mapGate)
+            {
+                return _itemToSong.TryGetValue(item, out song);
+            }
+        }
+
+        private bool TryGetItem(Song song, out MediaPlaybackItem item)
+        {
+            lock (_mapGate)
+            {
+                return _songToItem.TryGetValue(song, out item);
+            }
+        }
+
+        private bool IsMapped(Song song)
+        {
+            lock (_mapGate)
+            {
+                return _songToItem.ContainsKey(song);
+            }
+        }
+
+        /// <summary>Repoints <paramref name="song"/> at a replacement item and
+        /// forgets the old one. Used by the mp3 fallback and by item
+        /// recycling.</summary>
+        private void RemapItem(Song song, MediaPlaybackItem oldItem, MediaPlaybackItem newItem)
+        {
+            lock (_mapGate)
+            {
+                _itemToSong.Remove(oldItem);
+                _songToItem[song] = newItem;
+                _itemToSong[newItem] = song;
+            }
+        }
+
+        private void ClearMaps()
+        {
+            lock (_mapGate)
+            {
+                _songToItem.Clear();
+                _itemToSong.Clear();
             }
         }
 
@@ -910,7 +1076,20 @@ namespace BoxSubMusic.App.Services
             Song song = null;
             if (newItem != null)
             {
-                _itemToSong.TryGetValue(newItem, out song);
+                TryGetSong(newItem, out song);
+            }
+
+            // §11 (2026-08-13): every stream open costs memory that is never
+            // returned, so the item that just stopped playing is recycled —
+            // and the open is logged, because whether an ordinary advance costs
+            // what a jump costs is the question this round answers. Both are
+            // marshalled: this handler is on the media thread, and the recycle
+            // mutates the list and the maps.
+            MediaPlaybackItem retired = args.OldItem;
+            if (!ReferenceEquals(retired, newItem))
+            {
+                Song openedSong = song;
+                _ = RunOnUiAsync(() => OnTrackChangedOnUi(retired, openedSong));
             }
 
             // Scrobble bookkeeping stays on this thread (PositionChanged
@@ -965,7 +1144,7 @@ namespace BoxSubMusic.App.Services
             Song currentSong = null;
             if (currentItem != null)
             {
-                _itemToSong.TryGetValue(currentItem, out currentSong);
+                TryGetSong(currentItem, out currentSong);
             }
 
             if (intended != null && !ReferenceEquals(currentSong, intended))
@@ -986,7 +1165,7 @@ namespace BoxSubMusic.App.Services
             Song song = null;
             if (args.Item != null)
             {
-                _itemToSong.TryGetValue(args.Item, out song);
+                TryGetSong(args.Item, out song);
             }
 
             // Decode-failure mp3 fallback (§16 decision 2026-07-19): a
@@ -1063,9 +1242,7 @@ namespace BoxSubMusic.App.Services
             }
 
             var item = CreateItem(client, song, "mp3");
-            _itemToSong.Remove(failedItem);
-            _songToItem[song] = item;
-            _itemToSong[item] = song;
+            RemapItem(song, failedItem, item);
             _list.Items[index] = item;
             if (Queue.ShuffleEnabled)
             {

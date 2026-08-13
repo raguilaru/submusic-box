@@ -1214,6 +1214,54 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   bottom without jumping, and closing it reports through the existing
   `QueueOverlayClosed` line.
 
+- 2026-08-13 (console result 2): **the cost is every stream OPEN, and nothing
+  is ever released — so retired playback items are now recycled** (§11). The
+  two split runs came back and both hypotheses were partly right, with one
+  three times the size of the other.
+  **Scrolling** all 228 queue rows costs **+13 MB** (artwork suppressed) to
+  **+18 MB** (artwork on), and it does not come back when the overlay closes.
+  Real, secondary, not addressed this round.
+  **Jumping** is the big one, and the bracket landed exactly where it needed
+  to. Across three consecutive jumps: `AfterJumpMoveTo` cost **0 MB** and on
+  the second and third jumps actually **returned ~10 MB** — so
+  `MaxPlayedItemsToKeepOpen = 0` does work, the platform closes what it is
+  asked to. The cost arrived at the settled reading 2.5 s later every time:
+  **+41, +25 and +37 MB**, cumulative (161 → 224 → 240 → 268 MB), none of it
+  returned, and the app was killed at 259 MB.
+  **Codec is not the driver**: the +37 MB jump was m4a 256 kbps and the +25 MB
+  one was FLAC 1218 kbps. This retracts the standing "high-bitrate FLAC is a
+  secondary cost" framing as an explanation for *this* growth — the cost is
+  per stream open, whatever the format.
+  Mechanism, and why every previous remedy returned nothing: `RebuildList`
+  materializes a `MediaPlaybackItem` and a `MediaSource` for **every** track up
+  front, and they live in `_list.Items` for the life of the queue. They are
+  therefore never garbage, which is precisely why `GC.Collect` +
+  `WaitForPendingFinalizers` reclaimed **0 MB** on every single console run —
+  there was nothing to collect. The 2026-07-23 code review had already flagged
+  the missing disposal as latent; it is the bug.
+  The fix: **on every track change the item that just stopped being current is
+  replaced in place with a fresh, unopened one and the old one's `MediaSource`
+  is disposed** (`RecycleRetiredItem`). In-place item replacement is the shape
+  `RetryWithMp3` already uses. The queue stays whole — jumping back still
+  works, it just reopens the stream, which was already true once played items
+  went to 0. The current item is never touched; the retired item may be the
+  list's prefetched NEXT one after a Previous, which costs a re-prefetch and
+  not correctness.
+  Note the structural half is independent of the Dispose: replacing the item
+  converts a permanently-live object into ordinary garbage, so if the explicit
+  Dispose turns out to be unsafe on device it can be dropped and the GC can
+  then do what it could never do before.
+  Supporting changes:
+  (a) **The settled reading now hangs off every track change**, not only a
+  jump (`TrackChanged #N` → `AfterTrackSettled #N`), because whether an
+  ordinary advance costs what a jump costs decides whether this is a
+  jumping bug or a playback bug. `JumpRequested` / `AfterJumpMoveTo` stay as
+  the bracket for the user action.
+  (b) **Both item maps are now lock-guarded** (`_mapGate`). They are written on
+  the UI thread and read on the media thread, which the 2026-07-23 review
+  flagged as a latent race with a tiny window; recycling rewrites them on every
+  track change, which widens that window enough that it had to be closed.
+
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.
