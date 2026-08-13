@@ -112,6 +112,13 @@ namespace BoxSubMusic.App.Services
         private int _jumpCount;
         private int _streamOpenCount;
 
+        // Last playback state written to the log. Buffering can flap several
+        // times per track open, and the log is a 600-line ring buffer — an
+        // unfiltered state trace would push the lines around a background
+        // termination out of the file, which is the one place they matter.
+        // Media thread; a stale read costs one duplicate line.
+        private MediaPlaybackState _lastLoggedState = MediaPlaybackState.None;
+
         // Scrobble bookkeeping, touched from the media thread (PositionChanged).
         private Song _scrobbleSong;
         private bool _scrobbleSent;
@@ -220,6 +227,19 @@ namespace BoxSubMusic.App.Services
             Player.CommandManager.PreviousReceived += OnCommandManagerPreviousReceived;
             Player.MediaOpened += OnMediaOpened;
             Player.MediaEnded += OnMediaEnded;
+
+            // Diagnostics only (§11, 2026-08-13). The console run where
+            // playback stopped in the background left NO trace of the stop:
+            // the app was suspended cleanly 26 s in, and the log could not say
+            // whether the OS suspended an over-limit app (which stops audio)
+            // or whether audio had already stopped and the app therefore lost
+            // the backgroundMediaPlayback exemption from suspension. Those two
+            // orderings need completely different fixes. A player-level
+            // failure was invisible entirely — nothing subscribed to
+            // MediaFailed.
+            Player.MediaFailed += OnMediaFailed;
+            Player.PlaybackSession.PlaybackStateChanged += OnPlaybackStateChangedForDiagnostics;
+
             Player.PlaybackSession.PlaybackStateChanged += OnPlaybackStateChanged;
             Player.PlaybackSession.PositionChanged += OnPositionChanged;
 
@@ -1152,6 +1172,16 @@ namespace BoxSubMusic.App.Services
                 TryGetSong(args.Item, out song);
             }
 
+            // Diagnostics (§11): a failed item is skipped and toasted, but the
+            // toast is gone by the time a log is read — and a burst of them
+            // while backgrounded would stop playback and explain a suspension.
+            BackgroundDiagnostics.LogMemory(
+                "ItemFailed: error=" + (args.Error?.ErrorCode.ToString() ?? "none")
+                + ", hresult=0x" + args.Error?.ExtendedError.HResult.ToString("X8")
+                + ", track=" + (song == null ? "unmapped" : song.Title)
+                + ", consecutive=" + _consecutiveFailures);
+            BackgroundDiagnostics.FlushSoon();
+
             // Decode-failure mp3 fallback (§16 decision 2026-07-19): a
             // stream the Xbox cannot DECODE — as opposed to not reach — is
             // most likely the server's own transcode in a format this
@@ -1254,6 +1284,50 @@ namespace BoxSubMusic.App.Services
             Player.Play();
         }
 
+        /// <summary>
+        /// Records every playback-state transition (§11 diagnostics). This is
+        /// the line that answers whether audio stopped BEFORE the OS suspended
+        /// the app or AT it: a Paused/None arriving seconds ahead of
+        /// <c>Suspending</c> means the app lost its background-audio exemption
+        /// because playback had already died, and the memory story is not the
+        /// primary one. Separate handler from
+        /// <see cref="OnPlaybackStateChanged"/> so the diagnostics can be
+        /// lifted out in one piece when the investigation closes.
+        /// </summary>
+        private void OnPlaybackStateChangedForDiagnostics(MediaPlaybackSession sender, object args)
+        {
+            MediaPlaybackState state = sender.PlaybackState;
+            if (state == _lastLoggedState)
+            {
+                return;
+            }
+
+            _lastLoggedState = state;
+            BackgroundDiagnostics.LogMemory("PlaybackState=" + state);
+
+            // Anything other than a healthy playing/opening state is a
+            // candidate explanation for a background stop, so get it on disk
+            // rather than leaving it in the buffer for a flush that a
+            // suspension may beat.
+            if (state == MediaPlaybackState.Paused || state == MediaPlaybackState.None)
+            {
+                BackgroundDiagnostics.FlushSoon();
+            }
+        }
+
+        private void OnMediaFailed(MediaPlayer sender, MediaPlayerFailedEventArgs args)
+        {
+            // Nothing subscribed to this before 2026-08-13, so a player-level
+            // failure — as opposed to the per-item ItemFailed the list raises
+            // — left no trace at all. Diagnostics only: the established
+            // ItemFailed path still owns the skip/stop behaviour.
+            BackgroundDiagnostics.LogMemory(
+                "MediaFailed: error=" + args.Error
+                + ", hresult=0x" + args.ExtendedErrorCode?.HResult.ToString("X8")
+                + ", message=" + args.ErrorMessage);
+            BackgroundDiagnostics.FlushSoon();
+        }
+
         private void OnPlaybackStateChanged(MediaPlaybackSession sender, object args)
         {
             if (sender.PlaybackState == MediaPlaybackState.Playing)
@@ -1331,6 +1405,13 @@ namespace BoxSubMusic.App.Services
 
         private void OnMediaEnded(MediaPlayer sender, object args)
         {
+            // Diagnostics (§11): reaching the end of the list stops audio for
+            // an entirely legitimate reason, and would then be followed by a
+            // suspension. Distinguishing that from a failure is the whole
+            // point of the state trace.
+            BackgroundDiagnostics.LogMemory("MediaEnded (end of list)");
+            BackgroundDiagnostics.FlushSoon();
+
             // The whole list finished (AutoRepeatEnabled off). Repeat One on
             // the LAST track lands here instead of CurrentItemChanged.
             if (Queue.RepeatMode == RepeatMode.One && _list?.CurrentItem != null)

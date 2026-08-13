@@ -461,6 +461,8 @@ namespace BoxSubMusic.App
 
         private void ContentFrame_Navigated(object sender, NavigationEventArgs e)
         {
+            LogNavigationMemory(e);
+
             // Back navigation can change the section underneath the pane, so
             // resync the highlighted nav item. Detail pages return null and
             // keep their originating section highlighted.
@@ -472,6 +474,38 @@ namespace BoxSubMusic.App
 
             _currentSectionTag = tag;
             SyncNavSelection(tag);
+        }
+
+        /// <summary>
+        /// Attributes the browsing surcharge to actual pages (§11).
+        ///
+        /// The 2026-08-13 console run measured the queue at ~1 MB for 200
+        /// tracks and covers at 13 MB, yet a browsing bout still costs ~40 MB
+        /// that never comes back — so most of it is neither, and nothing in
+        /// the log said which surface spends it. One hook on the content
+        /// frame covers every page without touching any of them.
+        ///
+        /// Two readings per navigation: the immediate one is taken before the
+        /// new page has laid out or loaded anything, so it doubles as the
+        /// "after the previous page" figure; the settled one 2.5 s later is
+        /// what the page actually cost. An incrementally-loading page (Albums,
+        /// Songs) is still filling at that point, so its settled figure is the
+        /// first screen, not the whole load — the queue-add and track-change
+        /// brackets stay the way to separate those.
+        /// </summary>
+        private static void LogNavigationMemory(NavigationEventArgs e)
+        {
+            string page = e.Content?.GetType().Name ?? e.SourcePageType?.Name ?? "unknown";
+            string label = page + " (" + e.NavigationMode + ")";
+
+            // NavigationMode matters as much as the page: a Back into one of
+            // the two NavigationCacheMode.Required pages (Songs, Search)
+            // re-renders a page that was never released, and should cost far
+            // less than the New that built it. If it does not, the cache is
+            // not doing what it was added for.
+            Services.BackgroundDiagnostics.LogMemory("Navigated → " + label);
+            Services.BackgroundDiagnostics.LogMemoryAfterDelay(
+                "NavigatedSettled → " + label, TimeSpan.FromMilliseconds(2500));
         }
 
         private static string SectionTagFor(NavigationEventArgs e)
