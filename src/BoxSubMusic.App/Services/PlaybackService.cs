@@ -78,10 +78,8 @@ namespace BoxSubMusic.App.Services
         /// Guards both item maps. They are written on the UI thread and read
         /// on the media thread (<see cref="OnCurrentItemChanged"/>,
         /// <see cref="OnItemFailed"/>), and a plain Dictionary is not safe for
-        /// concurrent read + write. The 2026-07-23 code review flagged this as
-        /// latent with a tiny window; the item recycling added 2026-08-13
-        /// rewrites both maps on EVERY track change, which widens that window
-        /// enough that it has to be closed. Same reasoning as
+        /// concurrent read + write. The 2026-07-23 code review flagged it as
+        /// latent with a tiny window; closed 2026-08-13. Same reasoning as
         /// <see cref="_retryGate"/>.
         /// </summary>
         private readonly object _mapGate = new object();
@@ -89,18 +87,13 @@ namespace BoxSubMusic.App.Services
         private MediaPlaybackList _list;
 
         /// <summary>
-        /// Played items the list keeps open for responsive skip-back.
-        ///
-        /// **Now 0, and that is a candidate fix under test** (§11,
-        /// 2026-08-13). The console log showed that scrolling the expanded
-        /// queue and jumping to another track adds 91–166 MB against a 128 MB
-        /// background limit, and that it does so with artwork suppressed — so
-        /// the growth is not the UI's images. An open
-        /// <see cref="MediaPlaybackItem"/> holds native demux/decode buffers
-        /// that are several times larger for FLAC, and at 2 a jump leaves the
-        /// track you came from open on top of the new one and its prefetched
-        /// successor. Keeping played items open buys a marginally faster
-        /// Previous; on a 128 MB budget that is the wrong trade.
+        /// Played items the list keeps open for responsive skip-back. **0 since
+        /// 2026-08-13** (§11): at 2, a track change left the one you came from
+        /// open on top of the new one and its prefetched successor. The console
+        /// measured this returning ~10 MB per jump with no observed downside,
+        /// so it stays — but it is NOT the fix for the background limit, which
+        /// is still open. Keeping played items open buys a marginally faster
+        /// Previous; against a 128 MB budget that is the wrong trade.
         ///
         /// The background-pressure path below still sets 0 explicitly, so
         /// raising this constant again cannot silently un-fix the background
@@ -575,93 +568,18 @@ namespace BoxSubMusic.App.Services
         }
 
         /// <summary>
-        /// UI-thread half of a track change (§11, 2026-08-13): logs the open
-        /// and recycles the item that just stopped playing.
+        /// UI-thread half of a track change (§11, 2026-08-13): logs the stream
+        /// open. <see cref="LogSettledSoon"/> takes the reading 2.5 s later,
+        /// which is where the console showed the cost landing.
         /// </summary>
-        private void OnTrackChangedOnUi(MediaPlaybackItem retired, Song newSong)
+        private void OnTrackChangedOnUi(Song newSong)
         {
             _streamOpenCount++;
             BackgroundDiagnostics.LogMemory(
                 "TrackChanged #" + _streamOpenCount
                 + (newSong == null ? string.Empty : " (to " + DescribeStream(newSong) + ")"));
 
-            RecycleRetiredItem(retired);
             LogSettledSoon();
-        }
-
-        /// <summary>
-        /// Replaces the item that just stopped being current with a fresh,
-        /// unopened one and disposes the old one's <see cref="MediaSource"/>.
-        ///
-        /// This is the fix the 2026-08-13 log argues for. Every stream open
-        /// cost 25–41 MB that never came back, regardless of codec (an m4a
-        /// 256 kbps jump cost MORE than a FLAC one), and
-        /// <c>GC.Collect</c> + <c>WaitForPendingFinalizers</c> reclaimed zero
-        /// every time — because there is nothing to collect: all N items live
-        /// in <c>_list.Items</c> for the life of the queue, so their
-        /// <see cref="MediaSource"/>s are never garbage. Dropping
-        /// <c>MaxPlayedItemsToKeepOpen</c> to 0 returned ~10 MB per jump, so
-        /// the platform closes what it is asked to; the rest only comes back
-        /// with an explicit Dispose, which the 2026-07-23 code review had
-        /// already flagged as missing.
-        ///
-        /// The replacement keeps the queue whole — jumping back to the track
-        /// still works, it just reopens the stream, which is already true with
-        /// played items kept at 0. In-place item replacement is the shape
-        /// <see cref="RetryWithMp3"/> uses.
-        ///
-        /// UI thread: it mutates the list and the maps.
-        /// </summary>
-        private void RecycleRetiredItem(MediaPlaybackItem retired)
-        {
-            var client = AppSession.Client;
-            if (retired == null || _list == null || client == null)
-            {
-                return;
-            }
-
-            // Never touch what is playing. The list may also have prefetched
-            // the retired item as the NEXT one (this happens after Previous);
-            // replacing it then costs a re-prefetch, not correctness.
-            if (ReferenceEquals(retired, _list.CurrentItem))
-            {
-                return;
-            }
-
-            if (!TryGetSong(retired, out Song song))
-            {
-                return; // already recycled, or the queue was rebuilt
-            }
-
-            int index = _list.Items.IndexOf(retired);
-            if (index < 0)
-            {
-                return;
-            }
-
-            // A fallback item must come back as one, or the retry would be
-            // undone and the track would fail to decode again.
-            MediaPlaybackItem fresh = _fallbackItems.Contains(retired)
-                ? CreateItem(client, song, "mp3")
-                : CreateItem(client, song);
-
-            RemapItem(song, retired, fresh);
-            _fallbackItems.Remove(retired);
-            _list.Items[index] = fresh;
-            if (Queue.ShuffleEnabled)
-            {
-                ApplyShuffleToList();
-            }
-
-            try
-            {
-                retired.Source?.Dispose();
-            }
-            catch (Exception ex)
-            {
-                // Never let a memory optimization take down playback.
-                BackgroundDiagnostics.Log("Recycling a retired item failed: " + ex.Message);
-            }
         }
 
         /// <summary>
@@ -1079,17 +997,13 @@ namespace BoxSubMusic.App.Services
                 TryGetSong(newItem, out song);
             }
 
-            // §11 (2026-08-13): every stream open costs memory that is never
-            // returned, so the item that just stopped playing is recycled —
-            // and the open is logged, because whether an ordinary advance costs
-            // what a jump costs is the question this round answers. Both are
-            // marshalled: this handler is on the media thread, and the recycle
-            // mutates the list and the maps.
-            MediaPlaybackItem retired = args.OldItem;
-            if (!ReferenceEquals(retired, newItem))
+            // §11 diagnostics (2026-08-13): every stream open is logged, with
+            // the settled reading 2.5 s later where the cost actually lands.
+            // Marshalled because this handler is on the media thread.
+            if (!ReferenceEquals(args.OldItem, newItem))
             {
                 Song openedSong = song;
-                _ = RunOnUiAsync(() => OnTrackChangedOnUi(retired, openedSong));
+                _ = RunOnUiAsync(() => OnTrackChangedOnUi(openedSong));
             }
 
             // Scrobble bookkeeping stays on this thread (PositionChanged

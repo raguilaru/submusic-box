@@ -2,8 +2,9 @@
 
 Last updated: 2026-08-13 (background memory rounds two and three: the console
 cleared artwork (~27 MB) and the overlay (free) as suspects and pinned the cost
-on every stream open — playback items were never disposed and never garbage,
-now recycled per track change; cover-art URLs were
+on every stream open — a track change costs 30–45 MB that never returns,
+whether jumped to or reached naturally, and recycling playback items was tried
+as the fix and reverted; cover-art URLs were
 unique per request — defeating both platform caches — so the strategy moved
 from shedding memory to not allocating it; plus a diagnostic switch that runs
 the app with no artwork, to measure what artwork actually costs. On top of
@@ -138,24 +139,22 @@ planned slice. Since then, refinement rounds have landed on top:
   `AfterJumpSettled` bracket the jump, and `MaxPlayedItemsToKeepOpen` drops
   from 2 to 0 permanently as a candidate fix that is also half the experiment.
   Not yet device-verified (backlog items 63–65).
-- **Retired playback items are recycled** (2026-08-13) — the split runs came
-  back and located it. Scrolling all 228 queue rows costs +13/+18 MB
-  (secondary, not addressed). **Jumping** is the real one: `AfterJumpMoveTo`
-  costs **0 MB** and even returns ~10 MB (so `MaxPlayedItemsToKeepOpen = 0`
-  works), while the settled reading 2.5 s later costs **+41, +25, +37 MB**
-  across three jumps — cumulative, never returned, killed at 259 MB. Codec is
-  not the driver (an m4a 256 kbps jump cost more than a FLAC one), so the cost
-  is **per stream open**. Mechanism: `RebuildList` materializes an item and a
-  `MediaSource` for every track and they live in `_list.Items` forever, so they
-  are never garbage — which is exactly why `GC.Collect` +
-  `WaitForPendingFinalizers` reclaimed 0 MB on every console run. The
-  2026-07-23 code review had flagged the missing disposal as latent; it is the
-  bug. Now every track change replaces the item that just stopped being current
-  with a fresh unopened one and disposes the old `MediaSource`
-  (`RecycleRetiredItem`, the shape `RetryWithMp3` already used). The settled
-  reading also moved onto every track change, and both item maps gained a lock
-  (recycling rewrites them far more often than before). Not yet device-verified
-  (backlog items 66–69).
+- **Stream-open instrumentation; item recycling tried and reverted**
+  (2026-08-13) — the jump bracket found that `AfterJumpMoveTo` costs **0 MB**
+  (and returns ~10 MB, so `MaxPlayedItemsToKeepOpen = 0` works) while the
+  settled reading 2.5 s later costs **+25 to +45 MB**, cumulative and never
+  returned. Codec is not the driver — an m4a 256 kbps open cost more than a
+  FLAC one. Recycling the retired item on each track change was tried as the
+  fix and **made both symptoms worse** (peak 465 MB vs 268; plus multi-second
+  stalls where `MoveTo` stopped taking effect), so it is reverted — see the
+  §16 entry for why in-place item replacement is safe only where
+  `RetryWithMp3` uses it. What the pass established is bigger than the failed
+  fix: **natural advances cost exactly what jumps cost** (the session's very
+  first track, untouched, went 109 → 152 MB), so this was never a jumping bug
+  and a long background queue has always been accumulating. Kept:
+  `MaxPlayedItemsToKeepOpen = 0`, the `_mapGate` lock, and `TrackChanged` /
+  `AfterTrackSettled` on every stream open. Next step is a no-code
+  measurement (backlog item 66).
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -627,44 +626,33 @@ them is what produced the wrong answer last time. Non-debug launch as always.
     next-track prefetch, so listen through two or three track boundaries to
     confirm nothing gaps.
 
-**Item recycling — does the memory finally come back? (2026-08-13, §11):**
+**Where do 40 MB per stream open go? (2026-08-13, §11):**
 
-Items 63–64 are **answered** (see the entry above). This round tests the fix.
-Item 66 is the one that matters; 67 is the risk it introduces.
+Items 63–65 and the recycling attempt are **answered/closed** (see the entries
+above). What is left is a single number: **every stream open costs 30–45 MB and
+most of it never comes back**, whatever the codec and whatever triggered it —
+a jump, or the queue simply advancing on its own. Item 66 needs **no new
+build** and splits the two remaining explanations; do it before anything else
+is written.
 
-66. **Repeat the jump run and read the settled lines.** Same as before: play a
-    200+ queue, open the overlay, jump three times, watching
-    `TrackChanged #N` → `AfterTrackSettled #N`. Before the fix these stepped
-    161 → 224 → 240 → 268 MB. Now they should stay roughly **flat** — a jump
-    may still cost while the new stream buffers, but the previous one's memory
-    should come back, so the *baseline* must stop climbing. A flat trace is the
-    fix working. A trace that still climbs means the Dispose is not returning
-    what the open took, and the next suspect is the stream download buffer
-    rather than the decoder.
-67. **Playback must not glitch or die at a track boundary — this is the risk.**
-    The retired item's `MediaSource` is now disposed a dispatcher hop after the
-    platform moved on. If that is too eager it could fault natively, which a
-    try/catch cannot save. Listen through **at least five natural track
-    changes** with no interaction at all, and confirm: no gap, no stutter, no
-    silent stop, and no `Recycling a retired item failed` line in the log. If
-    playback dies at a boundary, the fallback is to keep the item replacement
-    and drop the explicit Dispose — replacing the item alone already turns a
-    permanently-live object into collectable garbage, which is the structural
-    half of the fix.
-68. **Natural advances, now measured.** Let the queue advance on its own
-    several times without touching anything and read the `TrackChanged` /
-    `AfterTrackSettled` pairs. This answers a question the earlier logs could
-    not: if an ordinary advance costs what a jump did, then background playback
-    of a long queue was always accumulating too and just took longer to reach
-    the ceiling. Either answer is useful; note which it is.
-69. **The queue still behaves.** Because items are swapped underneath it,
-    re-check the operations that depend on item identity: **Previous** (both
-    the bar button and the Guide's control) still goes back and plays;
-    jumping **backwards** to an already-played row still works; **shuffle**
-    toggled mid-playback still keeps the current track playing and reorders
-    the rest; and a queue edit ("Play next" / "Add to queue") still lands in
-    the right place. Also confirm the expanded queue's now-playing marker still
-    follows the right row.
+66. **Short-queue run — two hypotheses, one measurement, no code.** Play a
+    queue of about **five tracks** (one short album, not a 228-track playlist)
+    and jump around it **twenty or so times**, watching `TrackChanged #N` /
+    `AfterTrackSettled #N`.
+    - If usage **climbs the same way** it did with 228 items, the size of the
+      list is irrelevant: the cost is per-open buffering the platform never
+      releases, and the next place to look is how the source is built
+      (`MediaSource.CreateFromUri` over HTTP) rather than the list.
+    - If it **plateaus** at roughly five tracks' worth, the list retaining
+      opened items is the mechanism and the fix is a windowed list — keep only
+      a handful of items around the current index instead of one per track.
+    Note the peak either way, and roughly how many opens it took to get there.
+67. **Sanity: is a single track's 40 MB normal?** Play ONE track from a fresh
+    launch, let it play, and read `TrackChanged #1` → `AfterTrackSettled #1`
+    (it was 109 → 152 MB). Then let it play for two or three minutes and
+    background it. If usage keeps climbing while a single track plays, the
+    buffer grows with playback rather than being a fixed per-open cost, which
+    is a different problem again and worth knowing before any fix is designed.
 
 *(Future work: append console items here.)*
 
@@ -813,10 +801,28 @@ revisiting the reasoning (many encode a hard-won console lesson).
   `MediaSource` for EVERY track and they live in `_list.Items` for the life of
   the queue, so they are never garbage — which is exactly why `GC.Collect` +
   `WaitForPendingFinalizers` reclaimed **0 MB** on every console run since this
-  began. There was never anything to collect. Fixed by recycling the retired
-  item on each track change (`RecycleRetiredItem`); if the explicit `Dispose`
-  ever proves unsafe on device, the item replacement alone still converts a
-  permanently-live object into collectable garbage.
+  began. There was never anything to collect.
+- **Recycling retired items was tried as the fix and REVERTED** (2026-08-13,
+  one console pass). It made things worse on both axes: peak **465 MB, killed
+  at 447** against 268/259 for the same exercise without it, plus multi-second
+  stalls. Two mechanisms, both worth remembering:
+  - **Replacing an item in `_list.Items` fires a second, spurious
+    `CurrentItemChanged`** — visible in the log as paired `TrackChanged` lines
+    where the first has no track (the replacement was not in the map yet). Each
+    spurious change ran another recycle, created another item and opened
+    another stream, so the "fix" added allocations.
+  - **`MoveTo` stops taking effect while the list is being mutated.** Four
+    consecutive jumps produced no track change at all and usage sat frozen for
+    30 s. That is the "it takes 10+ seconds for the track to start" symptom.
+  In-place item replacement is therefore safe **only** where `RetryWithMp3`
+  uses it — a failed item, where playback has already moved on and a stall is
+  invisible. Do not reach for it as a routine operation.
+- **Natural advances cost exactly what jumps cost** (2026-08-13): the session's
+  very first track, with no interaction at all, went 109 → 152 MB (**+43 MB**),
+  and later unattended advances cost +61 and +30 MB. So this was never a
+  jumping bug — jumping just reaches the ceiling faster — and a long queue
+  playing in the background has always been accumulating. "200 tracks in the
+  background is fine" only meant it had not changed tracks enough times yet.
 - **Every cover-art URL used to be unique, defeating both platform caches**
   (found 2026-08-13). `GetCoverArtUri` goes through the same request builder
   as every endpoint, and token auth mints a **fresh random salt per call**, so
@@ -1038,11 +1044,13 @@ device:
   `_mapGate` behind `MapItem`/`TryGetSong`/`TryGetItem`/`RemapItem`/
   `ClearMaps`. Item recycling rewrites both maps on every track change, so the
   window this review called tiny stopped being tiny.
-- **DONE 2026-08-13 — `MediaPlaybackList` items weren't explicitly disposed.**
-  This turned out to be the background-memory bug itself, not a tidiness item:
-  the items were never garbage in the first place (they live in `_list.Items`
-  for the life of the queue), so the GC could never reclaim them and every
-  stream open leaked 25–41 MB. See the §11 notes above.
+- **STILL OPEN — `MediaPlaybackList` items aren't explicitly disposed.** This
+  is not a tidiness item: the items are never garbage in the first place (they
+  live in `_list.Items` for the life of the queue), so the GC can never reclaim
+  them and every stream open leaks 30–45 MB. Disposing them by recycling the
+  retired item was tried on 2026-08-13 and reverted — it destabilizes the list
+  (see the §11 notes above). The remaining question is where the per-open
+  memory actually goes; backlog item 66 splits it.
 - **Cleanup done this pass:** removed the now-dead `SectionPage` (every section
   has a real page; it survived only as an unreachable routing fallback);
   refreshed `README.md` to the finished state.

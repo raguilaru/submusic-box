@@ -1262,6 +1262,46 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   flagged as a latent race with a tiny window; recycling rewrites them on every
   track change, which widens that window enough that it had to be closed.
 
+- 2026-08-13 (console result 3): **item recycling is REVERTED — it made both
+  symptoms worse — and the cost is confirmed to be every stream open, not
+  jumping** (§11). The recycling described immediately above lasted one console
+  pass. Measured with it in place: peak **465 MB, killed at 447** — against
+  268/259 MB for the same exercise without it. It also broke the list:
+  - **`MediaPlaybackList` fires a second, spurious `CurrentItemChanged`**
+    whenever an item is replaced in `Items`. The log shows the pairs plainly —
+    `TrackChanged #2` with no track (the new item was not in the map yet) then
+    `#3` with the real one, repeated for #4/#5, #6/#7, #10/#11, #12/#13,
+    #16/#17, #20/#21, #22/#23. Each spurious change ran another recycle, which
+    created another item, which opened another stream. The fix was *adding*
+    allocations.
+  - **`MoveTo` stops taking effect while the list is being mutated.** Jumps
+    #5–#8 produced no `TrackChanged` at all and usage sat frozen at 216 MB for
+    30 s; jump #12 took 30 s to land. That is the reported "sometimes it takes
+    more than 10 seconds for the selected track to start".
+  So: in-place item replacement is safe for the ONE case `RetryWithMp3` uses it
+  for (a failed item, where playback has already moved on and a stall is
+  invisible), and is not safe as a routine operation. Do not reach for it again.
+  What the pass did establish, and it is the important part:
+  - **Natural advances cost exactly what jumps cost.** The very first track of
+    the session — no jump, no interaction — went 109 → 152 MB (**+43 MB**), and
+    later unattended advances cost +61 and +30 MB. This was never a jumping bug;
+    jumping just reaches the ceiling faster. It also means a long queue playing
+    in the background has always been accumulating, and "200 tracks in the
+    background is fine" only meant it had not changed tracks enough times yet.
+  - **Every stream open costs 30–45 MB and most of it never returns**, whatever
+    the codec, whatever triggered it.
+  The open question is therefore no longer *what* leaks but *where* 40 MB per
+  open goes. `MaxPlayedItemsToKeepOpen = 0`, the map lock and the stream-open
+  instrumentation are kept; the recycling is gone.
+  **Next step is deliberately a measurement with no code**: play a SHORT queue
+  (about five tracks) and jump around twenty times. If usage climbs the same
+  way, the number of items in the list is irrelevant and the cost is per-open
+  buffering that the platform never releases — which points at how the source
+  is constructed (`MediaSource.CreateFromUri` over HTTP) rather than at the
+  list. If it plateaus at roughly five tracks' worth, the list retaining items
+  is the mechanism and a windowed list is the fix. Two hypotheses, one run, no
+  build.
+
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.
