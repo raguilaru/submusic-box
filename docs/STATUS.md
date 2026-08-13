@@ -703,6 +703,23 @@ the memory measurement and follows the usual non-debug rule.
     background↔foreground four or five times with browsing in between — and
     watch `shells=` and the post-release floor across cycles.
 
+**Realization cache + release ordering (2026-08-13, §11):**
+
+78. **Scrolling still feels right.** `CacheLength` dropped from the framework
+    default of 4.0 to 1.0 on every large list and grid, which is a ~5×
+    reduction in pre-realized rows — the buffer that hides row construction
+    during a fast scroll. Flick hard through Songs (the whole library), a big
+    playlist, the Albums and Artists grids, and the expanded queue. Rows should
+    appear instantly; **brief blank rows or visible pop-in is the failure**, and
+    the fix is 2.0 rather than reverting. Also confirm focus still moves
+    smoothly with the D-pad held down, and that grids keep the same number of
+    columns.
+79. **The three log signatures** (non-debug, background twice): PlaylistDetail
+    `changedSubs` ~25 not 99; `Shell unload observed; collecting.` every cycle
+    with `changedSubs=0` at `AfterViewRelease`; and exactly one
+    `AfterViewDropped`/`AfterCollect`/`AfterViewRelease` triple per excursion
+    alongside a `ReduceMemoryUsage: already reducing, skipped.` line.
+
 *(Future work: append console items here.)*
 
 ## Background memory (§11) — OPEN, see the handoff brief

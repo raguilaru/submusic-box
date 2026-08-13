@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Threading;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.System;
@@ -19,6 +20,13 @@ namespace BoxSubMusic.App
     {
         private bool _isInBackground;
 
+        // Guards against the duplicate reduction pass (see ReduceMemoryUsage).
+        // Both memory events arrive on threadpool threads, but the reduction
+        // itself marshals to the UI thread and blocks, so the second caller is
+        // always still inside the first's window — a plain bool is enough, and
+        // a lock would risk holding the second handler for the whole budget.
+        private volatile bool _isReducing;
+
         /// <summary>
         /// The UI thread's dispatcher, captured while on it. Memory-pressure
         /// events arrive on a threadpool thread, where <c>Window.Current</c>
@@ -33,13 +41,36 @@ namespace BoxSubMusic.App
         /// success while the memory was still charged. Still inside the ~2 s
         /// the OS allows after the limit changes.
         /// </summary>
-        // Split from one 1600 ms wait into two (§11, 2026-08-13): the tree is
-        // dropped first, then the collection runs in a SECOND, lower-priority
-        // dispatcher pass so the Unloaded callbacks land in between. See
-        // CollectAfterRelease for why that ordering is the whole point. The
-        // sum stays inside the OS's ~2 s budget.
-        private static readonly TimeSpan ReleaseTimeout = TimeSpan.FromMilliseconds(900);
-        private static readonly TimeSpan CollectTimeout = TimeSpan.FromMilliseconds(700);
+        // Three bounded waits, summing inside the OS's ~2 s budget: drop the
+        // tree, WAIT FOR THE UNLOAD to actually happen, then collect. See
+        // CollectAfterRelease for why that middle step exists.
+        private static readonly TimeSpan ReleaseTimeout = TimeSpan.FromMilliseconds(700);
+        private static readonly TimeSpan UnloadTimeout = TimeSpan.FromMilliseconds(500);
+        private static readonly TimeSpan CollectTimeout = TimeSpan.FromMilliseconds(600);
+
+        /// <summary>
+        /// Signalled when the shell's Unloaded callback has run, which is what
+        /// makes the released tree collectable (§11, 2026-08-13).
+        ///
+        /// Run 14 tried to get this ordering from <c>CoreDispatcherPriority.Low</c>
+        /// and it held in only **2 of 5** cycles — a dispatcher priority is a
+        /// scheduling hint, not a happens-after guarantee, and in the three
+        /// losing cycles the collection still ran with 85-87 handlers attached.
+        /// Waiting on the actual event is the deterministic form.
+        ///
+        /// Safe to block a threadpool thread on: the drop has already been
+        /// dispatched and completed by then, so the UI thread is free to raise
+        /// Unloaded. Bounded by <see cref="UnloadTimeout"/> regardless, because
+        /// no shell exists to unload when setup is showing.
+        /// </summary>
+        private static readonly ManualResetEventSlim ShellUnloaded =
+            new ManualResetEventSlim(false);
+
+        /// <summary>Called by the shell from its Unloaded callback.</summary>
+        internal static void NotifyShellUnloaded()
+        {
+            ShellUnloaded.Set();
+        }
 
         /// <summary>
         /// When this assembly was compiled. Bump-free build identity: the
@@ -370,6 +401,37 @@ namespace BoxSubMusic.App
         /// </summary>
         private void ReduceMemoryUsage()
         {
+            // Both memory handlers call this, and on Xbox they BOTH fire for the
+            // same backgrounding — the console log shows the pair arriving
+            // within a millisecond of each other, each running a full tree drop
+            // and two GCs (§11, run 14: two AfterViewDropped/AfterCollect/
+            // AfterViewRelease triples per excursion). The second pass has
+            // nothing left to release and simply spends the budget the first
+            // one needs. The OS allows ~2 s in total, so this guard is about
+            // time, not megabytes.
+            //
+            // Deliberately NOT a "have we ever reduced" flag: a later, genuine
+            // pressure event during the same backgrounding must still be able
+            // to act. This only collapses the duplicate pair.
+            if (_isReducing)
+            {
+                Services.BackgroundDiagnostics.Log("ReduceMemoryUsage: already reducing, skipped.");
+                return;
+            }
+
+            _isReducing = true;
+            try
+            {
+                ReduceMemoryUsageCore();
+            }
+            finally
+            {
+                _isReducing = false;
+            }
+        }
+
+        private void ReduceMemoryUsageCore()
+        {
             if (_isInBackground)
             {
                 // Native memory, which is where this app's footprint actually
@@ -437,25 +499,26 @@ namespace BoxSubMusic.App
             // UI thread must not be the reason we blow the deadline.
             try
             {
+                ShellUnloaded.Reset();
                 dispatcher
                     .RunAsync(CoreDispatcherPriority.High, ReleaseViewContentOnUiThread)
                     .AsTask()
                     .Wait(ReleaseTimeout);
 
-                // THEN collect, in a separate lower-priority pass. Nulling the
-                // window content does not run the pages' Unloaded callbacks
-                // synchronously — it schedules them — so a collection inside
-                // the pass above runs while every page and control is still
-                // subscribed to statics (PlaybackService.Changed, reached from
-                // an object that lives as long as the process). The console
-                // measured exactly that on 2026-08-13: AfterViewRelease read
-                // changedSubs=87 and reclaimed nothing, MainPage.Unloaded
-                // arrived 111 ms later, and usage had fallen 238 → 220 MB by
-                // the delayed reading. Queuing at Low puts this behind the
-                // unload work, so the collection finally runs against a tree
-                // nothing is holding.
+                // Nulling the window content does not run the pages' Unloaded
+                // callbacks synchronously — it schedules them — and those
+                // callbacks are what unregister the shell and its controls from
+                // process-lifetime statics. Collect before they run and the
+                // tree is still fully reachable, which is what made
+                // AfterViewRelease report changedSubs=87 and reclaim nothing.
+                // So wait for the unload to actually happen.
+                bool unloaded = ShellUnloaded.Wait(UnloadTimeout);
+                Services.BackgroundDiagnostics.Log(unloaded
+                    ? "Shell unload observed; collecting."
+                    : "Shell unload NOT observed within the wait — collecting anyway.");
+
                 dispatcher
-                    .RunAsync(CoreDispatcherPriority.Low, CollectAfterRelease)
+                    .RunAsync(CoreDispatcherPriority.Normal, CollectAfterRelease)
                     .AsTask()
                     .Wait(CollectTimeout);
             }

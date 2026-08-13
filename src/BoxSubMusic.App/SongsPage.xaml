@@ -215,6 +215,7 @@
                 </Grid>
 
                 <ListView
+                    ItemsPanel="{StaticResource TightItemsStack}"
                     x:Name="SongsList"
                     Grid.Row="1"
                     SelectionMode="None"

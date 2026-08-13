@@ -326,6 +326,7 @@
                      position column swaps to the accent now-playing marker,
                      starred songs carry the small filled heart. -->
                 <ListView
+                    ItemsPanel="{StaticResource TightItemsStack}"
                     x:Name="QueueList"
                     SelectionMode="None"
                     IsItemClickEnabled="True"

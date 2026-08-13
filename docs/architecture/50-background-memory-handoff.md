@@ -116,19 +116,26 @@ them is not measured.
 - **The release runs TWICE per excursion.** `OnMemoryUsageIncreased` and
   `OnMemoryUsageLimitChanging` both fire and both call `ReduceMemoryUsage`:
   two tree drops and four GCs inside a ~2 s budget.
-- **Virtualization is unconfirmed.** The 95-song playlist still reads
-  `changedSubs=99`, exactly as in run 13, while a later PlaylistDetail visit
-  reads 28 and AlbumDetail 19–36. The `ScrollViewer` is verifiably gone and
-  `ContentFrame` sits in a height-constrained `*` row, so the layout is not the
-  cause. Leading explanation: `changedSubs` counts *container instances ever
-  created*, not visible rows — `SpinningVinyl` subscribes on `Loaded` and
-  unsubscribes on `Unloaded`, and a recycled container never unloads, so a
-  scrolled virtual list still accumulates one subscription per container.
-  **The check that settles it** (no build): open that playlist, do not scroll,
-  read `changedSubs`; scroll to the bottom, read again. ~15 then ~15 =
-  virtualization works and the subscription is fine; ~15 then climbing toward
-  95 = virtualization works but `SpinningVinyl` leaks per container; 99
-  immediately = virtualization is still off.
+- **Virtualization was never off — the realization CACHE is 5 viewports**
+  (run 15, the scroll test: 99 before scrolling and 99 after, so scrolling is
+  not the variable). `ItemsStackPanel`/`ItemsWrapGrid` default to
+  `CacheLength="4.0"` — two viewports of realized containers above the visible
+  one and two below. The console fits that ratio exactly, twice:
+
+  | List | Rows | Realized | Viewport | Ratio |
+  |---|---|---|---|---|
+  | Queue overlay (never nested) | 200 | ~85 | ~17 rows | **5.0×** |
+  | Playlist detail | 95 | 95 (all) | ~19 rows | **5.0×** |
+
+  The queue overlay is the control case: same control, same
+  `SpinningVinyl`-per-row template, never wrapped in a `ScrollViewer`, and it
+  realizes 85 of 200. So virtualization works app-wide; a 95-row list is simply
+  shorter than its own cache.
+  **Consequence: the detail-page restructure is UNPROVEN, not disproven.** At
+  95 rows, "nested in a ScrollViewer" and "virtualized with a 5-viewport cache"
+  produce identical counts, so no measurement here could separate them. It is
+  kept because it is correct, not because it was measured — do not cite it as
+  a win.
 
 **The floor ratcheted across background round trips before run 14** (run 12 —
 four excursions, switching back and forth). Retained for the shape of the
@@ -350,6 +357,25 @@ Audit rule, learned the expensive way in this investigation: **a candidate
 ships only with a predicted, measurable signature** — "if this is real, X falls
 from A to B". Three fixes were built ahead of evidence here and two made things
 worse.
+
+### Step A (built 2026-08-13) — what to check in run 16
+
+Three changes, independent, each with its own log signature.
+
+| Change | Predicted signature |
+|---|---|
+| **`CacheLength="1.0"`** on every large items control (shared `TightItemsStack` / `TightItemsWrapGrid` in App.xaml) | PlaylistDetail `changedSubs` **99 → ~25**; queue overlay **85 → ~25**; per-page settled readings fall |
+| **Deterministic collect** — the release now waits on a real unload signal instead of a `Low` priority hint | `Shell unload observed; collecting.` in **5 of 5** cycles, and `changedSubs=0` at `AfterViewRelease` every time (was 2 of 5) |
+| **One reduction per excursion** — both memory handlers called `ReduceMemoryUsage`; the duplicate is now skipped | exactly **one** `AfterViewDropped` → `AfterCollect` → `AfterViewRelease` triple per excursion, plus a `ReduceMemoryUsage: already reducing, skipped.` line |
+
+**Watch for:** blank rows during fast scrolling — the cache is the buffer that
+prevents them, and 1.0 (one viewport either side) is the value chosen to keep
+that safe. If rows flash empty at 10 ft, raise to 2.0 and re-measure rather
+than reverting.
+
+**This run decides whether C1 and C4 get built at all.** Both act on realized
+containers; if the count drops ~4×, so does their remaining value, and C1's
+blast radius across eight console-verified surfaces stops being worth it.
 
 ## Superseded — run 14's brief (the first build that changed behaviour)
 

@@ -427,6 +427,7 @@
 
             <!-- Artists scope: the browse-grid layout, incrementally paged. -->
             <GridView
+                ItemsPanel="{StaticResource TightItemsWrapGrid}"
                 x:Name="ArtistsScopeGrid"
                 XYFocusUp="{x:Bind FilterArtistsButton}"
                 Visibility="Collapsed"
@@ -446,6 +447,7 @@
 
             <!-- Albums scope. -->
             <GridView
+                ItemsPanel="{StaticResource TightItemsWrapGrid}"
                 x:Name="AlbumsScopeGrid"
                 XYFocusUp="{x:Bind FilterAlbumsButton}"
                 Visibility="Collapsed"
@@ -489,6 +491,7 @@
                 </Grid>
 
                 <ListView
+                    ItemsPanel="{StaticResource TightItemsStack}"
                     x:Name="SongsScopeList"
                     Grid.Row="1"
                     XYFocusUp="{x:Bind FilterSongsButton}"

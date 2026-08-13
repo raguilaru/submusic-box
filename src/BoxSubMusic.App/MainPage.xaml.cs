@@ -248,6 +248,12 @@ namespace BoxSubMusic.App
             QueueOverlay.AlbumRequested -= OnOverlayAlbumRequested;
             QueueOverlay.ArtistRequested -= OnOverlayArtistRequested;
             Toast.Unregister();
+
+            // Last: the memory-pressure path blocks on this before collecting,
+            // because everything above is what makes the released tree
+            // collectable at all (§11). Signalled after the unregistrations,
+            // never before.
+            App.NotifyShellUnloaded();
         }
 
         private void OnOverlayAlbumRequested(string albumId)

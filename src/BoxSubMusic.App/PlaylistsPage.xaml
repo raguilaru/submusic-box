@@ -83,6 +83,7 @@
 
             <!-- Default mode: grid. Cards open the playlist detail view. -->
             <GridView
+                ItemsPanel="{StaticResource TightItemsWrapGrid}"
                 x:Name="PlaylistsGrid"
                 XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"
@@ -204,6 +205,7 @@
 
             <!-- Alternate mode: list. -->
             <ListView
+                ItemsPanel="{StaticResource TightItemsStack}"
                 x:Name="PlaylistsList"
                 XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"

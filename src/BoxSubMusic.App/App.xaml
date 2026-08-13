@@ -203,6 +203,45 @@
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
+            <!-- Items panels with a TIGHT realization cache (§11, 2026-08-13).
+
+                 ItemsStackPanel/ItemsWrapGrid default to CacheLength="4.0" —
+                 two viewports of realized containers above the visible one and
+                 two below, so FIVE viewports exist at any moment. The console
+                 measured exactly that ratio twice over: the queue overlay
+                 realized ~85 containers for a ~17-row viewport, and playlist
+                 detail realized all 95 rows for a ~19-row one. Virtualization
+                 was working the whole time; the cache was the multiplier, and
+                 a 95-row list is simply shorter than its own cache.
+
+                 That matters here because a realized container in this app is
+                 expensive: song rows carry a SpinningVinyl (a UserControl with
+                 a storyboard) and a MenuFlyout of 8-12 items, all built when
+                 the template inflates rather than when the menu opens.
+
+                 1.0 rather than 0: one viewport of buffer either side is what
+                 keeps fast scrolling from showing blank rows, which is the
+                 trade-off this value is balancing. Do not raise it back to the
+                 default without re-measuring — it costs ~5x the realized
+                 containers, app-wide.
+
+                 Applied to every items control that can hold a large
+                 collection. Deliberately NOT applied to bounded ones (the
+                 setup page's five recent servers, Search's capped "All"
+                 sections), where the cache can never be the binding
+                 constraint. -->
+            <ItemsPanelTemplate x:Key="TightItemsStack">
+                <ItemsStackPanel CacheLength="1.0" />
+            </ItemsPanelTemplate>
+
+            <!-- GridView's default panel, with the same cache. Orientation is
+                 restated because declaring the panel replaces the default
+                 instance: Horizontal means items flow across and wrap into new
+                 rows, which is what the browse grids scroll vertically. -->
+            <ItemsPanelTemplate x:Key="TightItemsWrapGrid">
+                <ItemsWrapGrid Orientation="Horizontal" CacheLength="1.0" />
+            </ItemsPanelTemplate>
+
             <!-- Requirement §13.3: one consistent open-source icon set.
                  Decision 2026-07-10: Fluent UI System Icons (MIT), shipped as
                  the Regular icon font; glyph codepoints come from the set's

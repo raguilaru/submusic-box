@@ -71,7 +71,8 @@
                 ScrollViewer.VerticalScrollBarVisibility="Hidden">
                 <ListView.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <ItemsStackPanel Orientation="Horizontal" />
+                        <!-- CacheLength: see App.xaml's TightItemsStack (§11). -->
+                        <ItemsStackPanel Orientation="Horizontal" CacheLength="1.0" />
                     </ItemsPanelTemplate>
                 </ListView.ItemsPanel>
                 <ListView.ItemContainerStyle>

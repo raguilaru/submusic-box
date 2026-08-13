@@ -19,13 +19,17 @@
     <Grid>
         <!-- The track list IS the page's scroll host, and everything above it
              is its Header — deliberately not a ScrollViewer wrapping both.
-             A ListView measured inside a ScrollViewer is given infinite
-             height, which silently disables virtualization (§11, measured on
-             console 2026-08-13: every row realized, each carrying a
-             SpinningVinyl and a four-item MenuFlyout). Layout and the single
-             scroll region are unchanged. Do not reintroduce an enclosing
-             ScrollViewer. -->
+             An items control measured inside a ScrollViewer is given
+             infinite height, so it realizes every item (§11). NOTE: the
+             2026-08-13 console runs could not confirm this page ever hit
+             that path — at 95 rows the default 5-viewport realization
+             cache realizes the whole list either way, so the counts look
+             identical. The restructure is kept because it is correct, not
+             because it was measured. See the ItemsPanel below, which is
+             what actually bounds realization here.
+             Do not reintroduce an enclosing ScrollViewer. -->
         <ListView
+            ItemsPanel="{StaticResource TightItemsStack}"
             x:Name="TracksList"
             Visibility="Collapsed"
             Padding="48,36,48,36"

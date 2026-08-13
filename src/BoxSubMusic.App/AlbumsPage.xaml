@@ -80,6 +80,7 @@
 
             <!-- Default mode: grid. -->
             <GridView
+                ItemsPanel="{StaticResource TightItemsWrapGrid}"
                 x:Name="AlbumsGrid"
                 XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"
@@ -145,6 +146,7 @@
 
             <!-- Alternate mode: list. -->
             <ListView
+                ItemsPanel="{StaticResource TightItemsStack}"
                 x:Name="AlbumsList"
                 XYFocusUp="{x:Bind ViewModeToggle.FocusTarget}"
                 Visibility="Collapsed"
