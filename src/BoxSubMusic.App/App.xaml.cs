@@ -204,6 +204,20 @@ namespace BoxSubMusic.App
         {
             _isInBackground = true;
             Services.BackgroundDiagnostics.LogMemory("EnteredBackground");
+
+            // Drop the decoded covers (§11, 2026-08-13). This is the one thing
+            // the app could never do before: with covers loaded from a
+            // UriSource they lived in XAML's process-wide cache, which is why
+            // releasing the whole visual tree reclaimed 0 MB on every console
+            // run. Cheap and safe here — images still assigned to an on-screen
+            // element survive until that element goes, so nothing blanks; only
+            // the app's own retention goes, which is what lets the later view
+            // release actually reclaim something.
+            long dropped = Services.CoverArt.CachedBitmapBytes;
+            Services.CoverArt.DropBitmaps();
+            Services.BackgroundDiagnostics.LogMemory(
+                "AfterDropCovers (released " + Services.BackgroundDiagnostics.Megabytes((ulong)dropped) + " MB of cached covers)");
+
             Services.BackgroundDiagnostics.FlushSoon();
 
             // Deliberately NOT releasing the view here. Microsoft's guidance
@@ -335,6 +349,11 @@ namespace BoxSubMusic.App
                 // is: the played-item decode buffers cost real megabytes,
                 // especially for high-bitrate FLAC.
                 Services.PlaybackService.NotifyBackgroundMemoryPressure();
+
+                // Covers again: EnteredBackground already dropped them, but a
+                // pressure event can arrive without one (and the user may have
+                // returned and re-browsed since).
+                Services.CoverArt.DropBitmaps();
                 ReleaseViewContent();
             }
 

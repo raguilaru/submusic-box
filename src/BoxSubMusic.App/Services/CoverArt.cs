@@ -1,7 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
+using System.Threading.Tasks;
 using Windows.Storage;
+using Windows.Storage.Streams;
+using Windows.UI.Xaml.Media.Imaging;
 
 namespace BoxSubMusic.App.Services
 {
@@ -167,6 +172,205 @@ namespace BoxSubMusic.App.Services
             lock (Gate)
             {
                 Cache.Clear();
+            }
+
+            // Decoded covers were fetched with those credentials too, and a
+            // different user's library has different artwork behind the same
+            // ids.
+            DropBitmaps();
+        }
+
+        // --- App-owned bitmap cache (§11, 2026-08-13) --------------------------
+        //
+        // Why the app decodes its own covers instead of letting XAML do it from
+        // a UriSource: a BitmapImage built from a URI is cached by the
+        // framework in a PROCESS-WIDE, URI-keyed cache that the app cannot
+        // reach. That is why releasing the entire visual tree reclaimed 0 MB on
+        // every console run of this investigation — the decoded images were
+        // never charged to the tree in the first place.
+        //
+        // Decoding from a stream produces a BitmapImage with no URI, so the
+        // framework caches nothing and the only reference is the one held here.
+        // "Drop the artwork" therefore becomes an operation the app can
+        // actually perform (see DropBitmaps), which is the whole point:
+        // browsing adds 27+ MB of covers and pushes a session from the ~143 MB
+        // that survives backgrounding into the 183–194 MB band that does not.
+
+        /// <summary>
+        /// Decoded-bitmap budget. Covers are held at roughly
+        /// width x width x 4 bytes, so this is about 100 grid cards at 200 epx
+        /// — comfortably more than any one screen needs, and all of it is
+        /// released on the way to the background.
+        /// </summary>
+        private const long MaxCachedBitmapBytes = 24L * 1024 * 1024;
+
+        /// <summary>Concurrent cover downloads, matching the bounded fan-out
+        /// used elsewhere (§16 2026-07-19) so a grid cannot flood the server.</summary>
+        private static readonly SemaphoreSlim DownloadGate = new SemaphoreSlim(4, 4);
+
+        private static readonly object BitmapGate = new object();
+        private static readonly Dictionary<string, BitmapImage> Bitmaps =
+            new Dictionary<string, BitmapImage>();
+        private static readonly Dictionary<string, long> BitmapBytes =
+            new Dictionary<string, long>();
+        private static readonly LinkedList<string> BitmapOrder = new LinkedList<string>();
+        private static long _bitmapBytes;
+
+        // Requests in flight, so two containers asking for the same cover
+        // download it once. UI-thread only (the attached property drives it).
+        private static readonly Dictionary<string, Task<BitmapImage>> InFlight =
+            new Dictionary<string, Task<BitmapImage>>();
+
+        /// <summary>
+        /// The decoded cover for <paramref name="uri"/> at
+        /// <paramref name="decodeWidth"/> epx, or null when it cannot be
+        /// fetched — callers show their placeholder, exactly as they did when a
+        /// UriSource failed. UI thread (it creates a BitmapImage).
+        /// </summary>
+        public static Task<BitmapImage> GetBitmapAsync(Uri uri, int decodeWidth)
+        {
+            if (uri == null || decodeWidth <= 0)
+            {
+                return Task.FromResult<BitmapImage>(null);
+            }
+
+            string key = uri.AbsoluteUri + "|" + decodeWidth.ToString(CultureInfo.InvariantCulture);
+
+            lock (BitmapGate)
+            {
+                BitmapImage cached;
+                if (Bitmaps.TryGetValue(key, out cached))
+                {
+                    Touch(key);
+                    return Task.FromResult(cached);
+                }
+            }
+
+            Task<BitmapImage> pending;
+            if (InFlight.TryGetValue(key, out pending))
+            {
+                return pending;
+            }
+
+            Task<BitmapImage> load = LoadBitmapAsync(key, uri, decodeWidth);
+            InFlight[key] = load;
+            return load;
+        }
+
+        private static async Task<BitmapImage> LoadBitmapAsync(string key, Uri uri, int decodeWidth)
+        {
+            try
+            {
+                byte[] bytes;
+                await DownloadGate.WaitAsync().ConfigureAwait(true);
+                try
+                {
+                    bytes = await AppSession.Http.GetByteArrayAsync(uri).ConfigureAwait(true);
+                }
+                finally
+                {
+                    DownloadGate.Release();
+                }
+
+                var image = new BitmapImage { DecodePixelWidth = decodeWidth };
+                using (var stream = new InMemoryRandomAccessStream())
+                {
+                    await stream.WriteAsync(bytes.AsBuffer());
+                    stream.Seek(0);
+                    await image.SetSourceAsync(stream);
+                }
+
+                Store(key, image, decodeWidth);
+                return image;
+            }
+            catch (Exception)
+            {
+                // A missing or unreachable cover is a placeholder, never an
+                // error surface — same contract as a failed UriSource.
+                return null;
+            }
+            finally
+            {
+                InFlight.Remove(key);
+            }
+        }
+
+        private static void Store(string key, BitmapImage image, int decodeWidth)
+        {
+            // Covers are square in every layout the app uses; the estimate only
+            // has to be good enough to bound the cache.
+            long bytes = (long)decodeWidth * decodeWidth * 4;
+
+            lock (BitmapGate)
+            {
+                if (!Bitmaps.ContainsKey(key))
+                {
+                    BitmapOrder.AddLast(key);
+                }
+
+                Bitmaps[key] = image;
+                BitmapBytes[key] = bytes;
+                _bitmapBytes += bytes;
+                Touch(key);
+
+                while (_bitmapBytes > MaxCachedBitmapBytes && BitmapOrder.Count > 1)
+                {
+                    string oldest = BitmapOrder.First.Value;
+                    BitmapOrder.RemoveFirst();
+                    Bitmaps.Remove(oldest);
+                    long evicted;
+                    if (BitmapBytes.TryGetValue(oldest, out evicted))
+                    {
+                        _bitmapBytes -= evicted;
+                        BitmapBytes.Remove(oldest);
+                    }
+                }
+            }
+        }
+
+        /// <summary>Moves a key to the most-recently-used end. Caller holds
+        /// <see cref="BitmapGate"/>.</summary>
+        private static void Touch(string key)
+        {
+            LinkedListNode<string> node = BitmapOrder.Find(key);
+            if (node != null)
+            {
+                BitmapOrder.Remove(node);
+            }
+
+            BitmapOrder.AddLast(key);
+        }
+
+        /// <summary>
+        /// Releases every cached cover. Called on the way to the background and
+        /// again under memory pressure (§11). Images currently assigned to an
+        /// on-screen element survive until that element goes away, so this does
+        /// not blank the UI — it only drops the app's own retention, which is
+        /// what lets the visual-tree release actually reclaim something.
+        ///
+        /// Safe from any thread: it drops references, and the objects
+        /// themselves are only touched on the UI thread.
+        /// </summary>
+        public static void DropBitmaps()
+        {
+            lock (BitmapGate)
+            {
+                Bitmaps.Clear();
+                BitmapBytes.Clear();
+                BitmapOrder.Clear();
+                _bitmapBytes = 0;
+            }
+        }
+
+        /// <summary>Cached-cover total, for the diagnostics log.</summary>
+        public static long CachedBitmapBytes
+        {
+            get
+            {
+                lock (BitmapGate)
+                {
+                    return _bitmapBytes;
+                }
             }
         }
 

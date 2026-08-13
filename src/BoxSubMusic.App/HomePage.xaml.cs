@@ -11,7 +11,6 @@ using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 
 namespace BoxSubMusic.App
@@ -192,14 +191,8 @@ namespace BoxSubMusic.App
                 : current.Title + " · " + current.Artist;
 
             string coverArtId = state.Context?.CoverArtId ?? current.CoverArtId;
-            Uri resumeArt = CoverArt.UriFor(coverArtId, ResumeArtSize);
-            ResumeArtImage.Source = resumeArt == null
-                ? null
-                : new BitmapImage
-                {
-                    UriSource = resumeArt,
-                    DecodePixelWidth = ResumeArtSize, // matches the 160-epx card box (1:1 at 1080p)
-                };
+            CachedCover.SetDecodeWidth(ResumeArtImage, ResumeArtSize);
+            CachedCover.SetSourceUri(ResumeArtImage, CoverArt.UriFor(coverArtId, ResumeArtSize));
 
             ResumeSection.Visibility = Visibility.Visible;
         }

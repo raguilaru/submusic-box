@@ -1376,6 +1376,53 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   a 116 MB base; whether that matters in practice is what the 5 s vs 30 s test
   answers.
 
+- 2026-08-13 (console result 7 + implementation): **128 MB is not a hard kill
+  line, artwork is 14 MB in the minimal case, and the app now owns its cover
+  bitmaps so it can drop them.** (§11)
+  The gate run answered with a number between the two it was framed around:
+  minimal, artwork suppressed, **129 MB** (against 143 MB with artwork). So
+  artwork is **14 MB** here, not the 27 MB a browsed session showed — there is
+  only one album's cover in play instead of several grids — and even with zero
+  artwork the minimal floor sits a hair over the limit.
+  **The more important finding is in the same log: the app survived more than
+  five minutes backgrounded at 133–143 MB against a 128 MB limit, still
+  advancing tracks.** Collected against every other observation, the tolerance
+  boundary is somewhere between ~180 MB (survived) and ~260 MB (killed). The
+  limit is a threshold the OS weighs, not a line it enforces.
+  That reprioritises the whole problem. The minimal case is already fine. What
+  fails is **browsing** (183–194 MB, at the edge of the band — this is the
+  original "launch a game and the music sometimes stops") and **churn spikes**
+  (250–290 MB right after jumping tracks, which die reliably).
+  So the app-owned bitmap cache is built, but for a different reason than the
+  one that justified it a few hours earlier: not to get under 128 MB, but to
+  remove the browsing surcharge that pushes a normal session out of the band
+  that demonstrably survives. It is also the *only* lever for that — releasing
+  the entire visual tree returns 0 MB, which is conclusive that decoded covers
+  live in XAML's process-wide URI-keyed cache and not in the tree.
+  Implementation: `CoverArt` gained a bounded LRU of `BitmapImage`s decoded
+  from a **stream** (`SetSourceAsync`) rather than from a `UriSource`. A
+  stream-decoded bitmap has no URI, so the framework caches nothing and the
+  app's reference is the only one — which is what makes `DropBitmaps()` a real
+  operation. It is called on `EnteredBackground` (logged as
+  `AfterDropCovers`, with the megabytes released) and again under memory
+  pressure before the view release. Budget is 24 MB, downloads are bounded to
+  4 concurrent like the other fan-outs, and identical requests in flight are
+  shared.
+  All 25 XAML sites moved to a `Controls/CachedCover` attached property
+  (`DecodeWidth` + `SourceUri`) — `x:Bind` drives it on both `Image` and
+  `ImageBrush`, and a per-element token makes a recycled row ignore the load it
+  started for its previous item, so a cover can never land on the wrong row.
+  The five code-behind sites call `CoverArt.GetBitmapAsync` directly; the
+  now-playing bar needs its own path because the spinning vinyl takes an
+  `ImageSource` rather than being an `Image`.
+  **Accepted trade-offs:** covers are re-downloaded after a backgrounding (the
+  HTTP cache still serves them, and this is the point of the change); a cache
+  miss shows the vinyl placeholder for a moment where a framework-cached
+  `UriSource` might have painted immediately; and the churn spike is untouched
+  — it drains in ~4 s against the ~2 s the OS allows, so there is no clean way
+  to win that race, and it only bites when backgrounding within seconds of a
+  track change.
+
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.

@@ -134,11 +134,7 @@
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
                                     <controls:VinylDisc Margin="22" />
                                 </Border>
-                                <Image Stretch="UniformToFill">
-                                    <Image.Source>
-                                        <BitmapImage UriSource="{x:Bind ArtworkUri}" DecodePixelWidth="200" />
-                                    </Image.Source>
-                                </Image>
+                                <Image Stretch="UniformToFill" controls:CachedCover.DecodeWidth="200" controls:CachedCover.SourceUri="{x:Bind ArtworkUri}" />
                             </Grid>
                             <TextBlock Text="{x:Bind Name}" FontSize="20" TextTrimming="CharacterEllipsis" />
                             <TextBlock Text="{x:Bind Artist}" FontSize="16" Opacity="0.7" TextTrimming="CharacterEllipsis" />
@@ -208,11 +204,7 @@
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
                                     <controls:VinylDisc Margin="6" />
                                 </Border>
-                                <Image Stretch="UniformToFill">
-                                    <Image.Source>
-                                        <BitmapImage UriSource="{x:Bind ArtworkUri}" DecodePixelWidth="56" />
-                                    </Image.Source>
-                                </Image>
+                                <Image Stretch="UniformToFill" controls:CachedCover.DecodeWidth="56" controls:CachedCover.SourceUri="{x:Bind ArtworkUri}" />
                             </Grid>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind Name}" FontSize="22" TextTrimming="CharacterEllipsis" />

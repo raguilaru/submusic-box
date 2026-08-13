@@ -127,13 +127,7 @@
                                 <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
                                     <local:VinylDisc Margin="24" />
                                 </Border>
-                                <Image Stretch="UniformToFill">
-                                    <Image.Source>
-                                        <BitmapImage
-                                            UriSource="{x:Bind ArtworkUri}"
-                                            DecodePixelWidth="220" />
-                                    </Image.Source>
-                                </Image>
+                                <Image Stretch="UniformToFill" local:CachedCover.DecodeWidth="220" local:CachedCover.SourceUri="{x:Bind ArtworkUri}" />
                             </Grid>
                             <TextBlock
                                 Text="{x:Bind Name}"

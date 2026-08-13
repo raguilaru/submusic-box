@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Text;
+using System.Threading.Tasks;
 using BoxSubMusic.Core.Playback;
 using BoxSubMusic.SubsonicClient;
 using BoxSubMusic.SubsonicClient.Models;
@@ -192,14 +193,32 @@ namespace BoxSubMusic.App.Controls
             }
 
             _artworkSongId = song.Id;
-            Uri thumb = CoverArt.UriFor(song.CoverArtId, ThumbArtSize);
-            ArtworkVinyl.Source = thumb == null
-                ? null
-                : new BitmapImage
-                {
-                    UriSource = thumb,
-                    DecodePixelWidth = ThumbArtSize,
-                };
+            _ = ApplyArtworkAsync(CoverArt.UriFor(song.CoverArtId, ThumbArtSize), song.Id);
+        }
+
+        /// <summary>
+        /// Loads the bar's thumbnail through the app-owned cover cache (§11,
+        /// 2026-08-13). The vinyl takes an <c>ImageSource</c> rather than being
+        /// an Image or an ImageBrush, so it cannot use the
+        /// <see cref="CachedCover"/> attached property; the song id it was
+        /// started for guards against a track change landing the wrong art.
+        /// </summary>
+        private async Task ApplyArtworkAsync(Uri uri, string songId)
+        {
+            if (uri == null)
+            {
+                ArtworkVinyl.Source = null;
+                return;
+            }
+
+            // Deliberately NOT cleared first: a cached cover completes
+            // synchronously, so the bar swaps art without flashing its blank
+            // label on every track change.
+            BitmapImage image = await CoverArt.GetBitmapAsync(uri, ThumbArtSize);
+            if (_artworkSongId == songId)
+            {
+                ArtworkVinyl.Source = image;
+            }
         }
 
         private void UpdatePosition()

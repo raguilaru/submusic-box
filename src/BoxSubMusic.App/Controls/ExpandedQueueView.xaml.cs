@@ -16,7 +16,6 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Media.Imaging;
 
 namespace BoxSubMusic.App.Controls
 {
@@ -505,14 +504,9 @@ namespace BoxSubMusic.App.Controls
             }
 
             _artworkSongId = song.Id;
-            Uri art = CoverArt.UriFor(song.CoverArtId, ArtSize);
-            ArtworkImage.Source = art == null
-                ? null
-                : new BitmapImage
-                {
-                    UriSource = art,
-                    DecodePixelWidth = ArtSize,
-                };
+            ArtworkImage.Source = null;
+            CachedCover.SetDecodeWidth(ArtworkImage, ArtSize);
+            CachedCover.SetSourceUri(ArtworkImage, CoverArt.UriFor(song.CoverArtId, ArtSize));
         }
 
         private void UpdatePosition()

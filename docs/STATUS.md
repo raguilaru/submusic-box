@@ -140,6 +140,19 @@ planned slice. Since then, refinement rounds have landed on top:
   `AfterJumpSettled` bracket the jump, and `MaxPlayedItemsToKeepOpen` drops
   from 2 to 0 permanently as a candidate fix that is also half the experiment.
   Not yet device-verified (backlog items 63–65).
+- **App-owned cover cache** (2026-08-13) — the app now decodes its own covers
+  from a stream instead of letting XAML load them from a `UriSource`, so
+  "release the artwork" is finally a real operation. `CoverArt` holds a bounded
+  24 MB LRU of `BitmapImage`s and `DropBitmaps()` runs on `EnteredBackground`
+  (logged as `AfterDropCovers`) and again under memory pressure. A
+  stream-decoded bitmap has no URI, so the framework's process-wide URI-keyed
+  cache — the thing that made every view release reclaim 0 MB — never gets an
+  entry. All 25 XAML sites moved to the `Controls/CachedCover` attached
+  property (`DecodeWidth` + `SourceUri`, driven by `x:Bind` on both `Image` and
+  `ImageBrush`, with a per-element token so a recycled row cannot show the
+  wrong cover); the five code-behind sites call `GetBitmapAsync` directly.
+  Purpose is the browsing surcharge, not the 128 MB line — see the durable
+  notes. Not yet device-verified (backlog items 72–74).
 - **Stream-open instrumentation; item recycling tried and reverted**
   (2026-08-13) — the jump bracket found that `AfterJumpMoveTo` costs **0 MB**
   (and returns ~10 MB, so `MaxPlayedItemsToKeepOpen = 0` works) while the
@@ -627,30 +640,38 @@ them is what produced the wrong answer last time. Non-debug launch as always.
     next-track prefetch, so listen through two or three track boundaries to
     confirm nothing gaps.
 
-**Validating the artwork ceiling (2026-08-13, §11):**
+**App-owned cover cache (2026-08-13, §11):**
 
-Item 68 is **answered**: the minimal floor is **143 MB**, only 15 MB over the
-limit, and artwork is ~27 MB of it — so 116 MB, under the limit, is what an
-app-owned bitmap cache would buy. Item 70 checks that arithmetic for one
-toggle and one relaunch before any of it gets built.
+Items 68 and 70 are **answered**: the minimal floor is 143 MB with artwork and
+129 MB without, and — the finding that reprioritised everything — the app ran
+**5+ minutes backgrounded at 133–143 MB**, so 128 MB is a threshold the OS
+weighs rather than a line it enforces. The minimal case already survives. What
+fails is browsing (183–194 MB) and post-jump spikes (250–290 MB). The cover
+cache targets the first.
 
-70. **Minimal run, artwork suppressed.** Exactly item 68's procedure — fresh
-    launch, play with no browsing, 30 s untouched, background — but with
-    **Account → Diagnostics → Run without artwork = On** and a restart first.
-    Read `EnteredBackground`.
-    - **Near 116 MB** ⇒ the 27 MB artwork figure holds in the minimal case, an
-      app-owned cache droppable on `EnteredBackground` would put the floor
-      under the limit, and it is worth building.
-    - **Near 143 MB** ⇒ artwork is not costing what it did in the browsed
-      session, the cache would not pay for itself, and the target is whatever
-      else makes up the ~46 MB of reaching a playing track.
-71. **How long is the drain, really?** Jump between five tracks quickly, stop,
-    then background at **5 s** after the last change; on a second attempt, at
-    **30 s**. If 30 s survives where 5 s does not, the transient is a genuine
-    second failure mode needing its own handling — the OS allows ~2 s after
-    `AppMemoryUsageLimitChanging`, which is shorter than the drain measured
-    (283 → 182 MB took about 4 s). Worth knowing even if the floor fix lands,
-    because a ~40 MB spike from a 116 MB base still crosses 128 MB.
+72. **Does it actually give the memory back?** Play something, then browse
+    properly — several grids, scroll them, open a couple of detail pages — and
+    background. In the log, find **`AfterDropCovers`**: it names the megabytes
+    released and the usage either side. Compare `EnteredBackground` against the
+    183–194 MB the same kind of session used to reach. Anything in the 140s–150s
+    is the win. A released figure near 0 MB means the covers were not in the
+    cache (everything on screen is still referenced by its element, so a small
+    number on a *quiet* screen is expected — browse first).
+73. **Artwork still looks and behaves right.** The load path changed for every
+    cover in the app, so walk it: browse grids and **scroll fast** (the
+    per-element token is what stops a cover landing on the wrong row — watch
+    for any row briefly showing another album's art), switch grid/list modes,
+    open artist / album / playlist detail headers, check playlist composite
+    tiles in both grid and list, the now-playing bar's spinning vinyl across
+    several track changes, the expanded overlay's 400-epx art, the Home resume
+    card, and the Guide's SMTC thumbnail. A missing cover must still show the
+    vinyl placeholder rather than a blank or an error.
+74. **Coming back from the background.** Covers are dropped on the way out, so
+    returning re-fetches them. Confirm that returning to a browse grid repaints
+    within a beat rather than sitting empty, and that nothing flickers on a
+    short Guide excursion (on-screen images keep their bitmaps — only the
+    cache's retention is dropped, so a quick out-and-back should look
+    unchanged).
 
 *(Future work: append console items here.)*
 
@@ -800,13 +821,20 @@ revisiting the reasoning (many encode a hard-won console lesson).
   tracks and 22 tracks, both peak at 270–285 MB — **queue size does not drive
   the peak, churn rate does**. Replacing the queue does free memory (182 → 169
   MB), so that precondition passes; it is just no longer relevant.
+- **128 MB is a threshold the OS weighs, not a line it enforces.** Measured
+  2026-08-13: the app ran **more than five minutes backgrounded at 133–143 MB**
+  against a 128 MB limit, still advancing tracks. Collected against every other
+  observation the tolerance boundary sits between ~180 MB (survived) and
+  ~260 MB (killed). So the goal is not "get under 128" — it is "stay well
+  inside the band", and the minimal case already is.
 - **The minimal floor is 143 MB — 15 MB over the limit** (measured 2026-08-13:
   fresh launch, play with no browsing, 32 s untouched, stable and drained).
   Composition: ~29 MB process baseline, ~28 MB shell, ~46 MB reaching a playing
   track, ~42 MB playback. Browsing adds ~40–50 MB on top, which is how normal
-  sessions reach 183–194 MB. **Artwork is ~27 MB of it** (156 vs 129 MB, on vs
-  suppressed), and 143 − 27 = **116 MB, under the limit** — which is what makes
-  an app-owned bitmap cache the justified next step. Decoded images live in
+  sessions reach 183–194 MB. Artwork is **14 MB** of the minimal case
+  (143 vs 129 MB, on vs suppressed) and **~27 MB** of a browsed one (156 vs
+  129) — it scales with how much you browsed, which is exactly why the
+  app-owned cache is worth having: it gives back more the more you browsed. Decoded images live in
   XAML's process-wide URI-keyed cache, **not in the visual tree**, which is
   precisely why dropping the tree has reclaimed 0 MB in every console run since
   this began. Only a cache the app owns can be dropped on demand.

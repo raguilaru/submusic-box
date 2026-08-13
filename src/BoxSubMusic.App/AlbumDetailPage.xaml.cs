@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using BoxSubMusic.App.Controls;
 using BoxSubMusic.App.Models;
 using BoxSubMusic.App.Services;
 using BoxSubMusic.Core.Browsing;
@@ -16,7 +17,6 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 
 namespace BoxSubMusic.App
@@ -139,14 +139,8 @@ namespace BoxSubMusic.App
             AlbumArtistText.Text = album.Artist ?? string.Empty;
             MetaText.Text = FormatMeta(album, detail);
 
-            Uri headerArt = CoverArt.UriFor(album.CoverArtId, HeaderArtSize);
-            ArtworkImage.Source = headerArt == null
-                ? null
-                : new BitmapImage
-                {
-                    UriSource = headerArt,
-                    DecodePixelWidth = HeaderArtSize,
-                };
+            CachedCover.SetDecodeWidth(ArtworkImage, HeaderArtSize);
+            CachedCover.SetSourceUri(ArtworkImage, CoverArt.UriFor(album.CoverArtId, HeaderArtSize));
 
             // Restore the favorite toggle without triggering a star/unstar call.
             _suppressFavoriteEvents = true;

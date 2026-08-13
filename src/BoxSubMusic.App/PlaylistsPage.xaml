@@ -154,11 +154,7 @@
                                 <!-- Single-album playlist: one full cover (§7.4). -->
                                 <Rectangle Visibility="{x:Bind SingleVisibility, Mode=OneWay}">
                                     <Rectangle.Fill>
-                                        <ImageBrush Stretch="UniformToFill">
-                                            <ImageBrush.ImageSource>
-                                                <BitmapImage UriSource="{x:Bind SingleCover, Mode=OneWay}" DecodePixelWidth="200" />
-                                            </ImageBrush.ImageSource>
-                                        </ImageBrush>
+                                        <ImageBrush Stretch="UniformToFill" controls:CachedCover.DecodeWidth="200" controls:CachedCover.SourceUri="{x:Bind SingleCover, Mode=OneWay}" />
                                     </Rectangle.Fill>
                                 </Rectangle>
 
@@ -179,38 +175,22 @@
                                     </Grid.ColumnDefinitions>
                                     <Rectangle Grid.Row="0" Grid.Column="0" Grid.RowSpan="{x:Bind Cover0RowSpan, Mode=OneWay}">
                                         <Rectangle.Fill>
-                                            <ImageBrush Stretch="UniformToFill">
-                                                <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover0, Mode=OneWay}" DecodePixelWidth="100" />
-                                                </ImageBrush.ImageSource>
-                                            </ImageBrush>
+                                            <ImageBrush Stretch="UniformToFill" controls:CachedCover.DecodeWidth="100" controls:CachedCover.SourceUri="{x:Bind Cover0, Mode=OneWay}" />
                                         </Rectangle.Fill>
                                     </Rectangle>
                                     <Rectangle Grid.Row="0" Grid.Column="1" Grid.RowSpan="{x:Bind Cover1RowSpan, Mode=OneWay}">
                                         <Rectangle.Fill>
-                                            <ImageBrush Stretch="UniformToFill">
-                                                <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover1, Mode=OneWay}" DecodePixelWidth="100" />
-                                                </ImageBrush.ImageSource>
-                                            </ImageBrush>
+                                            <ImageBrush Stretch="UniformToFill" controls:CachedCover.DecodeWidth="100" controls:CachedCover.SourceUri="{x:Bind Cover1, Mode=OneWay}" />
                                         </Rectangle.Fill>
                                     </Rectangle>
                                     <Rectangle Grid.Row="1" Grid.Column="0">
                                         <Rectangle.Fill>
-                                            <ImageBrush Stretch="UniformToFill">
-                                                <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover2, Mode=OneWay}" DecodePixelWidth="100" />
-                                                </ImageBrush.ImageSource>
-                                            </ImageBrush>
+                                            <ImageBrush Stretch="UniformToFill" controls:CachedCover.DecodeWidth="100" controls:CachedCover.SourceUri="{x:Bind Cover2, Mode=OneWay}" />
                                         </Rectangle.Fill>
                                     </Rectangle>
                                     <Rectangle Grid.Row="1" Grid.Column="1">
                                         <Rectangle.Fill>
-                                            <ImageBrush Stretch="UniformToFill">
-                                                <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover3, Mode=OneWay}" DecodePixelWidth="100" />
-                                                </ImageBrush.ImageSource>
-                                            </ImageBrush>
+                                            <ImageBrush Stretch="UniformToFill" controls:CachedCover.DecodeWidth="100" controls:CachedCover.SourceUri="{x:Bind Cover3, Mode=OneWay}" />
                                         </Rectangle.Fill>
                                     </Rectangle>
                                 </Grid>
@@ -292,11 +272,7 @@
                                      center-crop; see the grid template note. -->
                                 <Rectangle Visibility="{x:Bind SingleVisibility, Mode=OneWay}">
                                     <Rectangle.Fill>
-                                        <ImageBrush Stretch="UniformToFill">
-                                            <ImageBrush.ImageSource>
-                                                <BitmapImage UriSource="{x:Bind SingleCover, Mode=OneWay}" DecodePixelWidth="56" />
-                                            </ImageBrush.ImageSource>
-                                        </ImageBrush>
+                                        <ImageBrush Stretch="UniformToFill" controls:CachedCover.DecodeWidth="56" controls:CachedCover.SourceUri="{x:Bind SingleCover, Mode=OneWay}" />
                                     </Rectangle.Fill>
                                 </Rectangle>
                                 <Grid Visibility="{x:Bind CompositeVisibility, Mode=OneWay}"
@@ -311,38 +287,22 @@
                                     </Grid.ColumnDefinitions>
                                     <Rectangle Grid.Row="0" Grid.Column="0" Grid.RowSpan="{x:Bind Cover0RowSpan, Mode=OneWay}">
                                         <Rectangle.Fill>
-                                            <ImageBrush Stretch="UniformToFill">
-                                                <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover0, Mode=OneWay}" DecodePixelWidth="28" />
-                                                </ImageBrush.ImageSource>
-                                            </ImageBrush>
+                                            <ImageBrush Stretch="UniformToFill" controls:CachedCover.DecodeWidth="28" controls:CachedCover.SourceUri="{x:Bind Cover0, Mode=OneWay}" />
                                         </Rectangle.Fill>
                                     </Rectangle>
                                     <Rectangle Grid.Row="0" Grid.Column="1" Grid.RowSpan="{x:Bind Cover1RowSpan, Mode=OneWay}">
                                         <Rectangle.Fill>
-                                            <ImageBrush Stretch="UniformToFill">
-                                                <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover1, Mode=OneWay}" DecodePixelWidth="28" />
-                                                </ImageBrush.ImageSource>
-                                            </ImageBrush>
+                                            <ImageBrush Stretch="UniformToFill" controls:CachedCover.DecodeWidth="28" controls:CachedCover.SourceUri="{x:Bind Cover1, Mode=OneWay}" />
                                         </Rectangle.Fill>
                                     </Rectangle>
                                     <Rectangle Grid.Row="1" Grid.Column="0">
                                         <Rectangle.Fill>
-                                            <ImageBrush Stretch="UniformToFill">
-                                                <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover2, Mode=OneWay}" DecodePixelWidth="28" />
-                                                </ImageBrush.ImageSource>
-                                            </ImageBrush>
+                                            <ImageBrush Stretch="UniformToFill" controls:CachedCover.DecodeWidth="28" controls:CachedCover.SourceUri="{x:Bind Cover2, Mode=OneWay}" />
                                         </Rectangle.Fill>
                                     </Rectangle>
                                     <Rectangle Grid.Row="1" Grid.Column="1">
                                         <Rectangle.Fill>
-                                            <ImageBrush Stretch="UniformToFill">
-                                                <ImageBrush.ImageSource>
-                                                    <BitmapImage UriSource="{x:Bind Cover3, Mode=OneWay}" DecodePixelWidth="28" />
-                                                </ImageBrush.ImageSource>
-                                            </ImageBrush>
+                                            <ImageBrush Stretch="UniformToFill" controls:CachedCover.DecodeWidth="28" controls:CachedCover.SourceUri="{x:Bind Cover3, Mode=OneWay}" />
                                         </Rectangle.Fill>
                                     </Rectangle>
                                 </Grid>

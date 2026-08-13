@@ -149,11 +149,7 @@
                             FontSize="64"
                             Opacity="0.4" />
                     </Border>
-                    <Image Stretch="UniformToFill">
-                        <Image.Source>
-                            <BitmapImage UriSource="{x:Bind ArtworkUri}" DecodePixelWidth="200" />
-                        </Image.Source>
-                    </Image>
+                    <Image Stretch="UniformToFill" controls:CachedCover.DecodeWidth="200" controls:CachedCover.SourceUri="{x:Bind ArtworkUri}" />
                 </Grid>
                 <TextBlock Text="{x:Bind Name}" FontSize="20" TextTrimming="CharacterEllipsis" />
                 <TextBlock Text="{x:Bind AlbumCountLabel}" FontSize="16" Opacity="0.7" />
@@ -195,11 +191,7 @@
                     <Border Background="{ThemeResource SystemControlBackgroundBaseLowBrush}">
                         <controls:VinylDisc Margin="22" />
                     </Border>
-                    <Image Stretch="UniformToFill">
-                        <Image.Source>
-                            <BitmapImage UriSource="{x:Bind ArtworkUri}" DecodePixelWidth="200" />
-                        </Image.Source>
-                    </Image>
+                    <Image Stretch="UniformToFill" controls:CachedCover.DecodeWidth="200" controls:CachedCover.SourceUri="{x:Bind ArtworkUri}" />
                 </Grid>
                 <TextBlock Text="{x:Bind Name}" FontSize="20" TextTrimming="CharacterEllipsis" />
                 <TextBlock Text="{x:Bind Artist}" FontSize="16" Opacity="0.7" TextTrimming="CharacterEllipsis" />

@@ -210,6 +210,7 @@
     </Compile>
     <Compile Include="Services\AppSession.cs" />
     <Compile Include="Services\BackgroundDiagnostics.cs" />
+    <Compile Include="Controls\CachedCover.cs" />
     <Compile Include="Services\ContentFocus.cs" />
     <Compile Include="Services\CoverArt.cs" />
     <Compile Include="Services\LyricsService.cs" />
