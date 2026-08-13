@@ -675,6 +675,13 @@ cache targets the first.
 
 *(Future work: append console items here.)*
 
+## Background memory (§11) — OPEN, see the handoff brief
+
+The investigation is unfinished. **`docs/architecture/50-background-memory-handoff.md`
+is the self-contained brief**: established facts, what was tried and rejected,
+claims that were retracted, ranked candidates, and the next step. Start there
+rather than reassembling it from the notes below.
+
 ## Known gaps / durable notes
 
 Design decisions and accepted trade-offs that should NOT be "fixed" without
