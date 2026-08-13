@@ -13,8 +13,6 @@ namespace BoxSubMusic.App
     /// </summary>
     public sealed partial class AccountPage : Page
     {
-        private bool _suppressToggleEvents;
-
         public AccountPage()
         {
             InitializeComponent();
@@ -26,11 +24,6 @@ namespace BoxSubMusic.App
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-
-            // Reflect the stored diagnostic state without re-raising Toggled.
-            _suppressToggleEvents = true;
-            SuppressArtworkToggle.IsOn = CoverArt.Suppressed;
-            _suppressToggleEvents = false;
 
             var login = CredentialStore.TryLoadActive();
             if (login == null)
@@ -61,27 +54,6 @@ namespace BoxSubMusic.App
             {
                 ServerInfoText.Text = "Server details will appear after the next connection.";
             }
-        }
-
-        /// <summary>
-        /// Diagnostics toggle (§11, 2026-08-13). Persisted through
-        /// <see cref="CoverArt.Suppressed"/> so the measurement run starts
-        /// from launch: pages rebuild their cards on navigation, but the bar
-        /// and the overlay only rebuild artwork on a track change, so flipping
-        /// this mid-session would leave a mixed state that measures nothing.
-        /// </summary>
-        private void SuppressArtworkToggle_Toggled(object sender, RoutedEventArgs e)
-        {
-            if (_suppressToggleEvents)
-            {
-                return;
-            }
-
-            CoverArt.Suppressed = SuppressArtworkToggle.IsOn;
-            BackgroundDiagnostics.Log("Diagnostics: " + CoverArt.DescribeMode() + " (restart to measure)");
-            Toast.Show(SuppressArtworkToggle.IsOn
-                ? "Artwork off. Restart the app to measure."
-                : "Artwork on. Restart the app to measure.");
         }
 
         private void SignOutButton_Click(object sender, RoutedEventArgs e)

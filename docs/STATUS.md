@@ -1,23 +1,21 @@
 # Current Status
 
-Last updated: 2026-08-13 (background memory rounds two and three: the console
-cleared artwork (~27 MB) and the overlay (free) as suspects and pinned the cost
-on the resting floor: a track change costs 30–45 MB but that DRAINS a few
-seconds later, so nothing leaks — the app simply rests at 182–194 MB against a
-128 MB limit; recycling playback items was tried as a fix and reverted;
-cover-art URLs were
-unique per request — defeating both platform caches — so the strategy moved
-from shedding memory to not allocating it; plus a diagnostic switch that runs
-the app with no artwork, to measure what artwork actually costs. On top of
-the 2026-08-12 background memory fix: the app now releases its view
-to survive the Xbox 128 MB background limit — the cause of music stopping when
-a game launches — plus a file-based diagnostic log; on top of
-the light-theme rework + nav-pane brand mark, on top of
-the Favorites tab focus / Show Favorites / overlay header spacing round, the
-browse list rows + view-toggle restyle, and the Favorites and Songs-sorting
-rounds; the file was condensed to a clean
-final-state summary on 2026-07-23 — the previous chronological pass-by-pass log
-lives in git history).
+Last updated: 2026-08-13 — **the §11 background-memory investigation is
+closed**. Music no longer stops when the app is backgrounded; sixteen console
+runs, the last of which played through twelve background track changes while
+over the limit. The fixes were two framework defaults (the items-panel
+realization cache, and collecting only after the shell's `Unloaded` has run)
+plus a duplicate-reduction guard, on top of the earlier cover-URL and
+app-owned-bitmap-cache work. All diagnostic scaffolding has been removed and
+the log is back to lifecycle + failures. The record is
+`docs/architecture/50-background-memory.md`; several claims made mid-investigation
+were measured false and are retracted there by name.
+
+This sits on top of the light-theme rework + nav-pane brand mark, the Favorites
+tab focus / Show Favorites / overlay header spacing round, the browse list rows
++ view-toggle restyle, and the Favorites and Songs-sorting rounds. The file was
+condensed to a clean final-state summary on 2026-07-23 — the previous
+chronological pass-by-pass log lives in git history.
 
 **SubMusic Box** (code name BoxSubMusic) — native Xbox Series X/S music app for
 Subsonic/OpenSubsonic servers. This file is the running project-state summary;
@@ -93,82 +91,29 @@ planned slice. Since then, refinement rounds have landed on top:
   the ground once). The app mark joins the nav pane header — the app's one
   branding placement, per the new §13.6. Dark is untouched apart from the very
   faint watermark. Not yet device-verified (backlog items 47–52).
-- **Background survival under the Xbox memory limit** (2026-08-12) — the fix
-  for "music stops when I launch a game". Backgrounding drops the app's limit
-  from ~1 GB to **128 MB** with a ~2 s window to comply; `ReduceMemoryUsage`
-  was still the Slice 02 skeleton (a bare `GC.Collect`), so the app usually
-  failed to comply and was terminated. It now releases the visual tree
-  (`Window.Current.Content = null`) under pressure and rebuilds it on
-  `LeavingBackground`, which also sheds the `NavigationCacheMode.Required`
-  Songs page holding the whole song library. Bitrate was investigated and
-  ruled out as the mechanism; the manifest capability, the process-wide
-  `MediaPlayer` and SMTC wiring were all already correct. Adds
-  `Services/BackgroundDiagnostics` — a file log, because Xbox does not
-  enforce background limits under a debugger, so this bug is only observable
-  in a non-debug run. Not yet device-verified (backlog items 53–58).
-- **Cover-art URL caching + request tiers** (2026-08-13) — the second
-  background-memory round, and a change of strategy. Ten console rounds
-  established that *releasing* memory does not work here (footprint is ~100 %
-  native; dropping the whole visual tree reclaims ~1 MB), so this round attacks
-  the allocation instead. Root cause found in the request path:
-  `GetCoverArtUri` went through the shared request builder, which mints a
-  **fresh random salt per call**, so every cover URL was unique — XAML's
-  URI-keyed image cache and the HTTP cache could never hit, and the image cache
-  accumulated an entry per request in native memory the app cannot release.
-  All 16 call sites now route through `Services/CoverArt`, which mints one URL
-  per (cover, tier) and rounds display sizes onto a four-step ladder, so one
-  cover is one cached image instead of up to six. Request sizes also now
-  match what is drawn (2026-08-12 halved the decode sizes but not the `size=`
-  parameter, so covers still downloaded at 4× the area). Ships with a
-  diagnostic **"Run without artwork"** toggle on Account — the measurement
-  that bounds artwork's share of the ~139 MB floor. Partly device-verified
-  (the measurement ran; see the next entry — backlog items 61–62 still open).
-- **Console result + jump instrumentation** (2026-08-13) — the artwork
-  measurement was run and it **answered its question and cleared its suspect**:
-  same build, same 228-track queue, `EnteredBackground` reads **156 MB with
-  artwork and 129 MB without**, so artwork is ~27 MB. With artwork fully
-  suppressed the app still reached **290 MB** and was killed. The
-  content/composition split also cleared the overlay: opening it costs
-  **0–1 MB**, which **retracts the "overlay costs ~49 MB" reading** of
-  2026-08-12 (that number was everything that happened in the eight seconds
-  after it opened). The real culprit is one interaction, isolated by a control
-  run: sitting in the overlay for 27 s costs **+7 MB**, while scrolling the
-  228 rows and jumping to a track costs **+91 MB** (artwork on) and **+166 MB**
-  (artwork off) — precisely the reported symptom. Two mechanisms remain (open
-  `MediaPlaybackItem` buffers vs. the queue list realizing rows), so this round
-  instruments rather than guesses: `JumpRequested` / `AfterJumpMoveTo` /
-  `AfterJumpSettled` bracket the jump, and `MaxPlayedItemsToKeepOpen` drops
-  from 2 to 0 permanently as a candidate fix that is also half the experiment.
-  Not yet device-verified (backlog items 63–65).
-- **App-owned cover cache** (2026-08-13) — the app now decodes its own covers
-  from a stream instead of letting XAML load them from a `UriSource`, so
-  "release the artwork" is finally a real operation. `CoverArt` holds a bounded
-  24 MB LRU of `BitmapImage`s and `DropBitmaps()` runs on `EnteredBackground`
-  (logged as `AfterDropCovers`) and again under memory pressure. A
-  stream-decoded bitmap has no URI, so the framework's process-wide URI-keyed
-  cache — the thing that made every view release reclaim 0 MB — never gets an
-  entry. All 25 XAML sites moved to the `Controls/CachedCover` attached
-  property (`DecodeWidth` + `SourceUri`, driven by `x:Bind` on both `Image` and
-  `ImageBrush`, with a per-element token so a recycled row cannot show the
-  wrong cover); the five code-behind sites call `GetBitmapAsync` directly.
-  Purpose is the browsing surcharge, not the 128 MB line — see the durable
-  notes. Not yet device-verified (backlog items 72–74).
-- **Stream-open instrumentation; item recycling tried and reverted**
-  (2026-08-13) — the jump bracket found that `AfterJumpMoveTo` costs **0 MB**
-  (and returns ~10 MB, so `MaxPlayedItemsToKeepOpen = 0` works) while the
-  settled reading 2.5 s later costs **+25 to +45 MB**, cumulative and never
-  returned. Codec is not the driver — an m4a 256 kbps open cost more than a
-  FLAC one. Recycling the retired item on each track change was tried as the
-  fix and **made both symptoms worse** (peak 465 MB vs 268; plus multi-second
-  stalls where `MoveTo` stopped taking effect), so it is reverted — see the
-  §16 entry for why in-place item replacement is safe only where
-  `RetryWithMp3` uses it. What the pass established is bigger than the failed
-  fix: **natural advances cost exactly what jumps cost** (the session's very
-  first track, untouched, went 109 → 152 MB), so this was never a jumping bug
-  and a long background queue has always been accumulating. Kept:
-  `MaxPlayedItemsToKeepOpen = 0`, the `_mapGate` lock, and `TrackChanged` /
-  `AfterTrackSettled` on every stream open. Next step is a no-code
-  measurement (backlog item 66).
+- **Background playback survives backgrounding** (2026-08-12 → 2026-08-13,
+  §11) — the fix for "music stops when I launch a game", and the largest single
+  piece of work since v1. Sixteen console runs; the last played through twelve
+  background track changes, including a 1271 kbps FLAC, while over the limit.
+  Backgrounding drops the app's limit from ~1024 MB to **128 MB** with ~2 s to
+  comply — though the OS treats that as a threshold to weigh rather than a line
+  to enforce, tolerating ~180 MB and killing around ~200 MB. What fixed it, in
+  order of contribution: the items-panel **realization cache** (the framework
+  default realizes five viewports of containers, and a song row here is
+  expensive — a `SpinningVinyl` storyboard plus a `MenuFlyout` of 8–12 items
+  built at template inflation); **collecting only after the shell's `Unloaded`
+  has run**, since nulling the window content merely schedules those callbacks
+  and they are what unregister the shell from process-lifetime statics; a guard
+  so the two memory handlers do not each run a full reduction inside the same
+  2 s budget; **stable cover-art URLs** via `Services/CoverArt` (the shared
+  request builder mints a fresh salt per call, so every cover URL was unique and
+  neither platform cache could ever hit); an **app-owned bitmap cache** decoded
+  from streams, which is what makes "drop the artwork" a real operation; and the
+  visual-tree release itself, which is correct but was never the fix. Diagnostic
+  scaffolding is removed. **Record:
+  `docs/architecture/50-background-memory.md`** — read it before reopening any
+  of this, since several mid-investigation claims were measured false and are
+  retracted there.
 - **Now-playing-bar spinning vinyl artwork** — console-verified (PR #8).
 - **Nav / play-bar shortcuts + alignment** — View-button jump to the bar, LB/RB
   direct region jumps, pane/bar bottom alignment. Not yet device-verified.
@@ -501,233 +446,64 @@ code-complete-but-not-yet-device-verified rounds.
     artist · album line and the format/bitrate line (opacities nudged up this
     round) should both be comfortably readable at 10 ft.
 
-**Background survival while a game runs (2026-08-12, §11):**
+**Background memory (§11) — the investigation is CLOSED; what remains is UI
+verification (2026-08-12 → 2026-08-13):**
 
-This round is different from every other backlog item: it **cannot be tested
-under the debugger**. Xbox does not apply background memory limits to a
-debugged process, so an F5 run will appear to pass no matter what. Deploy,
-then **stop debugging and launch the app from the Dev Home tile**.
+The bug is fixed and verified over 16 console runs — see
+`docs/architecture/50-background-memory.md`. Every measurement item from that
+work is answered and has been removed from this list; the diagnostics
+scaffolding is gone. What is left is the UI the investigation changed along the
+way, which has only had incidental use, not a deliberate pass.
 
-**A game is NOT required to exercise this** (established 2026-08-12 — retail
-games can't run in Dev Mode anyway). The first console log shows the real
-1024 → **128 MB** transition firing from an ordinary background excursion
-(Guide / Dev Home), with `background=True`. That is the same code path a game
-launch takes, so items 54–56 can be verified in Dev Mode as they stand. Only
-item 53's "does the music actually survive a game" needs retail mode, and it
-is the *consequence* of what the log measures rather than an independent
-check.
+Already verified during the runs: fast scrolling shows no pop-in after the
+realization cache was cut (Songs, a large playlist, the Albums grid), and the
+three release/cache log signatures all read correctly.
 
-53. **The bug itself:** play something, then launch a game and leave it
-    running for several minutes. Music should keep playing every time — the
-    symptom being fixed is that it usually stopped. Repeat from a heavy state
-    (open **Songs** and let the whole library finish loading, browse a few
-    grids so artwork is cached) and from a light one (play straight from Home
-    after a fresh launch). The heavy state was the likely failure case, so it
-    is the one that matters.
-54. **Read the log — this is the real deliverable.** Pull
-    `background-diagnostics.log` from the app's LocalFolder via the Device
-    Portal (File explorer → LocalAppData → the app → LocalState). The line to
-    find is `AppMemoryUsageLimitChanging`: it records usage, the old limit and
-    the **new limit (expect ~128 MB)**. Then read the lines below it. Confirm
-    in order: **"Releasing view content"** appears at all (its absence was the
-    2026-08-12 failure — the release was running off the UI thread and doing
-    nothing); **`AfterViewRelease`** shows usage having actually dropped; and
-    **`AfterLimitChangingHandler`** is **comfortably under 128 MB**, not
-    marginally under. A release that runs but reclaims little means something
-    still holds the tree — look for a static capturing a page. If usage is
-    already low and playback still dies, the cause is NOT memory and the
-    `UnhandledException` lines are where to look next.
-55. **Returning from the game:** switch back to the app. It should rebuild and
-    be usable, landing on **Home** — the known trade-off is that navigation
-    position and the loaded song library are lost when the view was released
-    (`LeavingBackground` → "Rebuilding released view" in the log confirms this
-    path ran). Playback must not glitch, restart, or lose its position during
-    the rebuild, and the now-playing bar must show the correct track. Check the
-    theme survived the rebuild (this is what the `ThemeService` idempotency
-    fix guards) and that the nav toggles still reflect Settings.
-56. **Short excursions are not punished:** open the Guide, or switch out and
-    straight back. The view should NOT be torn down for a brief transition —
-    the release is deferred to actual memory pressure precisely so returning
-    stays fast. A "Releasing view content" line on every trivial excursion
-    means the threshold is too aggressive.
-57. **Bitrate is a control, not a suspect:** if a failure still occurs, repeat
-    it at a low server-side bitrate cap. The research says bitrate is not the
-    mechanism (the decode happens in the media pipeline, not on the app heap),
-    so a failure that tracks bitrate would contradict the diagnosis and is
-    worth knowing about.
-58. **SMTC while backgrounded:** with the view released, confirm the Guide's
-    media controls still show the track and still work (play/pause, next).
-    They are owned by `MediaPlayer.CommandManager`, not the UI, so they should
-    be untouched — this checks that assumption on device.
-
-**Cover-art URL caching + the artwork measurement (2026-08-13, §11):**
-
-This round is a measurement first and a fix second. Items 59–60 are the
-measurement — they are the point of the deploy. Items 61–62 confirm the fix
-broke nothing. Same rule as items 53–58: **not testable under the debugger**,
-so deploy, stop debugging, and launch from the Dev Home tile.
-
-59. **The artwork measurement — run it twice, this is the deliverable.**
-    Fresh launch, then walk a FIXED path you can repeat exactly (say: Home →
-    Albums, scroll a few screens → an album → back → Artists, scroll → play
-    something). Background the app (Guide / Dev Home) and note the
-    `EnteredBackground` usage. Now go to **Account → Diagnostics → Run without
-    artwork = On**, restart the app, walk the *same* path, background, and note
-    it again. The launch log stamps `artwork=on` / `artwork=SUPPRESSED` on each
-    run so the two are never confused. The gap between the two numbers is
-    artwork's entire contribution to the footprint — the question ten console
-    rounds could not answer. If the suppressed run still lands near 139 MB,
-    artwork is exonerated and the next round should look elsewhere; if it drops
-    to 60–70 MB, an app-owned bitmap cache becomes the obvious next step.
-60. **Did the URL fix move the floor by itself?** Compare this build's
-    artwork-on reading against the ~139 MB the 2026-08-12 build recorded for a
-    comparable session. Both platform caches can now hit, so a repeated pass
-    over the same albums should cost far less than the first — worth walking
-    the same grid twice in one run and watching whether the second pass adds
-    anything at all. That second-pass number is the honest test of the caching
-    claim; the first pass proves nothing.
-61. **Artwork still looks right everywhere.** The request ladder means several
-    surfaces now share one image, and one cover is served at a smaller
-    requested size than before (grid cards asked for 400 and got 200). Check at
-    10 ft for softness on: the browse grids and list-row thumbs, Home carousels
-    and the resume card, artist/album/playlist detail headers, playlist
-    composite tiles (grid AND list), the now-playing bar's spinning vinyl, and
-    the expanded overlay's 400-epx artwork. Nothing should look softer than it
-    did — if a header does, its tier is the thing to raise, not the decode size.
-62. **The SMTC thumbnail still appears** in the Guide's media controls (it now
-    shares the 320 tier with the detail headers), and **sign-out is clean**:
-    sign out, sign in as the same or another user, and confirm covers still
-    load. That path exercises the URL-cache reset — a stale cached URL would
-    carry the previous login's credentials, and the symptom would be broken
-    images rather than an error.
-
-**Splitting the queue-jump spike (2026-08-13, §11):**
-
-Items 59–60 are **answered** — artwork is ~27 MB and the URL fix is in; the
-overlay itself is free. What remains is the 91–166 MB that scrolling the queue
-and jumping to a track costs. Items 63–64 are two runs that separate the two
-possible causes; run them in order and do not combine them, because combining
-them is what produced the wrong answer last time. Non-debug launch as always.
-
-63. **Scroll only, no jump.** Play a 200+ track queue, open the overlay, scroll
-    all the way to the bottom of the rows, scroll back, then **close the
-    overlay without selecting anything** and read `QueueOverlayClosed`. Then
-    background and read `EnteredBackground`. If those numbers are tens of MB
-    above the reading before you opened it, the cost is the queue `ListView`
-    realizing rows — each carries a `SpinningVinyl` and a four-item
-    `MenuFlyout` from the `DataTemplate` — and the fix is in the row template,
-    not in playback. If they are flat, scrolling is innocent and item 64 has
-    the answer.
-64. **Jump with no scrolling.** Fresh launch, same queue, open the overlay and
-    press A on a row that is **already on screen** — no scrolling at all. Read
-    the three new lines in order:
-    `JumpRequested #1` → `AfterJumpMoveTo #1` → `AfterJumpSettled #1` (2.5 s
-    later). Growth between Requested and MoveTo means the platform allocated
-    synchronously when it opened the target item; growth only by Settled means
-    it was the new stream buffering; no growth at either means the jump is
-    innocent and item 63 has the answer. Then jump twice more and watch whether
-    each `AfterJumpSettled #N` steps up cumulatively — that is what tells us
-    whether it accumulates per jump or reaches a ceiling. The line records the
-    target's format and bitrate, so note whether the big steps are the lossless
-    tracks.
-65. **Did `MaxPlayedItemsToKeepOpen = 0` help, and what did it cost?**
-    Compare item 64's numbers against the 91–166 MB the 2026-08-13 log
-    recorded. Then check the trade it buys: **Previous** now has to reopen the
-    stream, so confirm from the bar and from the Guide's media controls that
-    pressing Previous still works and is not annoyingly slow (a modest delay is
-    the accepted price; a multi-second stall is not). Gapless forward playback
-    must be unaffected — this setting governs already-played items, not the
-    next-track prefetch, so listen through two or three track boundaries to
-    confirm nothing gaps.
-
-**App-owned cover cache (2026-08-13, §11):**
-
-Items 68 and 70 are **answered**: the minimal floor is 143 MB with artwork and
-129 MB without, and — the finding that reprioritised everything — the app ran
-**5+ minutes backgrounded at 133–143 MB**, so 128 MB is a threshold the OS
-weighs rather than a line it enforces. The minimal case already survives. What
-fails is browsing (183–194 MB) and post-jump spikes (250–290 MB). The cover
-cache targets the first.
-
-72. **Does it actually give the memory back?** Play something, then browse
-    properly — several grids, scroll them, open a couple of detail pages — and
-    background. In the log, find **`AfterDropCovers`**: it names the megabytes
-    released and the usage either side. Compare `EnteredBackground` against the
-    183–194 MB the same kind of session used to reach. Anything in the 140s–150s
-    is the win. A released figure near 0 MB means the covers were not in the
-    cache (everything on screen is still referenced by its element, so a small
-    number on a *quiet* screen is expected — browse first).
-73. **Artwork still looks and behaves right.** The load path changed for every
-    cover in the app, so walk it: browse grids and **scroll fast** (the
-    per-element token is what stops a cover landing on the wrong row — watch
-    for any row briefly showing another album's art), switch grid/list modes,
-    open artist / album / playlist detail headers, check playlist composite
-    tiles in both grid and list, the now-playing bar's spinning vinyl across
-    several track changes, the expanded overlay's 400-epx art, the Home resume
-    card, and the Guide's SMTC thumbnail. A missing cover must still show the
-    vinyl placeholder rather than a blank or an error.
-74. **Coming back from the background.** Covers are dropped on the way out, so
-    returning re-fetches them. Confirm that returning to a browse grid repaints
-    within a beat rather than sitting empty, and that nothing flickers on a
-    short Guide excursion (on-screen images keep their bitmaps — only the
-    cache's retention is dropped, so a quick out-and-back should look
-    unchanged).
-
-**Detail-page virtualization + release ordering (2026-08-13, §11):**
-
-The first background-memory build that changes behaviour rather than only
-measuring. Items 75–76 are UI checks and need no special protocol; item 77 is
-the memory measurement and follows the usual non-debug rule.
-
-75. **The three detail pages still look and behave exactly as before.** Album,
-    Artist and Playlist detail no longer wrap their list/grid in a
-    `ScrollViewer` — the items control is now the scroll host and the header
-    is its `Header`. Confirm on each: the page scrolls as ONE region (header
-    scrolls away with the content, not pinned), the 48,36 inset is unchanged,
-    Play / Shuffle / Play next / Add to queue still take focus and work, D-pad
-    walks from the header buttons down into the rows and back up, and B-back
-    returns cleanly. On Artist detail the album grid must still wrap into the
-    same number of columns.
-76. **Empty states.** A playlist with no songs, an album with no tracks, an
-    artist with no albums: the header must still be visible with its
-    "no songs/tracks/albums" line. This is the one behaviour that changed
-    shape — the list is no longer collapsed when empty (collapsing it would
-    now hide the header too), so an empty list must render as nothing at all
-    rather than leaving a gap or a stray focus stop.
-77. **The two measurements.** Non-debug launch, then read the log. Open a large
-    playlist and check `changedSubs` on its `NavigatedSettled` line: **~15–20
-    is the win, 99 means virtualization is still off**. Then background and
-    check `changedSubs` on `AfterViewRelease`: **0 or near it** (was 87), with
-    that line finally showing a real drop instead of zero. Then repeat the
-    run-12 shape — browse, play, queue ~200 tracks, and switch
-    background↔foreground four or five times with browsing in between — and
-    watch `shells=` and the post-release floor across cycles.
-
-**Realization cache + release ordering (2026-08-13, §11):**
-
-78. **Scrolling still feels right.** `CacheLength` dropped from the framework
-    default of 4.0 to 1.0 on every large list and grid, which is a ~5×
-    reduction in pre-realized rows — the buffer that hides row construction
-    during a fast scroll. Flick hard through Songs (the whole library), a big
-    playlist, the Albums and Artists grids, and the expanded queue. Rows should
-    appear instantly; **brief blank rows or visible pop-in is the failure**, and
-    the fix is 2.0 rather than reverting. Also confirm focus still moves
-    smoothly with the D-pad held down, and that grids keep the same number of
-    columns.
-79. **The three log signatures** (non-debug, background twice): PlaylistDetail
-    `changedSubs` ~25 not 99; `Shell unload observed; collecting.` every cycle
-    with `changedSubs=0` at `AfterViewRelease`; and exactly one
-    `AfterViewDropped`/`AfterCollect`/`AfterViewRelease` triple per excursion
-    alongside a `ReduceMemoryUsage: already reducing, skipped.` line.
+53. **Detail pages scroll and focus correctly.** Album, Artist and Playlist
+    detail no longer wrap their list/grid in a `ScrollViewer` — the items
+    control is the scroll host and the header is its `Header`. On each: the page
+    scrolls as ONE region (the header scrolls away with the content rather than
+    pinning), the 48,36 inset is unchanged, Play / Shuffle / Play next / Add to
+    queue take focus and work, the D-pad walks from the header buttons down into
+    the rows and back up, and B-back returns cleanly. On Artist detail the album
+    grid must still wrap into the same number of columns.
+54. **Empty states on those three pages.** A playlist with no songs, an album
+    with no tracks, an artist with no albums: the header must still be visible
+    with its "no songs/tracks/albums" line. This behaviour changed shape — the
+    list is no longer collapsed when empty (collapsing it would now hide the
+    header too), so an empty list must render as nothing at all rather than
+    leaving a gap or a stray focus stop.
+55. **Artwork is correct everywhere.** Every cover in the app now loads through
+    the app-owned cache and the `CachedCover` attached property. Browse grids
+    and **scroll fast** — the per-element token is what stops a cover landing on
+    the wrong row, so watch for any row briefly showing another album's art.
+    Then: grid/list modes, artist/album/playlist detail headers, playlist
+    composite tiles in both modes, the now-playing bar's spinning vinyl across
+    several track changes, the overlay's 400-epx art, the Home resume card, and
+    the Guide's SMTC thumbnail. A missing cover must show the vinyl placeholder,
+    never a blank.
+56. **Returning from the background.** Covers are dropped on the way out, so
+    returning re-fetches them: a browse grid should repaint within a beat rather
+    than sitting empty, and a short Guide excursion should not flicker
+    (on-screen images keep their bitmaps — only the cache's retention is
+    dropped). The known, intended trade-off is that a long backgrounding lands
+    on **Home**, losing navigation position.
+57. **Sign-out is clean.** Sign out, sign in as the same or another user, and
+    confirm covers still load — that path exercises the URL-cache reset, and a
+    stale cached URL would carry the previous login's credentials.
+58. **SMTC while backgrounded.** With the view released, the Guide's media
+    controls still show the track and still work (play/pause, next). They are
+    owned by `MediaPlayer.CommandManager`, not the UI.
 
 *(Future work: append console items here.)*
 
-## Background memory (§11) — OPEN, see the handoff brief
+## Background memory (§11) — CLOSED
 
-The investigation is unfinished. **`docs/architecture/50-background-memory-handoff.md`
-is the self-contained brief**: established facts, what was tried and rejected,
-claims that were retracted, ranked candidates, and the next step. Start there
-rather than reassembling it from the notes below.
+**`docs/architecture/50-background-memory.md` is the record**: the platform
+facts, what fixed it, what was tried and rejected, the claims that turned out
+wrong, and how to diagnose a recurrence. Read that rather than reassembling it
+from the notes below — several widely-repeated "facts" from the middle of the
+investigation were retracted, and that file says which.
 
 ## Known gaps / durable notes
 
@@ -784,7 +560,8 @@ revisiting the reasoning (many encode a hard-won console lesson).
   markers on kept rows can lag; and a later page failing now drops the whole
   view to the inline error + Retry rather than just ending the scroll, because
   a silently truncated library would make the sort and Play All lie.
-  This is the §11 background-memory item to watch on the next console pass.
+  Measured 2026-08-13 and cleared as a §11 concern: the library is managed
+  memory and the managed heap never exceeded ~8 MB against 200+ MB total.
 - **Queue-edit clones:** a song added twice (or while already queued) is a cloned
   `Song`, so starring one copy repaints only that copy until the next refetch.
   Under shuffle, original-order edits land at the END (un-shuffling shows them
@@ -823,233 +600,66 @@ revisiting the reasoning (many encode a hard-won console lesson).
   so starred markers on kept results can lag until the next search. While the
   query box has focus, LB/RB move the caret instead of jumping regions.
 
-**Background memory (§11):**
+**Background memory (§11) — see `docs/architecture/50-background-memory.md`:**
 
-- **CORRECTION (2026-08-12, third console pass): releasing the view frees
-  almost nothing, and the app's memory is NATIVE, not managed.** Measured on
-  device at `EnteredBackground`: usage 236 MB, **managed heap 2 MB**, private
-  commit 171 MB. Dropping the whole visual tree moved private commit from 171
-  to 172 MB across three runs, with the finalizer drain and
-  `DisconnectChildrenRecursive` both in place. So the Songs page's song
-  library — the allocation the original diagnosis blamed — is not the problem;
-  at 2 MB of managed heap, *nothing of ours* is. The view release is retained
-  (it is correct, cheap and reclaims what it can) but it is NOT the fix.
-- **The real lever is the peak footprint, not the release.** The app launches
-  at 28 MB and reaches 178–270 MB after under a minute of browsing. Observed
-  outcomes: **killed at 270 MB** (no `Suspending` line, fresh launch 26 s
-  later), **survived at 178 MB** for 36 s. Xbox tolerates a moderate overage
-  and kills a large one — which is exactly the reported "sometimes it keeps
-  playing".
-- **Artwork is ~27 MB — real, fixed, and not the cause** (measured 2026-08-13
-  with the "Run without artwork" switch). Same build, same 228-track queue:
-  `EnteredBackground` 156 MB with artwork, 129 MB without. With artwork fully
-  suppressed the app still reached 290 MB and was killed, so no amount of
-  artwork work would have solved this. Do not re-open artwork as the suspect
-  without a measurement that contradicts this one.
-- **Opening the expanded queue is free (0–1 MB), and the 2026-08-12 claim that
-  it cost ~49 MB is RETRACTED.** That figure was everything that happened in
-  the eight seconds after the overlay opened, attributed to the overlay. The
-  `QueueOverlayOpening` → `QueueOverlayContentReady` pair now brackets it
-  properly and reads 0–1 MB on every console run.
-- **The cost is scrolling the queue and jumping to a track**, isolated by its
-  own control run (2026-08-13): sitting in the open overlay for 27 s costs
-  **+7 MB**; scrolling 228 rows and jumping costs **+91 MB** with artwork and
-  **+166 MB** without. That is the reported symptom exactly — a long queue
-  plays in the background indefinitely, and dies after you go back and pick
-  another track. **Split by two further runs the same day** — both mechanisms
-  are real and one is three times the other:
-  - **scrolling** all 228 rows costs **+13 MB** (artwork off) to **+18 MB**
-    (artwork on), and does not come back when the overlay closes. Secondary;
-    the fix would be in the row template (each row carries a `SpinningVinyl`
-    and a four-item `MenuFlyout`). Not addressed yet.
-  - **every stream OPEN** costs **+25 to +41 MB**, cumulative and never
-    returned — see the next note, which is the real bug.
-- **CORRECTION (2026-08-13, clean runs): the per-open memory is TRANSIENT.**
-  It drains a few seconds after track churn stops — ten rapid changes climbed
-  to **283 MB** and were back at **182 MB** 2.5 s after the last one, with no
-  queue replacement and no user action. Nothing is leaking. The notes below
-  about "cumulative, never returned" describe the spike, not a leak, and the
-  "it plateaus, so a windowed list is the fix" reading is **retracted**: it
-  compared a clean 8-track run against a 228-track run taken on the build with
-  the (reverted) item recycling, which inflated it. The two CLEAN runs, 8
-  tracks and 22 tracks, both peak at 270–285 MB — **queue size does not drive
-  the peak, churn rate does**. Replacing the queue does free memory (182 → 169
-  MB), so that precondition passes; it is just no longer relevant.
-- **128 MB is a threshold the OS weighs, not a line it enforces — but the
-  tolerance runs out between ~180 and ~200 MB.** Observations, all 2026-08-13:
-  survived **133–143 MB** for 5+ minutes still advancing tracks; survived
-  **178 MB** for 36 s; **killed at ~201–214 MB**, and at 259, 270, 290 and
-  447 MB. So the working target is **stay under ~180 MB**, not under 128 — and
-  the minimal case (143 MB) already is, while a browsed session with a long
-  queue (201 MB) is not.
-- **The app-owned cover cache holds and drops covers, but dropping them did
-  not move `AppMemoryUsage`** (first console pass, 2026-08-13):
-  `AfterDropCovers` reported **11 MB released** and usage stayed at 201 MB —
-  through the subsequent `GC.Collect`, `WaitForPendingFinalizers` and the
-  visual-tree release. Two candidate explanations, undistinguished: the reading
-  is taken microseconds after the references are dropped, or native commit is
-  simply never returned to the OS (which would explain every zero-reclaim
-  reading in this whole investigation). Note also that 11 MB is small — even a
-  perfect release moves 201 to 190. **Do not treat the cache as a proven win
-  until a delayed post-drop reading says the megabytes materialise.**
-- **A 200-track queue costs roughly 16–26 MB in items alone**, before any of
-  them is opened: `RebuildList` materializes a `MediaPlaybackItem`, a
-  `MediaSource` and a full `ApplyDisplayProperties` (including an SMTC
-  thumbnail reference) per track. Measured indirectly — queue 14 → 228 cost
-  ~17 MB, and a 10 → 200 change cost ~68 MB alongside browsing. This scales
-  linearly with queue length, which is the exact shape of the reported bug, and
-  it is NOT the same thing as the (retracted) claim about opened items'
-  buffers. Two candidate fixes, neither measured yet: a windowed list, or
-  applying display properties only to the current and next items.
-- **The minimal floor is 143 MB — 15 MB over the limit** (measured 2026-08-13:
-  fresh launch, play with no browsing, 32 s untouched, stable and drained).
-  Composition: ~29 MB process baseline, ~28 MB shell, ~46 MB reaching a playing
-  track, ~42 MB playback. Browsing adds ~40–50 MB on top, which is how normal
-  sessions reach 183–194 MB. Artwork is **14 MB** of the minimal case
-  (143 vs 129 MB, on vs suppressed) and **~27 MB** of a browsed one (156 vs
-  129) — it scales with how much you browsed, which is exactly why the
-  app-owned cache is worth having: it gives back more the more you browsed. Decoded images live in
-  XAML's process-wide URI-keyed cache, **not in the visual tree**, which is
-  precisely why dropping the tree has reclaimed 0 MB in every console run since
-  this began. Only a cache the app owns can be dropped on demand.
-- **The real problem is the resting FLOOR, and it is the same number this
-  investigation started from.** With a queue playing and everything settled the
-  app rests at **182–194 MB against a 128 MB limit**. One clean run's
-  breakdown: 28 MB at launch, 57 MB with the shell up, 140 MB after browsing to
-  a playlist, 183 MB with one track playing — so browsing costs ~83 MB and
-  playback ~43 MB, and the view release reclaims essentially none of it. Two
-  failure modes follow: the floor (~55 MB over at all times, so backgrounding
-  is never safe) and the transient (backgrounding within a few seconds of a
-  track change measures the app mid-spike at 250–285 MB). The ~2 s the OS
-  allows after `AppMemoryUsageLimitChanging` is **shorter than the drain**, so
-  the app is measured during it.
-- **The memory is spent when a stream OPENS, not when the jump happens**
-  (2026-08-13). `AfterJumpMoveTo` costs 0 MB and even
-  returns ~10 MB, so `MaxPlayedItemsToKeepOpen = 0` genuinely works; the cost
-  lands at the settled reading 2.5 s later (+41, +25, +37 MB across three
-  jumps: 161 → 224 → 240 → 268 MB, then killed at 259). **Codec is not the
-  driver** — an m4a 256 kbps jump cost more than a FLAC one. The reason nothing
-  ever came back: `RebuildList` materializes a `MediaPlaybackItem` and a
-  `MediaSource` for EVERY track and they live in `_list.Items` for the life of
-  the queue, so they are never garbage — which is exactly why `GC.Collect` +
-  `WaitForPendingFinalizers` reclaimed **0 MB** on every console run since this
-  began — but see the correction above: the spike drains on its own, so this
-  describes what is charged during churn, not a permanent leak.
-- **Recycling retired items was tried as the fix and REVERTED** (2026-08-13,
-  one console pass). It made things worse on both axes: peak **465 MB, killed
-  at 447** against 268/259 for the same exercise without it, plus multi-second
-  stalls. Two mechanisms, both worth remembering:
-  - **Replacing an item in `_list.Items` fires a second, spurious
-    `CurrentItemChanged`** — visible in the log as paired `TrackChanged` lines
-    where the first has no track (the replacement was not in the map yet). Each
-    spurious change ran another recycle, created another item and opened
-    another stream, so the "fix" added allocations.
-  - **`MoveTo` stops taking effect while the list is being mutated.** Four
-    consecutive jumps produced no track change at all and usage sat frozen for
-    30 s. That is the "it takes 10+ seconds for the track to start" symptom.
-  In-place item replacement is therefore safe **only** where `RetryWithMp3`
-  uses it — a failed item, where playback has already moved on and a stall is
-  invisible. Do not reach for it as a routine operation.
-- **Natural advances cost exactly what jumps cost** (2026-08-13): the session's
-  very first track, with no interaction at all, went 109 → 152 MB (**+43 MB**),
-  and later unattended advances cost +61 and +30 MB. So this was never a
-  jumping bug — jumping just reaches the ceiling faster — and a long queue
-  playing in the background has always been accumulating. "200 tracks in the
-  background is fine" only meant it had not changed tracks enough times yet.
-- **Every cover-art URL used to be unique, defeating both platform caches**
-  (found 2026-08-13). `GetCoverArtUri` goes through the same request builder
-  as every endpoint, and token auth mints a **fresh random salt per call**, so
-  the same cover at the same size produced a different URL every time. XAML's
-  decoded-image cache is URI-keyed and process-wide and the HTTP cache is
-  URL-keyed, so neither could ever hit: every appearance of a cover was a fresh
-  download and decode, and the image cache accumulated an entry per request in
-  native memory the app does not own. This is the best explanation yet for the
-  three facts nothing else fit — the footprint is native, the tree release
-  reclaims nothing, and browsing raises the floor. **`Services/CoverArt` is now
-  the only place the app builds a cover URL**; do not call `GetCoverArtUri`
-  directly again, and be aware that any *other* endpoint whose URL is used as a
+That file is the record. Only the notes that constrain future *code* are
+repeated here; the measurements, the rejected approaches and the retracted
+claims all live there.
+
+- **Realization cache: `CacheLength` is 1.0 app-wide, not the framework's 4.0.**
+  The default realizes five viewports of containers, and a song row here carries
+  a `SpinningVinyl` storyboard plus a `MenuFlyout` of 8–12 items built at
+  template inflation. Two shared panel templates in App.xaml
+  (`TightItemsStack`, `TightItemsWrapGrid`) are applied to every items control
+  that can hold a large collection. Raising it back costs ~5x the realized
+  containers app-wide; 1.0 rather than 0 keeps one viewport of scroll buffer.
+- **The view release collects only AFTER the shell's `Unloaded` has run.**
+  `Window.Current.Content = null` schedules those callbacks rather than running
+  them, and they are what unregister the shell from process-lifetime statics —
+  collect first and the tree is still fully reachable. `MainPage.OnUnloaded`
+  ends with `App.NotifyShellUnloaded()` and the release blocks on it.
+  **Any new static that captures UI must be unregistered there too**, or the
+  release silently becomes a no-op with no visible symptom until a console pass.
+- **The reduction pass is guarded against running twice.** Both
+  `AppMemoryUsageIncreased` and `AppMemoryUsageLimitChanging` fire for the same
+  backgrounding, and the OS allows only ~2 s in total.
+- **`Window.Current` is thread-static and the memory events are not on the UI
+  thread**, so both the release and the `LeavingBackground` rebuild are
+  marshalled through a dispatcher captured in `CreateRootFrame`. Microsoft's own
+  sample writes `Window.Current.Content = null` inline in that handler without
+  mentioning thread affinity — do not "simplify" back toward it.
+- **The app deliberately destroys its own UI while backgrounded**, so returning
+  from a long backgrounding lands on **Home** and loses navigation position and
+  the loaded song library. Intended, not a bug. Playback is never interrupted:
+  `PlaybackService` and its `MediaPlayer` are process-wide and reference no
+  visual element.
+- **`Services/CoverArt` is the only place the app builds a cover URL.**
+  `GetCoverArtUri` mints a fresh random salt per call, so calling it directly
+  produces a unique URL every time and defeats both the framework's URI-keyed
+  image cache and the HTTP cache. Any *other* endpoint whose URL is used as a
   cache key has the same hazard by construction.
-- **Cover requests round onto a four-step ladder** (100 / 220 / 320 / 400) so
-  one cover is one cached image across surfaces; before this the app asked for
-  a single cover at six distinct sizes (84, 300, 320, 400, 440, 640). Raising a display box above its tier
-  silently doubles that cover's cached copies — change the tier, not just the
-  box. Decode size remains a separate concern and still equals the display box.
-- **The "Run without artwork" toggle on Account is scaffolding**, not a
-  feature: it is how the artwork-vs-floor question gets measured, and it should
-  be removed once answered.
-- **Artwork was decoded at 2× its display size everywhere** (200-epx tiles at
-  400, 56-epx rows at 112, 320-epx headers at 640, the 220-epx carousel at
-  440), costing 4× the memory for no visible gain — layout scaling is
-  disabled, so the app is 1 epx to 1 physical pixel at 1080p. Halved
-  everywhere 2026-08-12. Decode sizes must stay equal to the display box; a
-  future "make it sharper" change costs four times what it looks like.
-  Footnote (2026-08-13): that round halved the DECODE sizes but left the
-  server-side `size=` request at the old doubled values, so covers kept
-  downloading at 4× the area needed for another day. Request and decode are
-  two separate numbers and both have to be right.
-- **High-bitrate FLAC is a secondary cost, not the driver.** A FLAC session
-  measured 236 MB, inside the 178–270 MB range already seen with 256 kbps
-  m4a; the variance tracks browsing, not codec. **Confirmed directly
-  2026-08-13**: with each stream open individually measured, an m4a 256 kbps
-  jump cost +37 MB and a FLAC 1218 kbps jump +25 MB. The per-open cost is not
-  a function of the codec, so do not reach for bitrate as an explanation.
-  Open `MediaPlaybackItem`s do
-  hold native demux/decode buffers that are several times larger for FLAC,
-  which is why **`MaxPlayedItemsToKeepOpen` is now 0 always** (2026-08-13),
-  not only while backgrounded: at 2, a jump left the track you came from open
-  on top of the new one and its prefetched successor. It buys a marginally
-  faster Previous, which is the wrong trade against a 128 MB limit — but note
-  this is a candidate fix under test, not a confirmed one (backlog item 65).
-  The background-pressure path still sets 0 explicitly, so raising the
-  constant again cannot silently un-fix the background case.
-
-- **The app deliberately destroys its own UI while backgrounded.** Xbox drops
-  the memory limit to 128 MB with ~2 s to comply, so under pressure
-  `App.ReduceMemoryUsage` sets `Window.Current.Content = null` and
-  `LeavingBackground` rebuilds via `CreateRootFrame`. Consequences that are
-  intended, not bugs: **returning from a long backgrounding lands on Home**,
-  losing navigation position and the loaded song library; the first frame back
-  costs a page rebuild. Playback is never interrupted — `PlaybackService` and
-  its `MediaPlayer` are process-wide and reference no visual element.
-- **This works only because pages unregister in `Unloaded`.** One static
-  holding a reference to a page (the `Toast` registration and
-  `NavigationPreferences.Changed` are the two live examples, both dropped in
-  `MainPage.OnUnloaded`) would keep the whole tree charged to the app and turn
-  the release into a silent no-op. Any new static that captures UI must be
-  unregistered the same way, or background playback regresses with no
-  visible symptom until a console pass.
-- **The reduction threshold is 75 % of the new limit**, not the limit itself:
-  `AppMemoryUsage` lags what the graphics/XAML layers charge back, so
-  "just under" is not safe. Releasing unnecessarily costs one rebuild;
-  cutting it fine costs the process.
-- **Bitrate is not the background-termination mechanism** (investigated
-  2026-08-12). `MediaPlayer` streaming a network URI is designed to keep
-  retrieving media in the background, and decoding happens in the media
-  pipeline rather than on the app heap. The manifest capability, the
-  process-wide player and `CommandManager.IsEnabled` were all already correct
-  — do not "fix" them again.
-- **This bug is invisible under the debugger.** Xbox does not apply background
-  memory limits to a debugged process, so an F5 run always looks healthy.
-  Verification requires a non-debug launch plus
+- **Cover requests round onto a four-step ladder** (100/220/320/400) so one
+  cover is one cached image across surfaces. Raising a display box above its
+  tier silently doubles that cover's cached copies — change the tier, not just
+  the box. Decode size is separate and still equals the display box, because
+  layout scaling is off and 1 epx is 1 physical pixel.
+- **Covers are decoded from a stream, never a `UriSource`.** A stream-decoded
+  bitmap has no URI, so the framework caches nothing and the app's reference is
+  the only one — which is what makes `CoverArt.DropBitmaps()` on
+  `EnteredBackground` a real operation. Reverting any site to `UriSource` puts
+  that cover back in a process-wide cache the app cannot release.
+- **`MaxPlayedItemsToKeepOpen` is 0 always**, not only under pressure. It buys a
+  marginally faster Previous against native decode buffers that are several
+  times larger for lossless. The background path still sets 0 explicitly, so
+  raising the constant cannot silently un-fix the background case.
+- **Do not replace items in `_list.Items` as a routine operation.** It fires a
+  spurious `CurrentItemChanged` and makes `MoveTo` stop taking effect while the
+  list is being mutated (multi-second stalls). Safe only where `RetryWithMp3`
+  uses it — a failed item, playback already moved on.
+- **This bug class is invisible under the debugger.** Xbox does not apply
+  background memory limits to a debugged process, so an F5 run always looks
+  healthy. Verification needs a non-debug launch plus
   `background-diagnostics.log` from LocalFolder.
-- **`Window.Current` is thread-static, and the memory events are not on the UI
-  thread.** `MemoryManager` raises `AppMemoryUsageLimitChanging` /
-  `AppMemoryUsageIncreased` on a threadpool thread, where `Window.Current` is
-  **null** — so touching it directly there reads as "no view to release" and
-  silently does nothing. This is exactly how the first version of the fix
-  failed on device (2026-08-12 log: the 128 MB transition fired at 161 MB
-  usage, no release, no change). The release and the `LeavingBackground`
-  rebuild are both marshalled through a `CoreDispatcher` captured in
-  `CreateRootFrame`. Microsoft's own sample writes
-  `Window.Current.Content = null` inline in that handler without mentioning
-  thread affinity — do not "simplify" back toward it.
-- **The release blocks up to 1200 ms** waiting for the UI thread. Firing it
-  asynchronously would return before the tree was actually dropped and race
-  the OS's measurement, which lands within ~2 s of the limit change.
-- **The log distinguishes "released but reclaimed little" from "never
-  released"** via the `AfterViewRelease` line. The first console pass had no
-  such line and the two cases were indistinguishable — which cost a
-  device round trip.
 
 **Shell / focus / theming:**
 
@@ -1177,13 +787,14 @@ device:
   `_mapGate` behind `MapItem`/`TryGetSong`/`TryGetItem`/`RemapItem`/
   `ClearMaps`. Item recycling rewrites both maps on every track change, so the
   window this review called tiny stopped being tiny.
-- **STILL OPEN — `MediaPlaybackList` items aren't explicitly disposed.** This
-  is not a tidiness item: the items are never garbage in the first place (they
-  live in `_list.Items` for the life of the queue), so the GC can never reclaim
-  them and every stream open leaks 30–45 MB. Disposing them by recycling the
-  retired item was tried on 2026-08-13 and reverted — it destabilizes the list
-  (see the §11 notes above). The remaining question is where the per-open
-  memory actually goes; backlog item 66 splits it.
+- **CLOSED 2026-08-13 — `MediaPlaybackList` items aren't explicitly disposed,
+  and that is fine.** The review flagged this as a possible leak; it was
+  measured and it is not one. A 200-track queue costs **~1 MB in items**, and
+  the 30–45 MB a stream open costs is transient — it drains a few seconds after
+  track churn stops. Disposing them by recycling the retired item WAS tried and
+  reverted: it destabilizes the list (spurious `CurrentItemChanged`, and
+  `MoveTo` ceasing to take effect mid-mutation). Do not reopen this without a
+  measurement that contradicts those.
 - **Cleanup done this pass:** removed the now-dead `SectionPage` (every section
   has a real page; it survived only as an unreachable routing fallback);
   refreshed `README.md` to the finished state.

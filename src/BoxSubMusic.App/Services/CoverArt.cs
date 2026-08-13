@@ -4,7 +4,6 @@ using System.Globalization;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
-using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.UI.Xaml.Media.Imaging;
 
@@ -37,12 +36,6 @@ namespace BoxSubMusic.App.Services
     ///    the resume card instead of one per call site. Before this the app
     ///    asked for a single cover at up to eight distinct sizes.
     ///
-    /// <see cref="Suppressed"/> is the measurement switch for the same
-    /// investigation: with it on, every call here returns null, so the app runs
-    /// with no artwork anywhere. Browsing the same path with it on and off
-    /// bounds artwork's total contribution to the background footprint in two
-    /// runs — the question no amount of reading the code settles.
-    ///
     /// Note that the DECODE size is deliberately not this class's business.
     /// Callers keep decoding at their own display box (the standing rule from
     /// 2026-08-12: decode size equals the display box, because layout scaling
@@ -51,8 +44,6 @@ namespace BoxSubMusic.App.Services
     /// </summary>
     internal static class CoverArt
     {
-        private const string SuppressArtworkKey = "diagnostics.suppressArtwork";
-
         /// <summary>
         /// Request sizes the app will ask a server for, smallest first. A
         /// display box is served by the first tier that is at least as large,
@@ -77,49 +68,15 @@ namespace BoxSubMusic.App.Services
         private static readonly object Gate = new object();
         private static readonly Dictionary<string, Uri> Cache = new Dictionary<string, Uri>();
 
-        // Read from LocalSettings once; the hot path runs per card.
-        private static bool? _suppressed;
-
-        /// <summary>
-        /// Diagnostic switch (§11 investigation): when true the app requests no
-        /// artwork at all. Persisted so it survives the relaunch the
-        /// measurement needs — pages build their cards on navigation, but the
-        /// bar and the overlay only rebuild artwork on a track change, so a
-        /// clean comparison starts from launch.
-        /// </summary>
-        public static bool Suppressed
-        {
-            get
-            {
-                if (_suppressed == null)
-                {
-                    object value;
-                    _suppressed =
-                        ApplicationData.Current.LocalSettings.Values.TryGetValue(SuppressArtworkKey, out value)
-                        && value is bool flag
-                        && flag;
-                }
-
-                return _suppressed.Value;
-            }
-
-            set
-            {
-                _suppressed = value;
-                ApplicationData.Current.LocalSettings.Values[SuppressArtworkKey] = value;
-                Reset();
-            }
-        }
-
         /// <summary>
         /// The cover-art URL for a display box of <paramref name="displaySize"/>
-        /// epx, or null when there is no artwork to show — no cover id, no
-        /// active server, or artwork suppressed. Callers pass the size of the
-        /// box they draw into and let the ladder pick the request size.
+        /// epx, or null when there is no artwork to show — no cover id or no
+        /// active server. Callers pass the size of the box they draw into and
+        /// let the ladder pick the request size.
         /// </summary>
         public static Uri UriFor(string coverArtId, int displaySize)
         {
-            if (string.IsNullOrEmpty(coverArtId) || Suppressed)
+            if (string.IsNullOrEmpty(coverArtId))
             {
                 return null;
             }
@@ -372,14 +329,6 @@ namespace BoxSubMusic.App.Services
                     return _bitmapBytes;
                 }
             }
-        }
-
-        /// <summary>Describes the current mode for the diagnostics log.</summary>
-        public static string DescribeMode()
-        {
-            return Suppressed
-                ? "artwork=SUPPRESSED (diagnostic; no covers are requested)"
-                : "artwork=on";
         }
 
         private static int RequestTier(int displaySize)

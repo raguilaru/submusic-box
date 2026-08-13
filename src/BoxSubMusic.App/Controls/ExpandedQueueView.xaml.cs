@@ -140,9 +140,6 @@ namespace BoxSubMusic.App.Controls
             }
 
             IsOpen = true;
-            // Bracketing the overlay isolates its cost: the console shows a
-            // ~92 MB jump in the step that opens it (2026-08-12).
-            BackgroundDiagnostics.LogMemory("QueueOverlayOpening");
             CloseStoryboard.Stop();
             Root.Visibility = Visibility.Visible;
             OpenTranslate.From = ViewHeight();
@@ -156,11 +153,6 @@ namespace BoxSubMusic.App.Controls
             // the Lyrics tab is ready whichever tab we open on.
             Refresh(forceRowRebuild: true);
 
-            // Splits the overlay's cost: everything above this line is
-            // content (rows, artwork, lyrics); the difference between this and
-            // the next EnteredBackground reading is composition/render
-            // surfaces, which is where a full-screen animated layer would show.
-            BackgroundDiagnostics.LogMemory("QueueOverlayContentReady");
 
             if (_paneMode == PaneMode.Lyrics)
             {
@@ -283,7 +275,6 @@ namespace BoxSubMusic.App.Controls
 
         private void CloseStoryboard_Completed(object sender, object e)
         {
-            BackgroundDiagnostics.LogMemory("QueueOverlayClosed");
             if (!IsOpen)
             {
                 Root.Visibility = Visibility.Collapsed;

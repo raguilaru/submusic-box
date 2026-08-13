@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.System;
-using Windows.System.Threading;
 
 namespace BoxSubMusic.App.Services
 {
@@ -75,13 +74,12 @@ namespace BoxSubMusic.App.Services
         /// </summary>
         public static void LogMemory(string stage)
         {
-            // The managed-heap figure is the important one for the open
-            // question (2026-08-12): releasing the entire visual tree moved
-            // AppMemoryUsage by 0 MB across three console runs, so the ~150 MB
-            // that browsing adds is somewhere the tree does not own. Managed
-            // vs. native splits the search in half — a large managed heap
-            // points at our own collections, a small one at decoded bitmaps
-            // and the media pipeline.
+            // managedHeap vs. privateCommit is the split that matters: this
+            // app's footprint is ~100 % native (managed never exceeded ~8 MB
+            // against 200+ MB total), so a reading where managed suddenly
+            // matters would mean something new. privateCommit is also the
+            // figure that moves when memory is genuinely returned, which
+            // AppMemoryUsage can lag by several seconds.
             string detail;
             try
             {
@@ -96,76 +94,17 @@ namespace BoxSubMusic.App.Services
                 detail = ", memoryReportFailed=" + ex.Message;
             }
 
-            // The two leak counters ride on every reading rather than on a
-            // few chosen lines: run 12 found the floor ratcheting 12-23 MB per
-            // background round trip, and the point at which a count starts
-            // climbing is not known in advance. Both are cheap, and both are
-            // scaffolding to remove with the rest of the investigation.
-            string leaks;
-            try
-            {
-                leaks = ", changedSubs=" + PlaybackService.ChangedSubscribersForDiagnostics
-                    + ", shells=" + MainPage.LiveShellCensus;
-            }
-            catch (Exception ex)
-            {
-                leaks = ", leakCountersFailed=" + ex.Message;
-            }
-
             Log(stage
                 + ": usage=" + Megabytes(MemoryManager.AppMemoryUsage) + " MB"
                 + ", limit=" + Megabytes(MemoryManager.AppMemoryUsageLimit) + " MB"
                 + ", level=" + MemoryManager.AppMemoryUsageLevel
                 + detail
-                + ", queue=" + PlaybackService.QueueCountForDiagnostics
-                + leaks);
+                + ", queue=" + PlaybackService.QueueCountForDiagnostics);
         }
 
         public static string Megabytes(ulong bytes)
         {
             return (bytes / (1024UL * 1024UL)).ToString();
-        }
-
-        /// <summary>
-        /// Takes a memory reading <paramref name="delay"/> after the call and
-        /// flushes it. For measuring whether memory the app has just released
-        /// ever registers as released — the open question that blocks every
-        /// release-based remedy (§11 candidate 3): every post-release reading
-        /// in this investigation has been taken microseconds after the
-        /// references were dropped, so "reclaimed 0 MB" and "reclaimed
-        /// something the reading was too early to see" are indistinguishable.
-        ///
-        /// A <c>ThreadPoolTimer</c>, not the <c>DispatcherTimer</c> that
-        /// <c>PlaybackService.LogSettledSoon</c> uses: the callers here are the
-        /// lifecycle and memory-pressure handlers, and those do not all arrive
-        /// on the UI thread (<c>MemoryManager</c> raises its events on the
-        /// threadpool). <see cref="LogMemory"/> reads only process-wide
-        /// counters, so it has no thread affinity of its own.
-        ///
-        /// The line stamps the delay actually elapsed. A backgrounded app can
-        /// be suspended before the timer fires — if a reading is missing, or
-        /// its elapsed time is far past the requested delay, that is the
-        /// explanation and the figure should not be trusted.
-        /// </summary>
-        public static void LogMemoryAfterDelay(string stage, TimeSpan delay)
-        {
-            var requestedAt = DateTimeOffset.Now;
-            try
-            {
-                ThreadPoolTimer.CreateTimer(
-                    _ =>
-                    {
-                        double elapsed = (DateTimeOffset.Now - requestedAt).TotalSeconds;
-                        LogMemory(stage + " (+" + elapsed.ToString("0.0") + "s)");
-                        FlushSoon();
-                    },
-                    delay);
-            }
-            catch (Exception ex)
-            {
-                // Diagnostics must never be the reason the app misbehaves.
-                Log(stage + ": delayed reading could not be scheduled — " + ex.Message);
-            }
         }
 
         /// <summary>

@@ -34,13 +34,6 @@ namespace BoxSubMusic.App
         /// </summary>
         private CoreDispatcher _uiDispatcher;
 
-        /// <summary>
-        /// How long to wait for the UI thread to drop the view. Raised from
-        /// 1200 ms once the release grew a finalizer pass — that work has to
-        /// finish before the OS measures, and timing out early would report
-        /// success while the memory was still charged. Still inside the ~2 s
-        /// the OS allows after the limit changes.
-        /// </summary>
         // Three bounded waits, summing inside the OS's ~2 s budget: drop the
         // tree, WAIT FOR THE UNLOAD to actually happen, then collect. See
         // CollectAfterRelease for why that middle step exists.
@@ -160,7 +153,6 @@ namespace BoxSubMusic.App
             // Which artwork mode this run measures (§11, 2026-08-13). The
             // suppressed run exists to bound artwork's share of the footprint;
             // without this line the two runs are indistinguishable in the log.
-            Services.BackgroundDiagnostics.Log("OnLaunched: " + Services.CoverArt.DescribeMode());
             Services.BackgroundDiagnostics.LogMemory("OnLaunched");
 
             // Flushed immediately so the run is identifiable even if the app
@@ -250,31 +242,16 @@ namespace BoxSubMusic.App
             // element survive until that element goes, so nothing blanks; only
             // the app's own retention goes, which is what lets the later view
             // release actually reclaim something.
+            // Dropping the app-owned cover cache is the one artwork release
+            // that works: a stream-decoded bitmap has no URI, so the framework
+            // caches nothing and this reference is the only one. The megabytes
+            // register a few seconds later rather than immediately (§11), which
+            // is why the figure here is what was released, not what the reading
+            // moved.
             long dropped = Services.CoverArt.CachedBitmapBytes;
-            ulong usageBeforeDrop = MemoryManager.AppMemoryUsage;
             Services.CoverArt.DropBitmaps();
             Services.BackgroundDiagnostics.LogMemory(
                 "AfterDropCovers (released " + Services.BackgroundDiagnostics.Megabytes((ulong)dropped) + " MB of cached covers)");
-
-            // The immediate reading above is taken microseconds after the
-            // references are dropped, which is why the first console pass was
-            // inconclusive: it reported 11 MB released and AppMemoryUsage did
-            // not move, and that is equally consistent with "the reading was
-            // too early" and with "native commit is never returned to the OS".
-            // The second reading is what tells those apart, and it decides
-            // whether the cover cache — or ANY release-based remedy — is worth
-            // anything at all (§11 candidate 3).
-            //
-            // Two delays, because one cannot settle it: a flat figure at 2.5 s
-            // alone would still leave "2.5 s was not long enough" open, which
-            // is the exact ambiguity being closed here. The stamped "released"
-            // and pre-drop numbers make each line readable on its own.
-            string drop = " [dropped " + Services.BackgroundDiagnostics.Megabytes((ulong)dropped)
-                + " MB, usage before drop " + Services.BackgroundDiagnostics.Megabytes(usageBeforeDrop) + " MB]";
-            Services.BackgroundDiagnostics.LogMemoryAfterDelay(
-                "AfterDropCoversSettled" + drop, TimeSpan.FromMilliseconds(2500));
-            Services.BackgroundDiagnostics.LogMemoryAfterDelay(
-                "AfterDropCoversLate" + drop, TimeSpan.FromSeconds(10));
 
             Services.BackgroundDiagnostics.FlushSoon();
 
@@ -376,7 +353,6 @@ namespace BoxSubMusic.App
             if (level == AppMemoryUsageLevel.OverLimit || level == AppMemoryUsageLevel.High)
             {
                 ReduceMemoryUsage();
-                Services.BackgroundDiagnostics.LogMemory("AfterUsageIncreasedHandler");
                 Services.BackgroundDiagnostics.FlushSoon();
             }
         }
@@ -509,9 +485,9 @@ namespace BoxSubMusic.App
                 // callbacks synchronously — it schedules them — and those
                 // callbacks are what unregister the shell and its controls from
                 // process-lifetime statics. Collect before they run and the
-                // tree is still fully reachable, which is what made
-                // AfterViewRelease report changedSubs=87 and reclaim nothing.
-                // So wait for the unload to actually happen.
+                // tree is still fully reachable, and the collection reclaims
+                // nothing — which is exactly what the console measured. So wait
+                // for the unload to actually happen.
                 bool unloaded = ShellUnloaded.Wait(UnloadTimeout);
                 Services.BackgroundDiagnostics.Log(unloaded
                     ? "Shell unload observed; collecting."
@@ -568,14 +544,12 @@ namespace BoxSubMusic.App
         /// callbacks are what unregister the shell and its controls from
         /// process-lifetime statics, and until they run the whole tree is still
         /// reachable — so a collection in the same pass has nothing it is
-        /// allowed to reclaim. The console showed this plainly: the old
-        /// AfterViewRelease line read changedSubs=87 and reclaimed 0 MB,
-        /// MainPage.Unloaded arrived 111 ms afterwards, and usage had dropped
-        /// 238 → 220 MB by the time anything looked again.
-        ///
-        /// `changedSubs` on the line below is the check: it should now read 0,
-        /// or close to it. If it is still in the tens, something else is
-        /// holding the tree and the release is a no-op for a different reason.
+        /// allowed to reclaim. The console showed this plainly: the release
+        /// reclaimed 0 MB with 87 handlers still attached, MainPage.Unloaded
+        /// arrived 111 ms afterwards, and usage had dropped 238 to 220 MB by the
+        /// time anything looked again. Ordering this with a
+        /// CoreDispatcherPriority.Low hint was tried first and held in only 2 of
+        /// 5 cycles — a dispatcher priority is not a happens-after guarantee.
         ///
         /// The finalizer pass is not optional. The XAML tree and its decoded
         /// bitmaps are overwhelmingly native objects reached through RCWs:
@@ -586,8 +560,6 @@ namespace BoxSubMusic.App
         private void CollectAfterRelease()
         {
             GC.Collect();
-            Services.BackgroundDiagnostics.LogMemory("AfterCollect");
-
             GC.WaitForPendingFinalizers();
             GC.Collect();
             Services.BackgroundDiagnostics.LogMemory("AfterViewRelease");

@@ -54,10 +54,10 @@ namespace BoxSubMusic.App.Services
         /// service must be constructed on the UI thread (it captures that
         /// dispatcher).
         ///
-        /// Logged because the queue is the prime suspect for the app's native
-        /// footprint: RebuildList materializes a MediaPlaybackItem and a
-        /// MediaSource for EVERY track up front, so a few queued playlists
-        /// mean hundreds of native objects that no view release can touch.
+        /// Logged as context on the memory lines: queue length turned out NOT
+        /// to drive the footprint (a 200-track queue costs ~1 MB in items,
+        /// measured 2026-08-13), but it is the first thing anyone reading a
+        /// background log wants to know.
         /// </summary>
         public static int QueueCountForDiagnostics
         {
@@ -65,38 +65,6 @@ namespace BoxSubMusic.App.Services
             {
                 var instance = _instance;
                 return instance == null ? -1 : instance.Queue.Tracks.Count;
-            }
-        }
-
-        /// <summary>
-        /// How many handlers are attached to <see cref="Changed"/>, or -1
-        /// before playback exists (§11 diagnostics, 2026-08-13).
-        ///
-        /// This is the cheapest test for the ratchet run 12 found — the
-        /// post-release floor climbing 156 → 179 → 191 → 204 MB across four
-        /// background round trips. Every subscriber is a page or a control,
-        /// and this event is reached from a static that lives for the whole
-        /// process, so a handler that is never removed pins its entire visual
-        /// tree and makes the view release a no-op for that tree. The code is
-        /// balanced 7-for-7, so a climbing count would mean the release is
-        /// preventing the <c>Unloaded</c> callbacks that do the removing, not
-        /// that a line is missing.
-        ///
-        /// Expect the same number at each rebuild. A count that grows by
-        /// roughly the same amount every cycle is the leak.
-        /// </summary>
-        public static int ChangedSubscribersForDiagnostics
-        {
-            get
-            {
-                var instance = _instance;
-                if (instance == null)
-                {
-                    return -1;
-                }
-
-                Action handler = instance.Changed;
-                return handler == null ? 0 : handler.GetInvocationList().Length;
             }
         }
 
@@ -132,24 +100,6 @@ namespace BoxSubMusic.App.Services
         /// case.
         /// </summary>
         private const int DefaultPlayedItemsKept = 0;
-
-        // Diagnostics: how long after a stream opens to take the settled
-        // reading, and the one-shot timer that takes it. The 2026-08-13 console
-        // log showed the cost of a jump arriving here, not at MoveTo — +41,
-        // +25 and +37 MB across three jumps, none of it returned. The reading
-        // now hangs off EVERY track change, not just a jump, because the
-        // open question is whether an ordinary advance costs the same.
-        private static readonly TimeSpan SettleDelay = TimeSpan.FromMilliseconds(2500);
-        private DispatcherTimer _settleTimer;
-        private int _jumpCount;
-        private int _streamOpenCount;
-
-        // Last playback state written to the log. Buffering can flap several
-        // times per track open, and the log is a 600-line ring buffer — an
-        // unfiltered state trace would push the lines around a background
-        // termination out of the file, which is the one place they matter.
-        // Media thread; a stale read costs one duplicate line.
-        private MediaPlaybackState _lastLoggedState = MediaPlaybackState.None;
 
         // Scrobble bookkeeping, touched from the media thread (PositionChanged).
         private Song _scrobbleSong;
@@ -260,17 +210,10 @@ namespace BoxSubMusic.App.Services
             Player.MediaOpened += OnMediaOpened;
             Player.MediaEnded += OnMediaEnded;
 
-            // Diagnostics only (§11, 2026-08-13). The console run where
-            // playback stopped in the background left NO trace of the stop:
-            // the app was suspended cleanly 26 s in, and the log could not say
-            // whether the OS suspended an over-limit app (which stops audio)
-            // or whether audio had already stopped and the app therefore lost
-            // the backgroundMediaPlayback exemption from suspension. Those two
-            // orderings need completely different fixes. A player-level
-            // failure was invisible entirely — nothing subscribed to
-            // MediaFailed.
+            // A player-level failure (as opposed to the per-item ItemFailed
+            // the list raises) is otherwise completely silent; it is logged so
+            // a background stop can be diagnosed after the fact (§11).
             Player.MediaFailed += OnMediaFailed;
-            Player.PlaybackSession.PlaybackStateChanged += OnPlaybackStateChangedForDiagnostics;
 
             Player.PlaybackSession.PlaybackStateChanged += OnPlaybackStateChanged;
             Player.PlaybackSession.PositionChanged += OnPositionChanged;
@@ -417,27 +360,12 @@ namespace BoxSubMusic.App.Services
             // block order lands correctly); under shuffle the play order is
             // re-expressed via SetShuffledItems (console-verified not to
             // interrupt the current track).
-            // Bracketed like RebuildList (§11): a queue built by "Add to
-            // queue" never goes through RebuildList, so without this an A/B
-            // that grows the queue by queue edits would report no per-item
-            // cost at all. NOT split into two passes the way RebuildList is —
-            // this list is live and attached to the player, and mutating it is
-            // precisely what destabilized the reverted item-recycling attempt.
-            // One number for the pair is enough here; RebuildList supplies the
-            // split.
-            BackgroundDiagnostics.LogMemory(
-                "QueueAddStart (adding " + added.Count + " to " + Queue.Tracks.Count + ")");
-
             foreach (Song song in added)
             {
                 var item = CreateItem(client, song);
                 MapItem(song, item);
                 _list.Items.Insert(IndexOfInTracks(song), item);
             }
-
-            BackgroundDiagnostics.LogMemory(
-                "QueueAddComplete (added " + added.Count + ", queue " + Queue.Tracks.Count + ")");
-            BackgroundDiagnostics.FlushSoon();
 
             if (Queue.ShuffleEnabled)
             {
@@ -572,18 +500,6 @@ namespace BoxSubMusic.App.Services
                 return;
             }
 
-            // Diagnostics (§11, 2026-08-13): the jump is the operation the
-            // console log implicated, so it is bracketed the way the overlay
-            // open already is. The three readings answer different questions —
-            // "Requested" is the baseline, "MoveTo" catches an allocation the
-            // platform makes synchronously when it opens the target item, and
-            // "Settled" catches one that accrues while the new stream buffers.
-            // The track's own format rides along because an open item's native
-            // buffers are several times larger for lossless.
-            _jumpCount++;
-            BackgroundDiagnostics.LogMemory(
-                "JumpRequested #" + _jumpCount + " (to " + DescribeStream(song) + ")");
-
             MediaPlaybackItem landed = _list.MoveTo((uint)index);
             if (landed != item)
             {
@@ -595,58 +511,6 @@ namespace BoxSubMusic.App.Services
             }
 
             Player.Play();
-
-            // The settled reading is taken by the track-change handler this
-            // MoveTo triggers, so it covers ordinary advances too.
-            BackgroundDiagnostics.LogMemory("AfterJumpMoveTo #" + _jumpCount);
-        }
-
-        /// <summary>Format/bitrate of a queued track, for the jump diagnostics.</summary>
-        private static string DescribeStream(Song song)
-        {
-            string format = string.IsNullOrEmpty(song.Format) ? "unknown" : song.Format;
-            return song.BitRate.HasValue
-                ? format + " " + song.BitRate.Value + " kbps"
-                : format;
-        }
-
-        /// <summary>
-        /// Takes one memory reading a couple of seconds after a stream opens,
-        /// once it has buffered — which is where the 2026-08-13 console log
-        /// showed the cost landing. One-shot and restarted per open, so a burst
-        /// of track changes logs a single settled figure for the burst rather
-        /// than one line each. UI thread (see the class remarks).
-        /// </summary>
-        private void LogSettledSoon()
-        {
-            if (_settleTimer == null)
-            {
-                _settleTimer = new DispatcherTimer { Interval = SettleDelay };
-                _settleTimer.Tick += (s, e) =>
-                {
-                    _settleTimer.Stop();
-                    BackgroundDiagnostics.LogMemory("AfterTrackSettled #" + _streamOpenCount);
-                    BackgroundDiagnostics.FlushSoon();
-                };
-            }
-
-            _settleTimer.Stop();
-            _settleTimer.Start();
-        }
-
-        /// <summary>
-        /// UI-thread half of a track change (§11, 2026-08-13): logs the stream
-        /// open. <see cref="LogSettledSoon"/> takes the reading 2.5 s later,
-        /// which is where the console showed the cost landing.
-        /// </summary>
-        private void OnTrackChangedOnUi(Song newSong)
-        {
-            _streamOpenCount++;
-            BackgroundDiagnostics.LogMemory(
-                "TrackChanged #" + _streamOpenCount
-                + (newSong == null ? string.Empty : " (to " + DescribeStream(newSong) + ")"));
-
-            LogSettledSoon();
         }
 
         /// <summary>
@@ -880,45 +744,15 @@ namespace BoxSubMusic.App.Services
                 AutoRepeatEnabled = Queue.RepeatMode == RepeatMode.All,
             };
 
-            // Bracketed for §11: this loop is the leading candidate for the
-            // app's native footprint — an item, a MediaSource and a full set
-            // of display properties per track, all up front, scaling linearly
-            // with queue length, which is the exact shape of the reported bug.
-            // The estimate in hand (~16–26 MB for 200 tracks) is indirect;
-            // these three readings measure it, and split it into the two
-            // halves that have different fixes. Deliberately measurement
-            // only — nothing below changes what is built, just the order the
-            // two halves run in.
-            int trackCount = Queue.Tracks.Count;
-            string tracks = " (" + trackCount + " tracks)";
-            BackgroundDiagnostics.LogMemory("RebuildListStart" + tracks);
-
             // Items always sit in the list in ORIGINAL order; shuffle is
             // expressed via SetShuffledItems below, so toggling shuffle later
             // never interrupts the current track.
-            string format = _preferMp3Fallback ? "mp3" : null;
-            var created = new List<MediaPlaybackItem>(trackCount);
             foreach (Song song in Queue.Tracks)
             {
-                var item = CreateItemCore(client, song, format);
+                var item = CreateItem(client, song);
                 MapItem(song, item);
-                created.Add(item);
                 list.Items.Add(item);
             }
-
-            BackgroundDiagnostics.LogMemory("RebuildListItemsCreated" + tracks);
-
-            // Second pass rather than one call per item, so the SMTC half is
-            // separable. Safe here in a way it would not be on a live list:
-            // this list is not yet the player's source, so nothing can read a
-            // half-populated item in between.
-            for (int i = 0; i < created.Count; i++)
-            {
-                ApplyDisplayPropertiesTo(created[i], Queue.Tracks[i]);
-            }
-
-            BackgroundDiagnostics.LogMemory("RebuildListDisplayPropsApplied" + tracks);
-            BackgroundDiagnostics.FlushSoon();
 
             TryGetItem(Queue.CurrentTrack, out MediaPlaybackItem startingItem);
             list.StartingItem = startingItem;
@@ -1044,24 +878,6 @@ namespace BoxSubMusic.App.Services
 
         private MediaPlaybackItem CreateItem(SubsonicApiClient client, Song song, string format)
         {
-            MediaPlaybackItem item = CreateItemCore(client, song, format);
-            ApplyDisplayPropertiesTo(item, song);
-            return item;
-        }
-
-        /// <summary>
-        /// The item and its source, without SMTC metadata. Split out from
-        /// <see cref="CreateItem(SubsonicApiClient, Song, string)"/> purely so
-        /// <see cref="RebuildList"/> can measure the two halves separately
-        /// (§11): the per-item queue cost is the leading candidate, and which
-        /// half of it is expensive decides between applying display properties
-        /// lazily (cheap, does not touch <c>_list.Items</c>) and a windowed
-        /// list (expensive, and mutating that collection is what sank the item
-        /// recycling attempt). Every other caller still gets both halves in
-        /// one call.
-        /// </summary>
-        private MediaPlaybackItem CreateItemCore(SubsonicApiClient client, Song song, string format)
-        {
             var item = new MediaPlaybackItem(
                 MediaSource.CreateFromUri(client.GetStreamUri(song.Id, format: format)));
             if (format != null)
@@ -1069,16 +885,10 @@ namespace BoxSubMusic.App.Services
                 _fallbackItems.Add(item);
             }
 
-            return item;
-        }
-
-        /// <summary>
-        /// SMTC metadata (§11): shown by the system media flyout and on
-        /// whatever the console casts it to. Includes a thumbnail stream
-        /// reference per item.
-        /// </summary>
-        private static void ApplyDisplayPropertiesTo(MediaPlaybackItem item, Song song)
-        {
+            // SMTC metadata (§11): shown by the system media flyout and on
+            // whatever the console casts it to. Measured at ~1 MB for a
+            // 200-track queue including the thumbnail references, so applying
+            // it up front rather than lazily costs nothing worth saving.
             MediaItemDisplayProperties props = item.GetDisplayProperties();
             props.Type = MediaPlaybackType.Music;
             props.MusicProperties.Title = song.Title;
@@ -1091,6 +901,7 @@ namespace BoxSubMusic.App.Services
             }
 
             item.ApplyDisplayProperties(props);
+            return item;
         }
 
         // --- Player events (media thread unless noted) -------------------------
@@ -1117,15 +928,6 @@ namespace BoxSubMusic.App.Services
             if (newItem != null)
             {
                 TryGetSong(newItem, out song);
-            }
-
-            // §11 diagnostics (2026-08-13): every stream open is logged, with
-            // the settled reading 2.5 s later where the cost actually lands.
-            // Marshalled because this handler is on the media thread.
-            if (!ReferenceEquals(args.OldItem, newItem))
-            {
-                Song openedSong = song;
-                _ = RunOnUiAsync(() => OnTrackChangedOnUi(openedSong));
             }
 
             // Scrobble bookkeeping stays on this thread (PositionChanged
@@ -1204,10 +1006,10 @@ namespace BoxSubMusic.App.Services
                 TryGetSong(args.Item, out song);
             }
 
-            // Diagnostics (§11): a failed item is skipped and toasted, but the
-            // toast is gone by the time a log is read — and a burst of them
-            // while backgrounded would stop playback and explain a suspension.
-            BackgroundDiagnostics.LogMemory(
+            // The skip toast is gone by the time a log is read, and a burst of
+            // these while backgrounded would stop playback — which is exactly
+            // the symptom §11 exists to tell apart from a memory kill.
+            BackgroundDiagnostics.Log(
                 "ItemFailed: error=" + (args.Error?.ErrorCode.ToString() ?? "none")
                 + ", hresult=0x" + args.Error?.ExtendedError.HResult.ToString("X8")
                 + ", track=" + (song == null ? "unmapped" : song.Title)
@@ -1316,44 +1118,11 @@ namespace BoxSubMusic.App.Services
             Player.Play();
         }
 
-        /// <summary>
-        /// Records every playback-state transition (§11 diagnostics). This is
-        /// the line that answers whether audio stopped BEFORE the OS suspended
-        /// the app or AT it: a Paused/None arriving seconds ahead of
-        /// <c>Suspending</c> means the app lost its background-audio exemption
-        /// because playback had already died, and the memory story is not the
-        /// primary one. Separate handler from
-        /// <see cref="OnPlaybackStateChanged"/> so the diagnostics can be
-        /// lifted out in one piece when the investigation closes.
-        /// </summary>
-        private void OnPlaybackStateChangedForDiagnostics(MediaPlaybackSession sender, object args)
-        {
-            MediaPlaybackState state = sender.PlaybackState;
-            if (state == _lastLoggedState)
-            {
-                return;
-            }
-
-            _lastLoggedState = state;
-            BackgroundDiagnostics.LogMemory("PlaybackState=" + state);
-
-            // Anything other than a healthy playing/opening state is a
-            // candidate explanation for a background stop, so get it on disk
-            // rather than leaving it in the buffer for a flush that a
-            // suspension may beat.
-            if (state == MediaPlaybackState.Paused || state == MediaPlaybackState.None)
-            {
-                BackgroundDiagnostics.FlushSoon();
-            }
-        }
-
         private void OnMediaFailed(MediaPlayer sender, MediaPlayerFailedEventArgs args)
         {
-            // Nothing subscribed to this before 2026-08-13, so a player-level
-            // failure — as opposed to the per-item ItemFailed the list raises
-            // — left no trace at all. Diagnostics only: the established
-            // ItemFailed path still owns the skip/stop behaviour.
-            BackgroundDiagnostics.LogMemory(
+            // A player-level failure, as opposed to the per-item ItemFailed the
+            // list raises. Log only — the ItemFailed path owns skip/stop.
+            BackgroundDiagnostics.Log(
                 "MediaFailed: error=" + args.Error
                 + ", hresult=0x" + args.ExtendedErrorCode?.HResult.ToString("X8")
                 + ", message=" + args.ErrorMessage);
@@ -1437,13 +1206,6 @@ namespace BoxSubMusic.App.Services
 
         private void OnMediaEnded(MediaPlayer sender, object args)
         {
-            // Diagnostics (§11): reaching the end of the list stops audio for
-            // an entirely legitimate reason, and would then be followed by a
-            // suspension. Distinguishing that from a failure is the whole
-            // point of the state trace.
-            BackgroundDiagnostics.LogMemory("MediaEnded (end of list)");
-            BackgroundDiagnostics.FlushSoon();
-
             // The whole list finished (AutoRepeatEnabled off). Repeat One on
             // the LAST track lands here instead of CurrentItemChanged.
             if (Queue.RepeatMode == RepeatMode.One && _list?.CurrentItem != null)

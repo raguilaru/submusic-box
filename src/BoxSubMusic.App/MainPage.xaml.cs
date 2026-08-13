@@ -42,70 +42,11 @@ namespace BoxSubMusic.App
         private Type _pendingOverlayNavPage;
         private object _pendingOverlayNavParameter;
 
-        /// <summary>
-        /// Every shell ever built, weakly (§11 diagnostics, 2026-08-13).
-        ///
-        /// The app releases its visual tree under background pressure and
-        /// rebuilds it on return, and run 12 measured the floor climbing
-        /// 12–23 MB per round trip. A released shell that is still alive is
-        /// the difference between "native commit is not returned to the OS"
-        /// (nothing app-side to fix) and "each cycle leaks a whole page tree"
-        /// (app-side, and fixable). Counting them directly settles it.
-        ///
-        /// Weak references, so the census cannot itself be the thing keeping
-        /// a shell alive — which a plain list would be, and which would make
-        /// this diagnostic cause the very leak it looks for. Deliberately no
-        /// finalizers either: a finalizable object survives an extra
-        /// collection, so adding one would change what is being measured.
-        /// </summary>
-        private static readonly List<WeakReference<MainPage>> LiveShells =
-            new List<WeakReference<MainPage>>();
-
-        private static readonly object ShellCensusGate = new object();
-        private static int _shellsConstructed;
-
-        /// <summary>
-        /// Shells still uncollected, and how many have ever been built
-        /// ("2 of 4"). Read from the memory-pressure handlers, which are not
-        /// on the UI thread — hence the lock. Only meaningful right after a
-        /// collection; <c>App.RebuildViewIfReleased</c> forces one before it
-        /// takes its reading.
-        /// </summary>
-        public static string LiveShellCensus
-        {
-            get
-            {
-                lock (ShellCensusGate)
-                {
-                    int alive = 0;
-                    for (int i = LiveShells.Count - 1; i >= 0; i--)
-                    {
-                        if (LiveShells[i].TryGetTarget(out _))
-                        {
-                            alive++;
-                        }
-                        else
-                        {
-                            LiveShells.RemoveAt(i);
-                        }
-                    }
-
-                    return alive + " of " + _shellsConstructed;
-                }
-            }
-        }
-
         public MainPage()
         {
             InitializeComponent();
             Loaded += OnLoaded;
             Unloaded += OnUnloaded;
-
-            lock (ShellCensusGate)
-            {
-                _shellsConstructed++;
-                LiveShells.Add(new WeakReference<MainPage>(this));
-            }
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -227,18 +168,11 @@ namespace BoxSubMusic.App
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
-            // §11 diagnostics (2026-08-13): this line tests the release path
-            // head-on. ReleaseViewContentOnUiThread calls
-            // DisconnectChildrenRecursive BEFORE nulling the window content,
-            // and if severing the tree first stops Unloaded from firing, none
-            // of the unregistrations below ever run — leaving a static event
-            // holding this shell and every control under it. The whole release
-            // is documented as working only because these callbacks fire.
-            // If "Releasing view content" appears without this line following
-            // it, that assumption is false and the ratchet is explained.
-            Services.BackgroundDiagnostics.Log(
-                "MainPage.Unloaded — unregistering shell handlers (shells " + LiveShellCensus + ")");
-
+            // These unregistrations are what make the released visual tree
+            // collectable: each of these statics outlives the shell, so one
+            // that is left subscribed pins this page and every control under
+            // it, and the §11 view release becomes a silent no-op. Any new
+            // static that captures UI must be dropped here too.
             NavigationPreferences.Changed -= ApplyNavVisibility;
             SystemNavigationManager.GetForCurrentView().BackRequested -= OnBackRequested;
             ContentFrame.Navigated -= ContentFrame_Navigated;
@@ -539,8 +473,6 @@ namespace BoxSubMusic.App
 
         private void ContentFrame_Navigated(object sender, NavigationEventArgs e)
         {
-            LogNavigationMemory(e);
-
             // Back navigation can change the section underneath the pane, so
             // resync the highlighted nav item. Detail pages return null and
             // keep their originating section highlighted.
@@ -552,38 +484,6 @@ namespace BoxSubMusic.App
 
             _currentSectionTag = tag;
             SyncNavSelection(tag);
-        }
-
-        /// <summary>
-        /// Attributes the browsing surcharge to actual pages (§11).
-        ///
-        /// The 2026-08-13 console run measured the queue at ~1 MB for 200
-        /// tracks and covers at 13 MB, yet a browsing bout still costs ~40 MB
-        /// that never comes back — so most of it is neither, and nothing in
-        /// the log said which surface spends it. One hook on the content
-        /// frame covers every page without touching any of them.
-        ///
-        /// Two readings per navigation: the immediate one is taken before the
-        /// new page has laid out or loaded anything, so it doubles as the
-        /// "after the previous page" figure; the settled one 2.5 s later is
-        /// what the page actually cost. An incrementally-loading page (Albums,
-        /// Songs) is still filling at that point, so its settled figure is the
-        /// first screen, not the whole load — the queue-add and track-change
-        /// brackets stay the way to separate those.
-        /// </summary>
-        private static void LogNavigationMemory(NavigationEventArgs e)
-        {
-            string page = e.Content?.GetType().Name ?? e.SourcePageType?.Name ?? "unknown";
-            string label = page + " (" + e.NavigationMode + ")";
-
-            // NavigationMode matters as much as the page: a Back into one of
-            // the two NavigationCacheMode.Required pages (Songs, Search)
-            // re-renders a page that was never released, and should cost far
-            // less than the New that built it. If it does not, the cache is
-            // not doing what it was added for.
-            Services.BackgroundDiagnostics.LogMemory("Navigated → " + label);
-            Services.BackgroundDiagnostics.LogMemoryAfterDelay(
-                "NavigatedSettled → " + label, TimeSpan.FromMilliseconds(2500));
         }
 
         private static string SectionTagFor(NavigationEventArgs e)

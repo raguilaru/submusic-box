@@ -1423,6 +1423,44 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   to win that race, and it only bites when backgrounding within seconds of a
   track change.
 
+- 2026-08-13 (CLOSING ENTRY): **background memory is resolved, and the two
+  changes that resolved it were both framework defaults rather than anything
+  this app invented** (§11). Sixteen console runs; the reported bug no longer
+  reproduces, including sustained background playback through twelve track
+  changes while over the limit. The durable record — platform facts, rejected
+  approaches, retracted claims, and how to diagnose a recurrence — is
+  `docs/architecture/50-background-memory.md`, which supersedes the entries
+  dated 2026-08-12 and 2026-08-13 above wherever they disagree. Several of those
+  entries assert things that were later measured false and are retracted there
+  by name; read the architecture doc first.
+  What actually mattered, in order:
+  (a) **`ItemsStackPanel`/`ItemsWrapGrid` default to `CacheLength="4.0"`** —
+  five viewports of realized containers. A realized song row here carries a
+  `SpinningVinyl` storyboard and a `MenuFlyout` of 8–12 items, all built when
+  the template inflates, so the default multiplied the app's heaviest object by
+  five. Two shared panel templates in App.xaml set 1.0 app-wide.
+  (b) **The view release collected before the unregistrations it depends on.**
+  `Window.Current.Content = null` schedules `Unloaded`; it does not run it, so
+  the release's own `GC.Collect` ran against a tree that statics still held.
+  The release now waits on a signal raised at the end of `MainPage.OnUnloaded`.
+  A `CoreDispatcherPriority.Low` hint was tried first and held in 2 of 5 cycles
+  — a dispatcher priority is not a happens-after guarantee.
+  (c) **Both memory handlers ran the full reduction**, spending a ~2 s budget
+  twice. Guarded.
+  Two framing corrections worth carrying forward. **128 MB is not a line the OS
+  enforces** — it weighs it, tolerating ~180 MB indefinitely and killing around
+  ~200 MB — and it is unreachable for this app regardless: the minimal floor
+  with artwork entirely suppressed is 129 MB. The target is the tolerated band.
+  And **the app's footprint is ~100 % native**; managed heap never exceeded
+  ~8 MB, so the Songs page's whole-library load (§7.3), assumed to be the
+  largest allocation for months, was never material.
+  Method note, recorded because it cost the most: three fixes were built ahead
+  of the evidence and two of them made the problem worse. What worked was
+  instrumenting first and requiring every candidate to carry a predicted,
+  measurable signature before it was built — which is also how two more ranked
+  candidates (per-row `MenuFlyout` rework, a windowed `MediaPlaybackList`) were
+  dropped without writing them.
+
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.

@@ -81,6 +81,6 @@ See CLAUDE.local.md for the concrete, machine-local invocations (SSH alias, full
   Rafael drives F5; details in CLAUDE.local.md and docs/STATUS.md.
 
 # Open questions
-- Browse paging is no longer one policy: Albums and scoped Search results load incrementally (2026-07-13 / 2026-07-19), while Songs loads the whole library up front because client-side sorting cannot be honest over a partial one (2026-07-26, §16). Whether holding the full song library fits the §11 background-memory budget is open pending console verification.
+- Browse paging is no longer one policy: Albums and scoped Search results load incrementally (2026-07-13 / 2026-07-19), while Songs loads the whole library up front because client-side sorting cannot be honest over a partial one (2026-07-26, §16). Holding the full song library was measured and is NOT a memory problem — the app's footprint is ~100 % native and the managed heap never exceeded ~8 MB (§11, resolved 2026-08-13).
 - Artwork fallback beyond server-provided metadata remains a risk item, not a committed feature.
 - Playlists are read-only for v1 (decided 2026-07-13, §16/§17); create/edit/delete deferred beyond v1.
