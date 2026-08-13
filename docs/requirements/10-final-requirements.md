@@ -1302,6 +1302,80 @@ Build BoxSubMusic, a native Xbox Series X/S music app that connects to Subsonic-
   is the mechanism and a windowed list is the fix. Two hypotheses, one run, no
   build.
 
+- 2026-08-13 (console results 4 and 5): **the per-open memory is TRANSIENT — it
+  drains a few seconds after the churn stops — so nothing is leaking and a
+  windowed list is not the fix. The problem is the resting floor.** (§11)
+  Two clean runs on the reverted build settled it.
+  **The drain, measured directly.** Ten rapid track changes over a 22-track
+  queue climbed 140 → 183 → 196 → 157 → 170 → 202 → 212 → 246 → 250 → **283**
+  → 253 MB, and then, 2.5 s after the last one, **182 MB** — a 101 MB drop with
+  no queue replacement, no navigation and no user action. The platform releases
+  what a stream open costs; it is simply slower than a person pressing A.
+  **Retraction: the "it plateaus, so a windowed list is the fix" reading of the
+  five-track run is WRONG**, and the mistake is worth recording. It compared a
+  clean 8-track run against the 228-track run, which was taken on the build
+  with the (later reverted) item recycling and was therefore inflated by the
+  extra items that bug created. Against each other, the two CLEAN runs — 8
+  tracks and 22 tracks — both peak at **270–285 MB**. Queue size does not drive
+  the peak. **Churn rate does**, and the peak drains afterwards.
+  The precondition that run was meant to establish is answered anyway and is
+  now moot: replacing the queue does free memory (182 → 169 MB across a
+  22-track → 15-track replacement).
+  **What is actually wrong** is the number this whole investigation started
+  from, and it has survived every remedy: with a queue playing and everything
+  settled, the app rests at **182–194 MB against a 128 MB background limit**.
+  Breakdown from a single clean run: 28 MB at launch, 57 MB once the shell is
+  up, 140 MB after browsing to a playlist, 183 MB with one track playing and
+  settled. So browsing costs ~83 MB and playback ~43 MB, and the view release
+  reclaims essentially none of it.
+  Two distinct failure modes follow, and they want different answers:
+  (a) **the floor** — ~55 MB over the limit before anything unusual happens,
+  which is why backgrounding is unreliable at all times; and
+  (b) **the transient** — backgrounding within a few seconds of a track change
+  measures the app mid-spike at 250–285 MB, which is why it dies *reliably*
+  right after jumping around. The ~2 s the OS allows after
+  `AppMemoryUsageLimitChanging` is shorter than the drain, so the app is being
+  measured during it.
+  Next measurement, again no build: **launch fresh, play immediately without
+  browsing at all, let it settle 30 s, then background.** That splits the floor
+  into its browsing and playback halves. If it lands near 120 MB the app can
+  fit and browsing is the target; if it lands near 180 MB, playback alone
+  exceeds the budget and the answer has to be structural.
+
+- 2026-08-13 (console result 6): **the minimal floor is 143 MB — only 15 MB
+  over the limit — and artwork is the largest reducible part of it, which
+  finally justifies an app-owned bitmap cache.** (§11) Launch fresh, play with
+  no browsing, leave it 32 s: 29 MB at launch, 57 MB with the shell up, 103 MB
+  at the first track, **145 MB settled**, and **143 MB when backgrounded** —
+  stable, drained, nothing in flight. The view release reclaimed **0 MB**, as
+  always.
+  So the answer is neither of the two the test was framed around: not ~120 MB
+  (the app does not already fit) and not ~180 MB (playback alone is not
+  hopeless). Composition of the 143 MB: ~29 MB process baseline, ~28 MB shell,
+  ~46 MB reaching a playing track, ~42 MB playback. Browsing adds ~40–50 MB on
+  top in a normal session, which is how the earlier runs reached 183–194 MB.
+  **The decisive arithmetic**: artwork was measured at **~27 MB** (156 vs
+  129 MB, artwork on vs suppressed), and 143 − 27 = **116 MB, under the
+  128 MB limit**. Artwork is also the biggest chunk the app could plausibly
+  give back, and — the point that has been true all along and is now
+  actionable — **the framework will not give it back on request**. The
+  decoded images live in XAML's process-wide URI-keyed cache, not in the
+  visual tree, which is exactly why dropping the tree has reclaimed nothing in
+  every single console run since this began.
+  That makes the **app-owned bitmap cache** the justified next step: fetch
+  cover bytes and feed `SetSourceAsync` from a bounded LRU, so that "release
+  the artwork" becomes a real operation the app can perform on
+  `EnteredBackground` instead of a hope. It was deliberately deferred on
+  2026-08-13 pending exactly this measurement; the measurement now supports it.
+  **Validate before building** (one toggle, one relaunch, no code): repeat the
+  minimal run with "Run without artwork" ON. Landing near 116 MB confirms the
+  ceiling the cache would buy; landing near 143 MB means the 27 MB figure does
+  not survive into the minimal case and the cache is not worth building.
+  Note this fixes the FLOOR only. A track change still spikes ~40 MB, so
+  backgrounding within a few seconds of one can still exceed 128 MB even from
+  a 116 MB base; whether that matters in practice is what the 5 s vs 30 s test
+  answers.
+
 ## 17. Open Decisions / TODO
 
 - RESOLVED 2026-07-19: search endpoint/scopes/paging — see §16 (Slice 13). search3, submit-triggered, All view + scope filters, incremental scoped paging.

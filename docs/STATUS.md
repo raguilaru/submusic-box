@@ -2,9 +2,10 @@
 
 Last updated: 2026-08-13 (background memory rounds two and three: the console
 cleared artwork (~27 MB) and the overlay (free) as suspects and pinned the cost
-on every stream open — a track change costs 30–45 MB that never returns,
-whether jumped to or reached naturally, and recycling playback items was tried
-as the fix and reverted; cover-art URLs were
+on the resting floor: a track change costs 30–45 MB but that DRAINS a few
+seconds later, so nothing leaks — the app simply rests at 182–194 MB against a
+128 MB limit; recycling playback items was tried as a fix and reverted;
+cover-art URLs were
 unique per request — defeating both platform caches — so the strategy moved
 from shedding memory to not allocating it; plus a diagnostic switch that runs
 the app with no artwork, to measure what artwork actually costs. On top of
@@ -626,33 +627,30 @@ them is what produced the wrong answer last time. Non-debug launch as always.
     next-track prefetch, so listen through two or three track boundaries to
     confirm nothing gaps.
 
-**Where do 40 MB per stream open go? (2026-08-13, §11):**
+**Validating the artwork ceiling (2026-08-13, §11):**
 
-Items 63–65 and the recycling attempt are **answered/closed** (see the entries
-above). What is left is a single number: **every stream open costs 30–45 MB and
-most of it never comes back**, whatever the codec and whatever triggered it —
-a jump, or the queue simply advancing on its own. Item 66 needs **no new
-build** and splits the two remaining explanations; do it before anything else
-is written.
+Item 68 is **answered**: the minimal floor is **143 MB**, only 15 MB over the
+limit, and artwork is ~27 MB of it — so 116 MB, under the limit, is what an
+app-owned bitmap cache would buy. Item 70 checks that arithmetic for one
+toggle and one relaunch before any of it gets built.
 
-66. **Short-queue run — two hypotheses, one measurement, no code.** Play a
-    queue of about **five tracks** (one short album, not a 228-track playlist)
-    and jump around it **twenty or so times**, watching `TrackChanged #N` /
-    `AfterTrackSettled #N`.
-    - If usage **climbs the same way** it did with 228 items, the size of the
-      list is irrelevant: the cost is per-open buffering the platform never
-      releases, and the next place to look is how the source is built
-      (`MediaSource.CreateFromUri` over HTTP) rather than the list.
-    - If it **plateaus** at roughly five tracks' worth, the list retaining
-      opened items is the mechanism and the fix is a windowed list — keep only
-      a handful of items around the current index instead of one per track.
-    Note the peak either way, and roughly how many opens it took to get there.
-67. **Sanity: is a single track's 40 MB normal?** Play ONE track from a fresh
-    launch, let it play, and read `TrackChanged #1` → `AfterTrackSettled #1`
-    (it was 109 → 152 MB). Then let it play for two or three minutes and
-    background it. If usage keeps climbing while a single track plays, the
-    buffer grows with playback rather than being a fixed per-open cost, which
-    is a different problem again and worth knowing before any fix is designed.
+70. **Minimal run, artwork suppressed.** Exactly item 68's procedure — fresh
+    launch, play with no browsing, 30 s untouched, background — but with
+    **Account → Diagnostics → Run without artwork = On** and a restart first.
+    Read `EnteredBackground`.
+    - **Near 116 MB** ⇒ the 27 MB artwork figure holds in the minimal case, an
+      app-owned cache droppable on `EnteredBackground` would put the floor
+      under the limit, and it is worth building.
+    - **Near 143 MB** ⇒ artwork is not costing what it did in the browsed
+      session, the cache would not pay for itself, and the target is whatever
+      else makes up the ~46 MB of reaching a playing track.
+71. **How long is the drain, really?** Jump between five tracks quickly, stop,
+    then background at **5 s** after the last change; on a second attempt, at
+    **30 s**. If 30 s survives where 5 s does not, the transient is a genuine
+    second failure mode needing its own handling — the OS allows ~2 s after
+    `AppMemoryUsageLimitChanging`, which is shorter than the drain measured
+    (283 → 182 MB took about 4 s). Worth knowing even if the floor fix lands,
+    because a ~40 MB spike from a 116 MB base still crosses 128 MB.
 
 *(Future work: append console items here.)*
 
@@ -791,8 +789,40 @@ revisiting the reasoning (many encode a hard-won console lesson).
     and a four-item `MenuFlyout`). Not addressed yet.
   - **every stream OPEN** costs **+25 to +41 MB**, cumulative and never
     returned — see the next note, which is the real bug.
-- **The memory is spent when a stream OPENS, not when the jump happens, and
-  the items were immortal** (2026-08-13). `AfterJumpMoveTo` costs 0 MB and even
+- **CORRECTION (2026-08-13, clean runs): the per-open memory is TRANSIENT.**
+  It drains a few seconds after track churn stops — ten rapid changes climbed
+  to **283 MB** and were back at **182 MB** 2.5 s after the last one, with no
+  queue replacement and no user action. Nothing is leaking. The notes below
+  about "cumulative, never returned" describe the spike, not a leak, and the
+  "it plateaus, so a windowed list is the fix" reading is **retracted**: it
+  compared a clean 8-track run against a 228-track run taken on the build with
+  the (reverted) item recycling, which inflated it. The two CLEAN runs, 8
+  tracks and 22 tracks, both peak at 270–285 MB — **queue size does not drive
+  the peak, churn rate does**. Replacing the queue does free memory (182 → 169
+  MB), so that precondition passes; it is just no longer relevant.
+- **The minimal floor is 143 MB — 15 MB over the limit** (measured 2026-08-13:
+  fresh launch, play with no browsing, 32 s untouched, stable and drained).
+  Composition: ~29 MB process baseline, ~28 MB shell, ~46 MB reaching a playing
+  track, ~42 MB playback. Browsing adds ~40–50 MB on top, which is how normal
+  sessions reach 183–194 MB. **Artwork is ~27 MB of it** (156 vs 129 MB, on vs
+  suppressed), and 143 − 27 = **116 MB, under the limit** — which is what makes
+  an app-owned bitmap cache the justified next step. Decoded images live in
+  XAML's process-wide URI-keyed cache, **not in the visual tree**, which is
+  precisely why dropping the tree has reclaimed 0 MB in every console run since
+  this began. Only a cache the app owns can be dropped on demand.
+- **The real problem is the resting FLOOR, and it is the same number this
+  investigation started from.** With a queue playing and everything settled the
+  app rests at **182–194 MB against a 128 MB limit**. One clean run's
+  breakdown: 28 MB at launch, 57 MB with the shell up, 140 MB after browsing to
+  a playlist, 183 MB with one track playing — so browsing costs ~83 MB and
+  playback ~43 MB, and the view release reclaims essentially none of it. Two
+  failure modes follow: the floor (~55 MB over at all times, so backgrounding
+  is never safe) and the transient (backgrounding within a few seconds of a
+  track change measures the app mid-spike at 250–285 MB). The ~2 s the OS
+  allows after `AppMemoryUsageLimitChanging` is **shorter than the drain**, so
+  the app is measured during it.
+- **The memory is spent when a stream OPENS, not when the jump happens**
+  (2026-08-13). `AfterJumpMoveTo` costs 0 MB and even
   returns ~10 MB, so `MaxPlayedItemsToKeepOpen = 0` genuinely works; the cost
   lands at the settled reading 2.5 s later (+41, +25, +37 MB across three
   jumps: 161 → 224 → 240 → 268 MB, then killed at 259). **Codec is not the
@@ -801,7 +831,8 @@ revisiting the reasoning (many encode a hard-won console lesson).
   `MediaSource` for EVERY track and they live in `_list.Items` for the life of
   the queue, so they are never garbage — which is exactly why `GC.Collect` +
   `WaitForPendingFinalizers` reclaimed **0 MB** on every console run since this
-  began. There was never anything to collect.
+  began — but see the correction above: the spike drains on its own, so this
+  describes what is charged during churn, not a permanent leak.
 - **Recycling retired items was tried as the fix and REVERTED** (2026-08-13,
   one console pass). It made things worse on both axes: peak **465 MB, killed
   at 447** against 268/259 for the same exercise without it, plus multi-second
