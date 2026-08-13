@@ -85,6 +85,43 @@ target is to stay under ~180 MB.**
   app-side release can touch.
 - Rebuilding the view costs ~1 MB.
 
+**Playback does NOT stop on its own — the process is killed** (run 12,
+2026-08-13, the state trace). The last line before the termination is
+`PlaybackState=Playing`; there is no `Paused`, no `MediaFailed`, no
+`ItemFailed`, no `MediaEnded`, and no `Suspending`. Audio was healthy right up
+to the kill. **The stream and failure paths are exonerated: this is a memory
+bug, and the browsing surcharge is the right target.**
+
+**The floor RATCHETS across background round trips** (run 12 — four excursions,
+switching back and forth). This is the first genuine non-draining accumulation
+in the investigation; everything previously called a leak turned out to drain.
+
+| Cycle | Entered bg | After release (+2.5 s) | Rebuilt at | Foreground bout |
+|---|---|---|---|---|
+| 1 | 194 MB | **156 MB** | 155 MB | +27 MB |
+| 2 | 182 MB | **179 MB** | 180 MB | +25 MB |
+| 3 | 205 MB | **191 MB** | 192 MB | +13 MB |
+| 4 | 205 MB | **204 MB** | *killed* | — |
+
+12–23 MB per round trip is left behind that the next release cannot recover;
+private commit tracks it (129 → 146 → 167 → 171). The release reclaims roughly
+what that cycle's browsing added (38, 3, 14, 1 MB) and no more.
+
+**Per-page costs** (run 12, the navigation readings)
+
+| Page | First visit | Later |
+|---|---|---|
+| HomePage (New) | +27 to +31 MB | +16, then +5 |
+| PlaylistDetailPage (New) | **+33 MB** | +3 MB |
+| PlaylistsPage (New) | +1 to +12 MB | — |
+| PlaylistsPage (**Back**) | **−2 MB** | — |
+
+Two consequences. The navigation cache works exactly as designed — a `Back`
+into a cached page is free. And **Home is the app's most expensive page, which
+is precisely the page the view release forces a rebuild of on every return**:
+the release's own recovery path pays the largest render cost in the app, every
+cycle.
+
 **The floor** (fresh launch → play → 30 s settle, no browsing)
 
 - **143 MB** with artwork, **129 MB** with artwork suppressed.
@@ -205,25 +242,59 @@ unattributed**. Nothing measured to date says which surface spends it.
   full drain — no view, no covers — the app still holds 181 MB. Nothing the
   app can release gets it into the surviving band. Only *not allocating* can.
 
-**Candidate 4 — NEW, and it may outrank all of the above: playback may be
-stopping on its own.** Run 11 ended with a clean `Suspending` at 181 MB after
-26 s in the background — the first background failure in this investigation
-with a `Suspending` line at all; every previous one was a silent kill. Audio
-stopped, but the log cannot say in which order:
-- **(a) memory** — the OS suspended an app that stayed over the limit, and
-  suspension stops audio; or
-- **(b) audio first** — a `backgroundMediaPlayback` app is exempt from
-  suspension *only while audio is playing*, so if playback died for its own
-  reason the suspension follows within seconds automatically.
+**Candidate 4 — was playback stopping on its own? CLOSED: no.** Run 12's state
+trace shows `PlaybackState=Playing` as the last thing before the kill, with no
+failure of any kind (§3). The OS terminated a healthy player. It is (a),
+memory.
 
-(b) deserves real weight: 26 s is a long grace for an over-limit app when
-comparable runs at 201–214 MB were killed outright, and there was no
-`TrackChanged #5` — a track ending and the next stream failing to open would
-have left **no trace whatsoever** in the log as it stood.
+**Candidate 5 — NEW, and it is the lead: the release/rebuild cycle ratchets the
+floor.** Run 12 measured 12–23 MB per background round trip that never comes
+back (§3), which is what killed the app on the fourth excursion. Two mechanisms
+fit, and they call for opposite responses:
+- **(i) Native commit is simply not returned** across rebuild cycles
+  (fragmentation). Nothing app-side fixes it, and the response would be to stop
+  releasing and rebuilding at all.
+- **(ii) Each cycle leaks a whole page tree.**
+  `ReleaseViewContentOnUiThread` calls `DisconnectChildrenRecursive` *before*
+  nulling the window content. If severing the tree first prevents `Unloaded`
+  from firing, no page runs its unregistration, and
+  `PlaybackService.Instance.Changed` — reached from a static that lives for the
+  whole process — pins every shell from every cycle. The subscriptions are
+  balanced 7-for-7 in code, so this would be a lifecycle failure, not a missing
+  line. §9 already records that the release "works only because pages
+  unregister in `Unloaded`" — that assumption has never been tested on device.
+
+If (ii) holds, the release has been quietly self-defeating all along, which
+would also explain why it has always appeared to reclaim so little.
 
 ---
 
-## 7. The next step — run 12, still no behaviour change
+## 7. The next step — run 13: is the ratchet a leak or unreturned commit?
+
+Three counters, no behaviour change, aimed squarely at candidate 5. Two of them
+ride on **every** `LogMemory` line, because the point at which a count starts
+climbing is not known in advance.
+
+| Field | Where | Reading |
+|---|---|---|
+| `changedSubs=N` | every memory line | handlers on `PlaybackService.Changed`. Balanced code means the **same number at every rebuild**. Climbing by a constant each cycle ⇒ mechanism (ii), leak confirmed, fix identified |
+| `shells=A of B` | every memory line | shells still uncollected, of shells ever built. Weak references, so the census cannot itself pin one; no finalizers, which would change what is measured. Only meaningful just after a collection — `RebuildViewIfReleased` forces one before its reading |
+| `MainPage.Unloaded — …` | the release | tests the `DisconnectChildrenRecursive` hypothesis head-on. **"Releasing view content" with no `MainPage.Unloaded` line after it** proves the unregistrations never run |
+
+**How to run it.** Same shape as run 12, which is what exposed the ratchet:
+browse a few sections, play, queue a couple of hundred tracks, then **switch
+between background and foreground four or five times**, with a real bout of
+browsing in between each. Watch `shells=` and `changedSubs=` at each
+`AfterViewRebuild`.
+
+**What each outcome justifies.** Both counters flat while the floor still
+climbs ⇒ mechanism (i), nothing is leaking, and the open question becomes
+whether to keep releasing the view at all — a behaviour change, and one that
+wants its own A/B (same session with the release disabled) before it is made.
+Either counter climbing ⇒ mechanism (ii): fix the release so `Unloaded` fires
+(or unregister explicitly before disconnecting), and re-measure the ratchet.
+
+## Built for run 12 — playback state and page attribution
 
 Two instrumentation points, built 2026-08-13 after run 11 closed candidates 1
 and 3. **Point 1 is the one that matters**: it decides whether this is a memory
@@ -241,12 +312,10 @@ diagnostics-only (the established skip/stop behaviour is untouched):
 | `ItemFailed` | per-item failure, with error code, track and the consecutive count |
 | `MediaEnded (end of list)` | audio stopped for a legitimate reason |
 
-**How to read it.** A `Paused` or `None` arriving **seconds before**
-`Suspending` means candidate 4(b): playback died on its own, the app lost its
-background-audio exemption, and the suspension is a *consequence*. The fix is
-then in the stream/failure path and this was never primarily a memory bug. A
-state change landing **at** `Suspending` means 4(a), memory, and the browsing
-surcharge is the target.
+**ANSWERED (run 12).** The last state before the kill was `Playing`, with no
+failure of any kind — so candidate 4(a): memory. The trace stays in, because
+"playback was healthy when the OS killed it" is worth re-confirming on every
+future run rather than assuming.
 
 **2. Per-page navigation readings** (`MainPage.LogNavigationMemory`). One hook
 on the content frame's `Navigated`, so every page is covered without touching
@@ -257,10 +326,10 @@ whether a cost is per-visit (accumulating) or first-render only. Watch the
 Search): they re-render a page that was never released and should cost far less
 than the `New` that built it.
 
-**How to run it.** Non-debug as always. Browse a fixed path through several
-sections, play something, queue a couple of hundred tracks, wait 30 s after the
-last track change, background, and **leave it there for several minutes** —
-long enough that either a suspension happens or it demonstrably survives.
+**ANSWERED (run 12)** — per-page figures are in §3. `Back` into a cached page
+is free, and Home is the app's most expensive page. Both readings stay in:
+they are what will show whether any future change actually moves the browsing
+surcharge.
 
 ### Built earlier on 2026-08-13 — how to read what it logs
 

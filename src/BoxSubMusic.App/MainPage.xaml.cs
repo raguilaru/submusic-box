@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using BoxSubMusic.App.Services;
 using Windows.System;
 using Windows.UI.Core;
@@ -41,11 +42,70 @@ namespace BoxSubMusic.App
         private Type _pendingOverlayNavPage;
         private object _pendingOverlayNavParameter;
 
+        /// <summary>
+        /// Every shell ever built, weakly (§11 diagnostics, 2026-08-13).
+        ///
+        /// The app releases its visual tree under background pressure and
+        /// rebuilds it on return, and run 12 measured the floor climbing
+        /// 12–23 MB per round trip. A released shell that is still alive is
+        /// the difference between "native commit is not returned to the OS"
+        /// (nothing app-side to fix) and "each cycle leaks a whole page tree"
+        /// (app-side, and fixable). Counting them directly settles it.
+        ///
+        /// Weak references, so the census cannot itself be the thing keeping
+        /// a shell alive — which a plain list would be, and which would make
+        /// this diagnostic cause the very leak it looks for. Deliberately no
+        /// finalizers either: a finalizable object survives an extra
+        /// collection, so adding one would change what is being measured.
+        /// </summary>
+        private static readonly List<WeakReference<MainPage>> LiveShells =
+            new List<WeakReference<MainPage>>();
+
+        private static readonly object ShellCensusGate = new object();
+        private static int _shellsConstructed;
+
+        /// <summary>
+        /// Shells still uncollected, and how many have ever been built
+        /// ("2 of 4"). Read from the memory-pressure handlers, which are not
+        /// on the UI thread — hence the lock. Only meaningful right after a
+        /// collection; <c>App.RebuildViewIfReleased</c> forces one before it
+        /// takes its reading.
+        /// </summary>
+        public static string LiveShellCensus
+        {
+            get
+            {
+                lock (ShellCensusGate)
+                {
+                    int alive = 0;
+                    for (int i = LiveShells.Count - 1; i >= 0; i--)
+                    {
+                        if (LiveShells[i].TryGetTarget(out _))
+                        {
+                            alive++;
+                        }
+                        else
+                        {
+                            LiveShells.RemoveAt(i);
+                        }
+                    }
+
+                    return alive + " of " + _shellsConstructed;
+                }
+            }
+        }
+
         public MainPage()
         {
             InitializeComponent();
             Loaded += OnLoaded;
             Unloaded += OnUnloaded;
+
+            lock (ShellCensusGate)
+            {
+                _shellsConstructed++;
+                LiveShells.Add(new WeakReference<MainPage>(this));
+            }
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -167,6 +227,18 @@ namespace BoxSubMusic.App
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
+            // §11 diagnostics (2026-08-13): this line tests the release path
+            // head-on. ReleaseViewContentOnUiThread calls
+            // DisconnectChildrenRecursive BEFORE nulling the window content,
+            // and if severing the tree first stops Unloaded from firing, none
+            // of the unregistrations below ever run — leaving a static event
+            // holding this shell and every control under it. The whole release
+            // is documented as working only because these callbacks fire.
+            // If "Releasing view content" appears without this line following
+            // it, that assumption is false and the ratchet is explained.
+            Services.BackgroundDiagnostics.Log(
+                "MainPage.Unloaded — unregistering shell handlers (shells " + LiveShellCensus + ")");
+
             NavigationPreferences.Changed -= ApplyNavVisibility;
             SystemNavigationManager.GetForCurrentView().BackRequested -= OnBackRequested;
             ContentFrame.Navigated -= ContentFrame_Navigated;

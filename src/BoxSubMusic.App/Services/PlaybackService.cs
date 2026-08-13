@@ -68,6 +68,38 @@ namespace BoxSubMusic.App.Services
             }
         }
 
+        /// <summary>
+        /// How many handlers are attached to <see cref="Changed"/>, or -1
+        /// before playback exists (§11 diagnostics, 2026-08-13).
+        ///
+        /// This is the cheapest test for the ratchet run 12 found — the
+        /// post-release floor climbing 156 → 179 → 191 → 204 MB across four
+        /// background round trips. Every subscriber is a page or a control,
+        /// and this event is reached from a static that lives for the whole
+        /// process, so a handler that is never removed pins its entire visual
+        /// tree and makes the view release a no-op for that tree. The code is
+        /// balanced 7-for-7, so a climbing count would mean the release is
+        /// preventing the <c>Unloaded</c> callbacks that do the removing, not
+        /// that a line is missing.
+        ///
+        /// Expect the same number at each rebuild. A count that grows by
+        /// roughly the same amount every cycle is the leak.
+        /// </summary>
+        public static int ChangedSubscribersForDiagnostics
+        {
+            get
+            {
+                var instance = _instance;
+                if (instance == null)
+                {
+                    return -1;
+                }
+
+                Action handler = instance.Changed;
+                return handler == null ? 0 : handler.GetInvocationList().Length;
+            }
+        }
+
         private readonly CoreDispatcher _dispatcher;
         private readonly Dictionary<Song, MediaPlaybackItem> _songToItem =
             new Dictionary<Song, MediaPlaybackItem>();

@@ -96,12 +96,29 @@ namespace BoxSubMusic.App.Services
                 detail = ", memoryReportFailed=" + ex.Message;
             }
 
+            // The two leak counters ride on every reading rather than on a
+            // few chosen lines: run 12 found the floor ratcheting 12-23 MB per
+            // background round trip, and the point at which a count starts
+            // climbing is not known in advance. Both are cheap, and both are
+            // scaffolding to remove with the rest of the investigation.
+            string leaks;
+            try
+            {
+                leaks = ", changedSubs=" + PlaybackService.ChangedSubscribersForDiagnostics
+                    + ", shells=" + MainPage.LiveShellCensus;
+            }
+            catch (Exception ex)
+            {
+                leaks = ", leakCountersFailed=" + ex.Message;
+            }
+
             Log(stage
                 + ": usage=" + Megabytes(MemoryManager.AppMemoryUsage) + " MB"
                 + ", limit=" + Megabytes(MemoryManager.AppMemoryUsageLimit) + " MB"
                 + ", level=" + MemoryManager.AppMemoryUsageLevel
                 + detail
-                + ", queue=" + PlaybackService.QueueCountForDiagnostics);
+                + ", queue=" + PlaybackService.QueueCountForDiagnostics
+                + leaks);
         }
 
         public static string Megabytes(ulong bytes)
